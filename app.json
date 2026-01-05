@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app-foundation",
-    "slug": "app-foundation",
+    "name": "관계궤도",
+    "slug": "social-orbit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
