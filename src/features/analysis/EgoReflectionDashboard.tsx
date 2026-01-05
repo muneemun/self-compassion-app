@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Animated } from 'react-native';
-import Svg, { Circle, Path, Defs, LinearGradient, Stop, Line, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Defs, LinearGradient, Stop, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
 import { ChevronLeft, Calendar, Brain, TrendingUp, ArrowRight, Zap, Heart, Info, X, Star, Trash2, Users, Battery, History, Sliders, AlertCircle, CheckCircle2 } from 'lucide-react-native';
@@ -17,6 +17,8 @@ interface EgoReflectionDashboardProps {
 export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) => {
     const colors = useColors();
     const [selectedPeriod, setSelectedPeriod] = useState('2026년 10월');
+    const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
+    const availablePeriods = ['2026년 10월', '2026년 9월', '2026년 8월']; // 7월 제거
     const [activePopup, setActivePopup] = useState<'energy' | 'trend' | 'lens' | null>(null);
     const { relationships } = useRelationshipStore();
 
@@ -69,8 +71,39 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         }
     };
 
+    // 🔍 1.5 Mock History Data for Testing
+    const MOCK_HISTORY = {
+        '2026년 9월': {
+            energyData: { zone1: 30, zone2: 20, zone3: 35, zone4: 10, zone5: 5 }, // Zone 3 과잉 (일 중심)
+            zoneCounts: { zone1: 3, zone2: 8, zone3: 20, zone4: 10, zone5: 50 },
+            lensData: {
+                recovery: { name: '이민지', id: 'm1' },
+                drain: { name: '김철수', id: 'm2' },
+                frequency: { name: '박팀장', id: 'm3' }
+            },
+            trendPoints: [40, 50, 45, 30, 20, 35, 50, 60, 55] // 다소 낮은 컨디션
+        },
+        '2026년 8월': {
+            energyData: { zone1: 10, zone2: 15, zone3: 25, zone4: 30, zone5: 20 }, // Zone 1 부족 (고립)
+            zoneCounts: { zone1: 1, zone2: 5, zone3: 15, zone4: 40, zone5: 100 },
+            lensData: {
+                recovery: { name: '어머니', id: 'm4' },
+                drain: { name: '최대리', id: 'm5' },
+                frequency: { name: 'SNS', id: 'm6' }
+            },
+            trendPoints: [30, 20, 10, 20, 30, 40, 35, 30, 25] // 저조한 컨디션
+        }
+    };
+
     // 🔍 2. Dynamic Data Calculation based on Store
-    const getCalculatedData = () => {
+    // 🔍 2. Dynamic Data Calculation & Selection
+    const getDataForPeriod = (period: string) => {
+        // 1. 과거 데이터 (Mock)
+        if (period in MOCK_HISTORY) {
+            return MOCK_HISTORY[period as keyof typeof MOCK_HISTORY];
+        }
+
+        // 2. 현재 데이터 (Real Store Calculation)
         const zoneEnergyMap = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
         const zoneCounts = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
         const totalEnergySum = relationships.reduce((sum: number, r: RelationshipNode) => sum + (r.temperature || 50), 0);
@@ -104,10 +137,19 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         };
         const frequency = [...relationships].sort((a, b) => getInteractionWeight(b.lastInteraction) - getInteractionWeight(a.lastInteraction))[0];
 
-        return { energyData, zoneCounts, lensData: { recovery, drain, frequency } };
+        // Current Trend (Default)
+        // 10월 등 최신 데이터는 앞부분만 실제 데이터인 것처럼 처리
+        let trendPoints = [80, 70, 90, 60, 40, 50, 30, 10, 20];
+
+        // 만약 선택된 기간이 최신(availablePeriods[0])이라면, 뒤쪽 데이터를 null 또는 예측치로 처리하거나
+        // 여기서는 예시로 뒤쪽 4개를 '예측(집계중)' 데이터로 가정하여 렌더링 시 구분하도록 함.
+        // 실제 데이터 포인트 수집 로직은 복잡하므로, 여기서는 trendPoints 배열 자체는 유지하되 
+        // 렌더링 시 인덱스를 체크하여 스타일링을 다르게 적용하도록 함.
+
+        return { energyData, zoneCounts, lensData: { recovery, drain, frequency }, trendPoints };
     };
 
-    const { energyData, zoneCounts, lensData } = getCalculatedData();
+    const { energyData, zoneCounts, lensData, trendPoints } = getDataForPeriod(selectedPeriod);
     const [selectedZone, setSelectedZone] = useState<keyof typeof energyData>('zone1');
 
     const METRIC_GUIDE = {
@@ -143,7 +185,14 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
     };
 
 
-    const trendPoints = [80, 70, 90, 60, 40, 50, 30, 10, 20];
+
+    // Period Change Handler (Cycle through Current -> Sep -> Aug)
+    // Period Selection Handler
+    const handlePeriodSelect = (period: string) => {
+        if (period.includes('기록 없음')) return;
+        setSelectedPeriod(period);
+        setIsPeriodDropdownOpen(false);
+    };
 
     const renderHeader = () => (
         <View style={styles.header}>
@@ -153,10 +202,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             <Text style={[styles.headerTitle, { color: colors.primary }]}>
                 인사이트
             </Text>
-            <TouchableOpacity style={styles.headerActionBtn}>
-                <Calendar size={18} color={colors.primary} />
-                <Text style={[styles.headerActionText, { color: colors.primary }]}>{selectedPeriod}</Text>
-            </TouchableOpacity>
+            <View style={{ width: 40 }} />
         </View>
     );
 
@@ -206,104 +252,139 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                 </View>
 
                 <View style={styles.chartContainer}>
-                    <Svg width={radius * 2.5} height={radius * 2.5} viewBox={`0 0 ${radius * 2.5} ${radius * 2.5}`}>
-                        <Defs>
-                            {zoneKeys.map((key) => (
-                                <LinearGradient key={`grad-${key}`} id={`grad-${key}`} x1="0" y1="0" x2="1" y2="1">
-                                    <Stop offset="0%" stopColor={ZONE_INFO[key].color} stopOpacity="1" />
-                                    <Stop offset="100%" stopColor={ZONE_INFO[key].color} stopOpacity="0.7" />
-                                </LinearGradient>
-                            ))}
-                        </Defs>
+                    {/* SVG와 텍스트를 감싸는 래퍼 뷰 */}
+                    <View style={styles.chartWrapper}>
+                        <Svg width={radius * 2.5} height={radius * 2.5} viewBox={`0 0 ${radius * 2.5} ${radius * 2.5}`}>
+                            <Defs>
+                                {zoneKeys.map((key) => (
+                                    <LinearGradient key={`grad-${key}`} id={`grad-${key}`} x1="0" y1="0" x2="1" y2="1">
+                                        <Stop offset="0%" stopColor={ZONE_INFO[key].color} stopOpacity="1" />
+                                        <Stop offset="100%" stopColor={ZONE_INFO[key].color} stopOpacity="0.7" />
+                                    </LinearGradient>
+                                ))}
+                            </Defs>
 
-                        <Circle
-                            cx={radius * 1.25}
-                            cy={radius * 1.25}
-                            r={radius}
-                            fill="none"
-                            stroke="#EBE5D9"
-                            strokeWidth="12"
-                            strokeOpacity="0.3"
-                        />
+                            <Circle
+                                cx={radius * 1.25}
+                                cy={radius * 1.25}
+                                r={radius}
+                                fill="none"
+                                stroke="#EBE5D9"
+                                strokeWidth="12"
+                                strokeOpacity="0.3"
+                            />
 
-                        {/* Zone 렌더링 순서 조정: 선택된 Zone을 마지막에 그려서 최상위에 표시 */}
-                        {(() => {
-                            // 선택된 Zone을 마지막으로 이동
-                            const sortedKeys = [...zoneKeys];
-                            const selectedIndex = sortedKeys.indexOf(selectedZone);
-                            if (selectedIndex > -1) {
-                                sortedKeys.splice(selectedIndex, 1);
-                                sortedKeys.push(selectedZone);
-                            }
+                            {/* Zone Chart Rendering */}
+                            {(() => {
+                                // 1. Calculate chart data for all zones FIRST to maintain consistent layout
+                                let cumulativeActual = 0;
+                                let cumulativeTarget = 0;
 
-                            let cumulativeActual = 0;
-                            let cumulativeTarget = 0;
+                                const chartSegments = zoneKeys.map((key) => {
+                                    const value = energyData[key];
+                                    const target = ZONE_INFO[key].targetIdeal;
 
-                            return sortedKeys.map((key) => {
-                                const value = energyData[key];
-                                const target = ZONE_INFO[key].targetIdeal;
-                                const strokeDasharrayActual = [
-                                    (value / 100) * circumference,
-                                    circumference
-                                ].join(' ');
-                                const strokeDashoffsetActual = - (cumulativeActual / 100) * circumference;
+                                    const strokeDasharrayActual = [
+                                        (value / 100) * circumference,
+                                        circumference
+                                    ].join(' ');
+                                    const strokeDashoffsetActual = - (cumulativeActual / 100) * circumference;
 
-                                const strokeDasharrayTarget = [
-                                    (target / 100) * guideCircumference,
-                                    guideCircumference
-                                ].join(' ');
-                                const strokeDashoffsetTarget = - (cumulativeTarget / 100) * guideCircumference;
+                                    const strokeDasharrayTarget = [
+                                        (target / 100) * guideCircumference,
+                                        guideCircumference
+                                    ].join(' ');
+                                    const strokeDashoffsetTarget = - (cumulativeTarget / 100) * guideCircumference;
 
-                                cumulativeActual += value;
-                                cumulativeTarget += target;
+                                    cumulativeActual += value;
+                                    cumulativeTarget += target;
+
+                                    return {
+                                        key,
+                                        strokeDasharrayActual,
+                                        strokeDashoffsetActual,
+                                        strokeDasharrayTarget,
+                                        strokeDashoffsetTarget
+                                    };
+                                });
 
                                 return (
-                                    <React.Fragment key={key}>
-                                        <Circle
-                                            cx={radius * 1.25}
-                                            cy={radius * 1.25}
-                                            r={radius}
-                                            fill="none"
-                                            stroke={`url(#grad-${key})`}
-                                            strokeWidth={selectedZone === key ? 16 : 12}
-                                            strokeDasharray={strokeDasharrayActual}
-                                            strokeDashoffset={strokeDashoffsetActual}
-                                            strokeLinecap="round"
-                                            transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`}
-                                        />
-                                        <Circle
-                                            cx={radius * 1.25}
-                                            cy={radius * 1.25}
-                                            r={innerGuideRadius}
-                                            fill="none"
-                                            stroke={ZONE_INFO[key].color}
-                                            strokeWidth="2"
-                                            strokeDasharray={strokeDasharrayTarget}
-                                            strokeDashoffset={strokeDashoffsetTarget}
-                                            strokeOpacity="0.3"
-                                            transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`}
-                                        />
-                                    </React.Fragment>
-                                );
-                            });
-                        })()}
-                    </Svg>
+                                    <>
+                                        {/* Layer 1: Base Chart (All Zones) */}
+                                        {chartSegments.map((segment) => (
+                                            <React.Fragment key={segment.key}>
+                                                {/* Actual Data Arc */}
+                                                <Circle
+                                                    cx={radius * 1.25}
+                                                    cy={radius * 1.25}
+                                                    r={radius}
+                                                    fill="none"
+                                                    stroke={`url(#grad-${segment.key})`}
+                                                    strokeWidth="12"
+                                                    strokeDasharray={segment.strokeDasharrayActual}
+                                                    strokeDashoffset={segment.strokeDashoffsetActual}
+                                                    strokeLinecap="round" // 둥글게
+                                                    transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`}
+                                                // opacity prop 제거 (기본값 1)
+                                                />
+                                                {/* Target Guide Arc (Inner) */}
+                                                <Circle
+                                                    cx={radius * 1.25}
+                                                    cy={radius * 1.25}
+                                                    r={innerGuideRadius}
+                                                    fill="none"
+                                                    stroke={ZONE_INFO[segment.key].color}
+                                                    strokeWidth="2"
+                                                    strokeDasharray={segment.strokeDasharrayTarget}
+                                                    strokeDashoffset={segment.strokeDashoffsetTarget}
+                                                    strokeOpacity="0.3"
+                                                    transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`}
+                                                />
+                                            </React.Fragment>
+                                        ))}
 
-                    <View style={styles.chartCenter}>
-                        <Text style={[styles.chartPercentage, { color: colors.primary }]}>
-                            {energyData[selectedZone]}%
-                        </Text>
-                        {(() => {
-                            const val = energyData[selectedZone];
-                            const { targetMin, targetMax } = ZONE_INFO[selectedZone];
-                            let label = '건강';
-                            let statusColor = colors.accent;
-                            if (val < targetMin) { label = '부족'; statusColor = '#90A4AE'; }
-                            else if (val > targetMax) { label = '초과'; statusColor = '#D98B73'; }
-                            return (
-                                <Text style={[styles.chartStatus, { color: statusColor }]}>{label}</Text>
-                            );
-                        })()}
+                                        {/* Layer 2: Highlight Overlay (Selected Zone Only) */}
+                                        {(() => {
+                                            const selectedSegment = chartSegments.find(s => s.key === selectedZone);
+                                            if (!selectedSegment) return null;
+
+                                            // 굵은 테두리로 위에 덧그리기
+                                            return (
+                                                <Circle
+                                                    cx={radius * 1.25}
+                                                    cy={radius * 1.25}
+                                                    r={radius}
+                                                    fill="none"
+                                                    stroke={`url(#grad-${selectedSegment.key})`}
+                                                    strokeWidth="18" // 확 커짐
+                                                    strokeDasharray={selectedSegment.strokeDasharrayActual}
+                                                    strokeDashoffset={selectedSegment.strokeDashoffsetActual}
+                                                    strokeLinecap="round" // 둥글게
+                                                    transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`}
+                                                />
+                                            );
+                                        })()}
+                                    </>
+                                );
+                            })()}
+                        </Svg>
+
+                        <View style={styles.chartCenter}>
+                            <Text style={[styles.chartPercentage, { color: colors.primary }]}>
+                                {energyData[selectedZone]}%
+                            </Text>
+                            {(() => {
+                                const val = energyData[selectedZone];
+                                const { targetMin, targetMax } = ZONE_INFO[selectedZone];
+                                let label = '건강';
+                                let statusColor = colors.accent;
+                                if (val < targetMin) { label = '부족'; statusColor = '#90A4AE'; }
+                                else if (val > targetMax) { label = '초과'; statusColor = '#D98B73'; }
+                                return (
+                                    <Text style={[styles.chartStatus, { color: statusColor }]}>{label}</Text>
+                                );
+                            })()}
+                        </View>
                     </View>
                     {renderLegend()}
                 </View>
@@ -405,64 +486,130 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         </View>
     );
 
-    const renderTrendSection = () => (
-        <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>감성 트렌드</Text>
-                    <TouchableOpacity onPress={() => setActivePopup('trend')}>
-                        <Info size={16} color={colors.primary} opacity={0.4} />
-                    </TouchableOpacity>
+    const renderTrendSection = () => {
+        // X축 스케일 고정을 위한 상수
+        const MAX_POINTS = 9; // 전체 30일을 9개 구간으로 표현한다고 가정
+        const CHART_WIDTH = width - 80;
+
+        // 최신 기간(10월)일 경우 데이터 절삭 (앞 5개만 표시)
+        const displayPoints = selectedPeriod === availablePeriods[0]
+            ? trendPoints.slice(0, 5)
+            : trendPoints;
+
+        return (
+            <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>감성 트렌드</Text>
+                        <TouchableOpacity onPress={() => setActivePopup('trend')}>
+                            <Info size={16} color={colors.primary} opacity={0.4} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.trendStatus}>
+                        <TrendingUp size={14} color={colors.accent} />
+                        <Text style={[styles.trendStatusText, { color: colors.accent }]}>전월 대비 +12%</Text>
+                    </View>
                 </View>
-                <View style={styles.trendStatus}>
-                    <TrendingUp size={14} color={colors.accent} />
-                    <Text style={[styles.trendStatusText, { color: colors.accent }]}>전월 대비 +12%</Text>
-                </View>
-            </View>
 
-            <View style={[styles.trendChartCard, { backgroundColor: colors.white }]}>
-                <Svg width={width - 80} height={120}>
-                    <Defs>
-                        <LinearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                            <Stop offset="0%" stopColor={colors.accent} stopOpacity="0.2" />
-                            <Stop offset="100%" stopColor={colors.accent} stopOpacity="0" />
-                        </LinearGradient>
-                    </Defs>
+                <View style={[styles.trendChartCard, { backgroundColor: colors.white }]}>
+                    <Svg width={CHART_WIDTH} height={120}>
+                        <Defs>
+                            <LinearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                                <Stop offset="0%" stopColor={colors.accent} stopOpacity="0.2" />
+                                <Stop offset="100%" stopColor={colors.accent} stopOpacity="0" />
+                            </LinearGradient>
+                        </Defs>
 
-                    <Path
-                        d={`M 0 ${trendPoints[0]} ${trendPoints.map((p, i) => `L ${(i * (width - 80)) / (trendPoints.length - 1)} ${p}`).join(' ')}`}
-                        fill="none"
-                        stroke={colors.accent}
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                    />
+                        {/* Grid Lines (0%, 50%, 100% emotional range) */}
+                        {[20, 60, 100].map((y, i) => (
+                            <Line
+                                key={`grid-${i}`}
+                                x1="0"
+                                y1={y}
+                                x2={CHART_WIDTH}
+                                y2={y}
+                                stroke={colors.primary}
+                                strokeWidth="1"
+                                strokeOpacity="0.05"
+                                strokeDasharray="4 4"
+                            />
+                        ))}
 
-                    <Path
-                        d={`M 0 ${trendPoints[0]} ${trendPoints.map((p, i) => `L ${(i * (width - 80)) / (trendPoints.length - 1)} ${p}`).join(' ')} L ${width - 80} 120 L 0 120 Z`}
-                        fill="url(#trendGrad)"
-                    />
-
-                    {trendPoints.map((p, i) => (
-                        <Circle
-                            key={i}
-                            cx={(i * (width - 80)) / (trendPoints.length - 1)}
-                            cy={p}
-                            r="4"
-                            fill={colors.white}
+                        {/* Line Chart */}
+                        <Path
+                            d={`M 0 ${displayPoints[0]} ${displayPoints.map((p, i) => `L ${(i * CHART_WIDTH) / (MAX_POINTS - 1)} ${p}`).join(' ')}`}
+                            fill="none"
                             stroke={colors.accent}
-                            strokeWidth="2"
+                            strokeWidth="3"
+                            strokeLinecap="round"
                         />
-                    ))}
-                </Svg>
 
-                <View style={styles.trendXLabels}>
-                    <Text style={styles.trendXText}>1일</Text>
-                    <Text style={styles.trendXText}>15일</Text>
-                    <Text style={styles.trendXText}>30일</Text>
+                        {/* Gradient Area */}
+                        <Path
+                            d={`M 0 ${displayPoints[0]} 
+                                ${displayPoints.map((p, i) => `L ${(i * CHART_WIDTH) / (MAX_POINTS - 1)} ${p}`).join(' ')} 
+                                L ${((displayPoints.length - 1) * CHART_WIDTH) / (MAX_POINTS - 1)} 120 
+                                L 0 120 Z`}
+                            fill="url(#trendGrad)"
+                        />
+
+                        {/* Data Points & Labels */}
+                        {displayPoints.map((p, i) => {
+                            const cx = (i * CHART_WIDTH) / (MAX_POINTS - 1);
+                            const score = 120 - p;
+                            const isLast = i === displayPoints.length - 1;
+                            const isCollecting = selectedPeriod === availablePeriods[0] && isLast;
+
+                            return (
+                                <React.Fragment key={i}>
+                                    <Circle
+                                        cx={cx}
+                                        cy={p}
+                                        r={isCollecting ? 5 : 4}
+                                        fill={colors.white}
+                                        stroke={colors.accent}
+                                        strokeWidth={isCollecting ? 3 : 2}
+                                    />
+                                    {/* Value Label */}
+                                    <SvgText
+                                        x={cx}
+                                        y={p - 12}
+                                        fill={colors.accent}
+                                        fontSize="11"
+                                        fontWeight={isCollecting ? "900" : "700"}
+                                        textAnchor="middle"
+                                    >
+                                        {score}
+                                    </SvgText>
+
+                                    {/* "Today" Marker for latest data point if collecting */}
+                                    {isCollecting && (
+                                        <SvgText
+                                            x={cx}
+                                            y={p + 20}
+                                            fill={colors.primary}
+                                            fontSize="10"
+                                            fontWeight="600"
+                                            textAnchor="middle"
+                                            opacity="0.6"
+                                        >
+                                            Today
+                                        </SvgText>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </Svg>
+
+                    <View style={styles.trendXLabels}>
+                        <Text style={styles.trendXText}>1일</Text>
+                        <Text style={styles.trendXText}>15일</Text>
+                        <Text style={styles.trendXText}>30일</Text>
+                    </View>
                 </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <>
@@ -470,19 +617,84 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                 <View style={styles.container}>
                     <Text style={[styles.pageTitle, { color: colors.primary }]}>자아 건강 리포트</Text>
 
-                    <View style={styles.filterRow}>
-                        <TouchableOpacity style={[styles.filterChip, { backgroundColor: colors.primary }]}>
-                            <Text style={styles.filterChipText}>{selectedPeriod}</Text>
-                            <ChevronLeft size={16} color={colors.white} style={{ transform: [{ rotate: '-90deg' }] }} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.filterChip, { backgroundColor: colors.white, borderWidth: 1, borderColor: '#EBE5D9' }]}>
-                            <Text style={[styles.filterChipText, { color: colors.primary }]}>지난 30일</Text>
-                            <ChevronLeft size={16} color={colors.primary} style={{ transform: [{ rotate: '-90deg' }] }} />
-                        </TouchableOpacity>
+                    <View style={[styles.filterRow, { zIndex: 2000 }]}>
+                        <View>
+                            <TouchableOpacity
+                                style={[styles.filterChip, { backgroundColor: colors.primary }]}
+                                onPress={() => setIsPeriodDropdownOpen(!isPeriodDropdownOpen)}
+                            >
+                                <Text style={styles.filterChipText}>
+                                    {selectedPeriod}
+                                    {selectedPeriod === availablePeriods[0] && " (수집 중)"}
+                                </Text>
+                                <ChevronLeft
+                                    size={16}
+                                    color={colors.white}
+                                    style={{ transform: [{ rotate: isPeriodDropdownOpen ? '90deg' : '-90deg' }] }}
+                                />
+                            </TouchableOpacity>
+
+                            {isPeriodDropdownOpen && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 42,
+                                    left: 0,
+                                    width: 200,
+                                    backgroundColor: 'white',
+                                    borderRadius: 12,
+                                    padding: 4,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.15,
+                                    shadowRadius: 12,
+                                    elevation: 5,
+                                    borderWidth: 1,
+                                    borderColor: '#EBE5D9',
+                                    zIndex: 3000
+                                }}>
+                                    {availablePeriods.map((period, idx) => {
+                                        const isSelected = selectedPeriod === period;
+                                        const isLatest = idx === 0;
+                                        return (
+                                            <TouchableOpacity
+                                                key={idx}
+                                                style={{
+                                                    paddingVertical: 12,
+                                                    paddingHorizontal: 16,
+                                                    borderRadius: 8,
+                                                    backgroundColor: isSelected ? '#F5F7F8' : 'transparent',
+                                                }}
+                                                onPress={() => handlePeriodSelect(period)}
+                                            >
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <Text style={{
+                                                        fontSize: 14,
+                                                        color: isSelected ? colors.primary : '#555',
+                                                        fontWeight: isSelected ? '700' : '500'
+                                                    }}>
+                                                        {period}
+                                                    </Text>
+
+                                                    {isLatest && (
+                                                        <Text style={{ fontSize: 11, color: colors.accent, fontWeight: '600' }}>
+                                                            🔥 수집 중
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
                     </View>
+
+
+                    {renderTrendSection()}
 
                     {renderEnergyChart()}
                     {renderEnergyHealthList()}
+
 
                     {/* New: Multi-Lens Summary Section */}
                     <View style={styles.section}>
@@ -525,7 +737,6 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                         </View>
                     </View>
 
-                    {renderTrendSection()}
 
                     <View style={{ height: 100 }} />
                 </View>
@@ -666,12 +877,17 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingVertical: 20,
     },
+    chartWrapper: {
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     chartCenter: {
         position: 'absolute',
-        top: '25%',
-        left: '25%',
-        width: '50%',
-        height: '50%',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 10,

@@ -9,7 +9,7 @@ const { width, height } = Dimensions.get('window');
 const ONBOARDING_STEPS = [
     {
         id: 1,
-        title: "관계궤도 (Social Orbit):\n마음의 온도를 지키다",
+        title: "관계의 무게를 덜고,\n마음의 균형을 지키다",
         description: "복잡한 세상 속, 당신만의 소셜 우주를 시각화하고 내면의 균형을 찾아보세요.",
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC0W4CHJde2_tDzfgLnzZ3eNStIIZV3WbHM8kOrCN5-sYrCKvmSuqoXP3Dz6LXluncnpXmLcHVebCDIJSCZDfu_Kmn0-gbj2aqZzA5z340yN7uxVchrEVFQJ0la6-4kf3s2SXUMgg6a300LZ66X7Lwmc_QrC58eP0n5DDKTx-FrbqM0WrSJsxuFL_cp6EfoJlHRe830xyXIYlvLfV8F5iEJVgUrwyXwlokqC0-2It6uNOoqLeuZc6btIWzedy2ai3tjo3D6sDLZpBQ",
         type: 'hero'
@@ -57,6 +57,7 @@ export const OnboardingScreen = () => {
     const slideAnim = useRef(new Animated.Value(0)).current;
     const orbitRotate = useRef(new Animated.Value(0)).current;
     const floatAnim = useRef(new Animated.Value(0)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         Animated.loop(
@@ -81,7 +82,23 @@ export const OnboardingScreen = () => {
                 })
             ])
         ).start();
+
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 0.6,
+                    duration: 1500,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 1.4,
+                    duration: 1500,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
     }, []);
+
 
     const handleNext = () => {
         if (step < ONBOARDING_STEPS.length) {
@@ -113,25 +130,71 @@ export const OnboardingScreen = () => {
             case 'hero':
                 return (
                     <View style={styles.orbitVisualContainer}>
-                        <Animated.View style={[styles.bgRing, { width: 340, height: 340, borderColor: colors.primary, opacity: 0.1 }]} />
-                        <Animated.View style={[styles.bgRing, { width: 260, height: 260, borderColor: colors.primary, opacity: 0.2 }]} />
-                        <Animated.View style={[styles.bgRing, { width: 180, height: 180, borderColor: colors.accent, opacity: 0.3 }]} />
+                        <Animated.View style={[styles.bgRing, { width: 340, height: 340, borderColor: colors.primary, opacity: 0.1 }]}>
+                            <View style={{ position: 'absolute', top: 48, left: 32, width: 16, height: 16, borderRadius: 8, backgroundColor: '#D4AF37', opacity: 0.8, borderWidth: 1, borderColor: 'white' }} />
+                        </Animated.View>
+                        <Animated.View style={[styles.bgRing, { width: 260, height: 260, borderColor: colors.primary, opacity: 0.2 }]}>
+                            <View style={{ position: 'absolute', bottom: 40, right: 24, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary, opacity: 0.8, borderWidth: 1, borderColor: 'white' }} />
+                            <View style={{ position: 'absolute', top: '50%', left: -5, width: 10, height: 10, borderRadius: 5, backgroundColor: '#D4AF37', opacity: 0.9, borderWidth: 1, borderColor: 'white' }} />
+                        </Animated.View>
+                        <Animated.View style={[styles.bgRing, { width: 180, height: 180, borderColor: colors.accent, opacity: 0.3 }]}>
+                            <View style={{ position: 'absolute', top: 24, right: 48, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary, opacity: 1.0, borderWidth: 1, borderColor: 'white' }} />
+                        </Animated.View>
                         <View style={[styles.heroCore, { shadowColor: colors.accent }]}>
                             <Image source={{ uri: item.image }} style={styles.heroImage} />
                         </View>
                     </View>
                 );
             case 'orbit':
+                const spin = orbitRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+                const spinReverse = orbitRotate.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
+                const spinSlow = orbitRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '120deg'] });
+                const spinSlower = orbitRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '60deg'] });
+
                 return (
                     <Animated.View style={[styles.orbitVisualContainer, { transform: [{ translateY: floatAnim }] }]}>
-                        <View style={[styles.orbitCenterNode, { backgroundColor: colors.primary }]}>
-                            <View style={styles.orbitCenterGlow} />
+                        {/* Center Node: 강한 반짝임 */}
+                        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+                            <Animated.View style={{
+                                width: 16, height: 16, borderRadius: 8,
+                                backgroundColor: 'white',
+                                shadowColor: 'white', shadowOpacity: 1, shadowRadius: 25, shadowOffset: { width: 0, height: 0 }, elevation: 15,
+                                opacity: pulseAnim,
+                                transform: [{ scale: pulseAnim }]
+                            }} />
                         </View>
-                        {[100, 160, 220, 280].map((size, idx) => (
-                            <View key={size} style={[styles.orbitRingSimple, { width: size, height: size, borderColor: colors.primary, opacity: 0.1 }]} />
-                        ))}
+
+                        {/* Ring 1 (100px) - Fast Spin */}
+                        <Animated.View style={[styles.orbitRingSimple, { width: 100, height: 100, borderColor: colors.primary, opacity: 0.2, transform: [{ rotate: spin }] }]}>
+                            <View style={{ position: 'absolute', top: -6, left: '50%', marginLeft: -5, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent, borderWidth: 1.5, borderColor: '#FCF9F2', zIndex: 10 }} />
+                        </Animated.View>
+
+                        {/* Ring 2 (160px) - Reverse Spin */}
+                        <Animated.View style={[styles.orbitRingSimple, { width: 160, height: 160, borderColor: colors.primary, opacity: 0.2, transform: [{ rotate: spinReverse }] }]}>
+                            <View style={{ position: 'absolute', top: '15%', right: '10%', width: 14, height: 14, borderRadius: 7, backgroundColor: colors.primary, opacity: 0.9, borderWidth: 1.5, borderColor: '#FCF9F2' }} />
+                            <View style={{ position: 'absolute', bottom: '20%', left: '10%', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary, opacity: 0.7, borderWidth: 1.5, borderColor: '#FCF9F2' }} />
+                        </Animated.View>
+
+                        {/* Ring 3 (220px) - Slow Spin */}
+                        <Animated.View style={[styles.orbitRingSimple, { width: 220, height: 220, borderColor: colors.primary, opacity: 0.15, transform: [{ rotate: spinSlow }] }]}>
+                            <View style={{ position: 'absolute', top: '5%', left: '25%', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent, opacity: 0.9, borderWidth: 1.5, borderColor: '#FCF9F2' }} />
+                            <View style={{ position: 'absolute', bottom: '15%', right: '20%', width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary, opacity: 0.6, borderWidth: 1.5, borderColor: '#FCF9F2' }} />
+                        </Animated.View>
+
+                        {/* Ring 4 (280px) - Reverse Slow */}
+                        <Animated.View style={[styles.orbitRingSimple, { width: 280, height: 280, borderColor: colors.primary, opacity: 0.15, transform: [{ rotate: spinReverse }] }]}>
+                            <View style={{ position: 'absolute', top: '50%', left: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary, opacity: 0.5, borderWidth: 1.5, borderColor: '#FCF9F2' }} />
+                        </Animated.View>
+
+                        {/* Ring 5 (340px) - Slower */}
+                        <Animated.View style={[styles.orbitRingSimple, { width: 340, height: 340, borderColor: colors.primary, opacity: 0.1, transform: [{ rotate: spinSlower }] }]}>
+                            <View style={{ position: 'absolute', bottom: '50%', right: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, opacity: 0.3 }} />
+                            <View style={{ position: 'absolute', bottom: '10%', left: '30%', width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, opacity: 0.3 }} />
+                        </Animated.View>
                     </Animated.View>
                 );
+
+
             case 'diagnosis':
                 return (
                     <View style={styles.diagnosisContainer}>
@@ -195,7 +258,9 @@ export const OnboardingScreen = () => {
                     </View>
                     <Text style={[styles.title, { color: colors.primary }]}>
                         {currentStep.title.split('\n').map((line, i) => (
-                            <Text key={i}>{line}{i === 0 && i !== currentStep.title.split('\n').length - 1 ? '\n' : ''}</Text>
+                            <Text key={i} style={i === 1 ? { color: colors.accent, fontStyle: 'italic' } : {}}>
+                                {line}{i === 0 && i !== currentStep.title.split('\n').length - 1 ? '\n' : ''}
+                            </Text>
                         ))}
                     </Text>
                     <Text style={[styles.description, { color: colors.primary, opacity: 0.6 }]}>
@@ -281,7 +346,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 30,
+        paddingHorizontal: 24,
     },
     stepContent: {
         width: '100%',
@@ -450,10 +515,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     title: {
-        fontSize: 28,
+        fontSize: 25,
         fontWeight: '800',
         textAlign: 'center',
-        lineHeight: 38,
+        lineHeight: 36,
         marginTop: 20,
         marginBottom: 16,
     },

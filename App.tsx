@@ -17,9 +17,10 @@ import { RelationshipProfile } from './src/features/relationships/RelationshipPr
 import { EgoReflectionDashboard } from './src/features/analysis/EgoReflectionDashboard';
 import { RelationshipTuningDashboard } from './src/features/analysis/RelationshipTuningDashboard';
 import { useAppStore } from './src/store/useAppStore';
+import { SettingsScreen } from './src/features/settings/SettingsScreen';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'sos'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos'>('map');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnosisMode, setDiagnosisMode] = useState<"ZONE" | "RQS">("ZONE");
@@ -88,6 +89,7 @@ function App() {
                         onSelectNode={(id: string) => setSelectedNodeId(id)}
                         onPressAdd={() => setIsAddingRelationship(true)}
                         onPressSos={() => setActiveTab('sos')}
+                        onPressSettings={() => setActiveTab('space')}
                       />
                     )}
                     {activeTab === 'insight' && (
@@ -106,6 +108,9 @@ function App() {
                         }}
                       />
                     )}
+                    {activeTab === 'space' && (
+                      <SettingsScreen onBack={() => setActiveTab('map')} />
+                    )}
                     {activeTab === 'sos' && (
                       <SosRxCenter
                         onBack={() => setActiveTab('map')}
@@ -122,22 +127,22 @@ function App() {
                       <Text style={[styles.navText, activeTab === 'map' && styles.activeNavText]}>Orbit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.navItem, activeTab === 'insight' && styles.activeNavItem]}
-                      onPress={() => setActiveTab('insight')}
-                    >
-                      <Text style={[styles.navText, activeTab === 'insight' && styles.activeNavText]}>Insight</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
                       style={[styles.navItem, activeTab === 'tuning' && styles.activeNavItem]}
                       onPress={() => setActiveTab('tuning')}
                     >
                       <Text style={[styles.navText, activeTab === 'tuning' && styles.activeNavText]}>Tuning</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.navItem, activeTab === 'sos' && styles.activeNavItem]}
-                      onPress={() => setActiveTab('sos')}
+                      style={[styles.navItem, activeTab === 'insight' && styles.activeNavItem]}
+                      onPress={() => setActiveTab('insight')}
                     >
-                      <Text style={[styles.navText, activeTab === 'sos' && styles.sosNavText]}>SOS</Text>
+                      <Text style={[styles.navText, activeTab === 'insight' && styles.activeNavText]}>Insight</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.navItem, activeTab === 'space' && styles.activeNavItem]}
+                      onPress={() => setActiveTab('space')}
+                    >
+                      <Text style={[styles.navText, activeTab === 'space' && styles.activeNavText]}>Space</Text>
                     </TouchableOpacity>
                   </SafeAreaView>
                 </>

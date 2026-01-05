@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, Dimensions, StyleSheet, Image, TouchableOpacity, Animated, PanResponder, ScrollView, Easing } from 'react-native';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
-import { Search, Menu, Plus, Thermometer, LocateFixed, LayoutGrid, List, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Search, Menu, Plus, Thermometer, LocateFixed, LayoutGrid, List, ChevronDown, ChevronUp, Settings } from 'lucide-react-native';
 import { RelationshipList } from '../relationships/RelationshipList';
 import { RELATIONSHIP_TYPE_LABELS } from '../../types/relationship';
 import { BlurView } from 'expo-blur';
@@ -184,9 +184,10 @@ interface MainOrbitMapProps {
     onSelectNode?: (id: string) => void;
     onPressSos?: () => void;
     onPressAdd?: () => void;
+    onPressSettings?: () => void;
 }
 
-export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbitMapProps) => {
+export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos, onPressSettings }: MainOrbitMapProps) => {
     const colors = useColors();
     const { relationships } = useRelationshipStore();
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
@@ -359,6 +360,9 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbit
                 <TouchableOpacity style={COMMON_STYLES.secondaryActionBtn}>
                     <Search size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
                 </TouchableOpacity>
+                <TouchableOpacity style={COMMON_STYLES.secondaryActionBtn} onPress={onPressSettings}>
+                    <Settings size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -487,6 +491,8 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbit
                                 </TouchableOpacity>
                             )}
                         </View>
+
+                        {/* SOS Button */}
 
                         {/* SOS Button */}
                         <TouchableOpacity
