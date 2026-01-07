@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, Dimensions, StyleSheet, Image, TouchableOpacity, Animated, PanResponder, ScrollView, Easing } from 'react-native';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
-import { Search, Menu, Plus, Thermometer, LocateFixed, LayoutGrid, List, ChevronDown, ChevronUp, Settings } from 'lucide-react-native';
+import { AppHeader } from '../../components/AppHeader';
+import { Search, Plus, Thermometer, LocateFixed, LayoutGrid, List, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { RelationshipList } from '../relationships/RelationshipList';
 import { RELATIONSHIP_TYPE_LABELS } from '../../types/relationship';
 import { BlurView } from 'expo-blur';
@@ -184,10 +185,9 @@ interface MainOrbitMapProps {
     onSelectNode?: (id: string) => void;
     onPressSos?: () => void;
     onPressAdd?: () => void;
-    onPressSettings?: () => void;
 }
 
-export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos, onPressSettings }: MainOrbitMapProps) => {
+export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbitMapProps) => {
     const colors = useColors();
     const { relationships } = useRelationshipStore();
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
@@ -333,38 +333,40 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos, onPressSett
     };
 
     const renderHeader = () => (
-        <View style={[COMMON_STYLES.headerContainer, { backgroundColor: colors.background }]}>
-            <TouchableOpacity
-                style={[COMMON_STYLES.primaryActionBtn, { backgroundColor: colors.primary }]}
-                onPress={onPressAdd}
-            >
-                <Plus size={UI_CONSTANTS.ICON_SIZE} color={colors.white} />
-            </TouchableOpacity>
-
-            <View style={[styles.thermostatContainer, { backgroundColor: 'rgba(255,255,255,0.6)' }]}>
-                <Text style={[styles.thermostatText, { color: colors.primary }]}>관계 밀도</Text>
-                <Thermometer size={16} color={colors.accent} />
-            </View>
-
-            <View style={COMMON_STYLES.headerRightGroup}>
+        <AppHeader
+            title="관계 궤도"
+            leftAction={
                 <TouchableOpacity
-                    style={COMMON_STYLES.secondaryActionBtn}
-                    onPress={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
+                    style={{
+                        backgroundColor: colors.primary,
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                    onPress={onPressAdd}
                 >
-                    {viewMode === 'map' ? (
-                        <List size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
-                    ) : (
-                        <LayoutGrid size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
-                    )}
+                    <Plus size={18} color={colors.white} />
                 </TouchableOpacity>
-                <TouchableOpacity style={COMMON_STYLES.secondaryActionBtn}>
-                    <Search size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={COMMON_STYLES.secondaryActionBtn} onPress={onPressSettings}>
-                    <Settings size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
-                </TouchableOpacity>
-            </View>
-        </View>
+            }
+            rightAction={
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
+                    >
+                        {viewMode === 'map' ? (
+                            <List size={22} color={colors.primary} />
+                        ) : (
+                            <LayoutGrid size={22} color={colors.primary} />
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                        <Search size={22} color={colors.primary} />
+                    </TouchableOpacity>
+                </View>
+            }
+        />
     );
 
     return (

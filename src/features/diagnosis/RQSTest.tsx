@@ -11,7 +11,11 @@ const { width, height } = Dimensions.get('window');
 interface RQSTestProps {
     relationshipId: string;
     onBack: () => void;
-    onComplete: () => void;
+    onComplete: (result?: any) => void;
+    pendingData?: {
+        name: string;
+        image?: string;
+    };
 }
 
 type RQSPhase = 'TEST' | 'ANIMATION' | 'RESULT';
@@ -41,14 +45,29 @@ const GRADES: Record<'S' | 'A' | 'B' | 'C', { name: string; min: number; color: 
     C: { name: '에너지 뱀파이어 (Vampire)', min: 0, color: '#2C2C2C', desc: '[독성 관계] 당신의 자아를 파괴하고 스트레스 호르몬(코르티솔)을 급증시킵니다. 정서적 분리(Gray Rock)를 즉시 시행하고 사적인 유대를 끊으십시오.' },
 };
 
-export const RQSTest = ({ relationshipId, onBack, onComplete }: RQSTestProps) => {
+export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData }: RQSTestProps) => {
     const colors = useColors();
     const { getRelationshipById, updateRelationship, updateDiagnosisResult } = useRelationshipStore();
-    const node = getRelationshipById(relationshipId);
+    const foundNode = getRelationshipById(relationshipId);
+
+    // 임시 ID인 경우 더미 노드 생성
+    const node = foundNode || {
+        id: relationshipId,
+        name: pendingData?.name || '새 인맥',
+        role: '',
+        type: 'friend' as const,
+        zone: 3,
+        temperature: 50,
+        lastInteraction: '',
+        metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
+        history: [],
+        image: pendingData?.image
+    };
 
     const [phase, setPhase] = useState<RQSPhase>('TEST');
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
     const [answers, setAnswers] = useState<number[]>([]);
+    const [localResult, setLocalResult] = useState<any>(null);
 
     // Animations
     const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -91,6 +110,16 @@ export const RQSTest = ({ relationshipId, onBack, onComplete }: RQSTestProps) =>
         }
     };
 
+    const handlePrevQuestion = () => {
+        if (currentQuestionIdx > 0) {
+            Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+                setCurrentQuestionIdx(currentQuestionIdx - 1);
+                setAnswers(answers.slice(0, -1)); // Remove last answer
+                Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+            });
+        }
+    };
+
     const startAnimation = (finalAnswers: number[]) => {
         setPhase('ANIMATION');
         // Logic will resume after animation
@@ -126,13 +155,23 @@ export const RQSTest = ({ relationshipId, onBack, onComplete }: RQSTestProps) =>
         const cortisol = Math.round((4 - areaScores.safety) / 4 * 100);
         const temperature = Math.round((total / 16) * 100);
 
-        updateDiagnosisResult(relationshipId, {
-            temperature,
+        setLocalResult({
+            rqsResult,
             oxytocin,
             cortisol,
-            rqsResult,
-            event: `RQS 심화 진단 (${grade}등급)`
+            temperature
         });
+
+        // 실제 노드가 있을 때만 업데이트
+        if (getRelationshipById(relationshipId)) {
+            updateDiagnosisResult(relationshipId, {
+                temperature,
+                oxytocin,
+                cortisol,
+                rqsResult,
+                event: `RQS 심화 진단 (${grade}등급)`
+            });
+        }
 
         setPhase('RESULT');
 
@@ -142,12 +181,10 @@ export const RQSTest = ({ relationshipId, onBack, onComplete }: RQSTestProps) =>
         ]).start();
     };
 
-    if (!node) return null;
-
     const renderHeader = () => (
         <View style={COMMON_STYLES.headerContainer}>
             <TouchableOpacity onPress={handleBack} style={COMMON_STYLES.secondaryActionBtn}>
-                <ArrowLeft size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
+                <X size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
             </TouchableOpacity>
             <View style={{ alignItems: 'center' }}>
                 <Text style={[styles.headerSub, { color: colors.primary, opacity: 0.5 }]}>RQS 심화 진단</Text>
@@ -201,6 +238,16 @@ export const RQSTest = ({ relationshipId, onBack, onComplete }: RQSTestProps) =>
                             </View>
                         </TouchableOpacity>
                     ))}
+
+                    {currentQuestionIdx > 0 && (
+                        <TouchableOpacity
+                            style={styles.prevBtn}
+                            onPress={handlePrevQuestion}
+                        >
+                            <ArrowLeft color={colors.primary} size={16} style={{ opacity: 0.4 }} />
+                            <Text style={[styles.prevText, { color: colors.primary, opacity: 0.6 }]}>이전 질문으로 돌아가기</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
         );
@@ -214,9 +261,9 @@ export const RQSTest = ({ relationshipId, onBack, onComplete }: RQSTestProps) =>
     );
 
     const renderResult = () => {
-        const res = node.rqsResult;
+        const res = localResult?.rqsResult || node.rqsResult;
         if (!res) return null;
-        const guide = GRADES[res.grade];
+        const guide = GRADES[res.grade as 'S' | 'A' | 'B' | 'C'];
 
         const oxytocin = Math.round((res.areaScores.vitality + res.areaScores.reciprocity) / 8 * 100);
         const cortisol = Math.round((4 - res.areaScores.safety) / 4 * 100);
@@ -329,7 +376,7 @@ export const RQSTest = ({ relationshipId, onBack, onComplete }: RQSTestProps) =>
 
                 <TouchableOpacity
                     style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
-                    onPress={onComplete}
+                    onPress={() => onComplete(localResult)}
                 >
                     <Text style={styles.confirmText}>결과 저장 및 궤도 확인</Text>
                     <Check size={20} color="#fff" />
@@ -614,5 +661,17 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         opacity: 0.8,
         flex: 1,
+    },
+    prevBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 12,
+        marginTop: 8,
+    },
+    prevText: {
+        fontSize: 13,
+        fontWeight: '600',
     },
 });

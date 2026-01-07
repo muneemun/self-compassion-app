@@ -9,7 +9,7 @@ const { width, height } = Dimensions.get('window');
 const ONBOARDING_STEPS = [
     {
         id: 1,
-        title: "관계의 무게를 덜고,\n마음의 균형을 지키다",
+        title: "관계의 무게를 덜고,\n마음의 균형을\n균형을 지키다.",
         description: "복잡한 세상 속, 당신만의 소셜 우주를 시각화하고 내면의 균형을 찾아보세요.",
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC0W4CHJde2_tDzfgLnzZ3eNStIIZV3WbHM8kOrCN5-sYrCKvmSuqoXP3Dz6LXluncnpXmLcHVebCDIJSCZDfu_Kmn0-gbj2aqZzA5z340yN7uxVchrEVFQJ0la6-4kf3s2SXUMgg6a300LZ66X7Lwmc_QrC58eP0n5DDKTx-FrbqM0WrSJsxuFL_cp6EfoJlHRe830xyXIYlvLfV8F5iEJVgUrwyXwlokqC0-2It6uNOoqLeuZc6btIWzedy2ai3tjo3D6sDLZpBQ",
         type: 'hero'
@@ -258,8 +258,8 @@ export const OnboardingScreen = () => {
                     </View>
                     <Text style={[styles.title, { color: colors.primary }]}>
                         {currentStep.title.split('\n').map((line, i) => (
-                            <Text key={i} style={i === 1 ? { color: colors.accent, fontStyle: 'italic' } : {}}>
-                                {line}{i === 0 && i !== currentStep.title.split('\n').length - 1 ? '\n' : ''}
+                            <Text key={i} style={i > 0 ? { color: colors.accent, fontStyle: 'italic' } : {}}>
+                                {line}{i !== currentStep.title.split('\n').length - 1 ? '\n' : ''}
                             </Text>
                         ))}
                     </Text>

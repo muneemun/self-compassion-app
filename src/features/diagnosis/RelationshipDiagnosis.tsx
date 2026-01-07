@@ -12,6 +12,11 @@ interface DiagnosisProps {
     relationshipId: string;
     mode?: "ZONE" | "RQS";
     onBack: () => void;
+    onComplete?: (result?: any) => void;
+    pendingData?: {
+        name: string;
+        image?: string;
+    };
 }
 
 type DiagnosisStep = 'CHECKLIST' | 'ANIMATION' | 'RESULT' | 'RQS';
@@ -106,10 +111,24 @@ const ZONE_GUIDES: Record<number, any> = {
     5: { name: '배경 소음', energy: '0%', color: '#B0B0B0', desc: '인지 범위 밖의 타인 및 불필요한 연결', title: 'Background Noise' },
 };
 
-export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack }: DiagnosisProps) => {
+export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, onComplete, pendingData }: DiagnosisProps) => {
     const colors = useColors();
     const { getRelationshipById, updateRelationship, updateDiagnosisResult } = useRelationshipStore();
-    const node = getRelationshipById(relationshipId);
+    const foundNode = getRelationshipById(relationshipId);
+
+    // 임시 ID인 경우 더미 노드 생성 (pending 데이터 활용)
+    const node = foundNode || {
+        id: relationshipId,
+        name: pendingData?.name || '새 인맥',
+        role: '',
+        type: 'friend' as const,
+        zone: 3,
+        temperature: 50,
+        lastInteraction: '',
+        metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
+        history: [],
+        image: pendingData?.image
+    };
 
     const [step, setStep] = useState<DiagnosisStep>(mode === "RQS" ? "RQS" : "CHECKLIST");
     const [currentStep, setCurrentStep] = useState(0);
@@ -167,8 +186,6 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack }:
         const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
         return () => backHandler.remove();
     }, [step]);
-
-    if (!node) return null;
 
     const handleAnswer = (isYes: boolean) => {
         if (isYes) {
@@ -246,7 +263,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack }:
     };
 
     const renderHeader = () => {
-        if (step === 'RESULT') return null;
+        if (step === 'RESULT' || step === 'RQS') return null;
         return (
             <View style={[COMMON_STYLES.headerContainer, { backgroundColor: colors.background }]}>
                 <TouchableOpacity onPress={handleBackPress} style={COMMON_STYLES.secondaryActionBtn}>
@@ -462,37 +479,55 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack }:
                 <TouchableOpacity
                     style={[
                         styles.confirmBtn,
-                        { backgroundColor: (finalZone === 1 || finalZone === 2) ? colors.accent : colors.primary + '20', marginBottom: 12 }
+                        { backgroundColor: colors.primary, marginBottom: 12 }
                     ]}
                     onPress={() => setStep('RQS')}
                 >
-                    <Text style={[styles.confirmText, { color: (finalZone === 1 || finalZone === 2) ? '#fff' : colors.primary }]}>
-                        {(finalZone === 1 || finalZone === 2) ? '심화 캐릭터 진단 (권장)' : '심화 캐릭터 진단 하기'}
+                    <Text style={styles.confirmText}>
+                        심화 캐릭터 진단하기
                     </Text>
-                    <Zap size={20} color={(finalZone === 1 || finalZone === 2) ? '#fff' : colors.primary} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
-                    onPress={onBack}
-                >
-                    <Text style={styles.confirmText}>분석 결과 확정하기</Text>
-                    <ArrowRight size={20} color="#fff" />
+                    <Zap size={20} color="#fff" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={styles.retryBtn}
                     onPress={() => {
                         setCurrentStep(0);
+                        fadeAnim.setValue(1);
                         setStep('CHECKLIST');
                     }}
                 >
                     <RotateCcw size={14} color={colors.primary} style={{ opacity: 0.5 }} />
-                    <Text style={[styles.retryText, { color: colors.primary, opacity: 0.6 }]}>관계 층위 다시 판별하기 (DG-23)</Text>
+                    <Text style={[styles.retryText, { color: colors.primary, opacity: 0.6 }]}>다시 판별하기</Text>
                 </TouchableOpacity>
             </View>
         );
     };
+
+    if (step === "RQS") {
+        return (
+            <RQSTest
+                relationshipId={relationshipId}
+                pendingData={pendingData}
+                onBack={() => {
+                    if (mode === "RQS") {
+                        onBack();
+                    } else {
+                        setStep("RESULT");
+                    }
+                }}
+                onComplete={(rqsData) => {
+                    // RQS 결과와 Zone 결과를 합쳐서 전달
+                    const completeResult = {
+                        ...rqsData,
+                        zone: finalZone
+                    };
+                    onComplete?.(completeResult);
+                    onBack();
+                }}
+            />
+        );
+    }
 
     return (
         <HubLayout header={renderHeader()}>
@@ -500,19 +535,6 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack }:
                 {step === 'CHECKLIST' && renderChecklist()}
                 {step === 'ANIMATION' && renderAnimation()}
                 {step === 'RESULT' && renderResult()}
-                {step === "RQS" && (
-                    <RQSTest
-                        relationshipId={relationshipId}
-                        onBack={() => {
-                            if (mode === "RQS") {
-                                onBack();
-                            } else {
-                                setStep("RESULT");
-                            }
-                        }}
-                        onComplete={onBack}
-                    />
-                )}
             </View>
         </HubLayout>
     );

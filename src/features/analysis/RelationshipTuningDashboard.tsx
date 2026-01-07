@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,11 +8,14 @@ import {
     Dimensions,
     Image,
     Alert,
+    FlatList, // Added FlatList
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { ChevronLeft, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star } from 'lucide-react-native';
+import { ChevronLeft, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2 } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
+import { HubLayout } from '../../layouts/BaseLayout';
+import { AppHeader } from '../../components/AppHeader';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { RelationshipNode } from '../../types/relationship';
 import { FocusTournament } from './FocusTournament';
@@ -31,9 +34,10 @@ const ZONE_INFO = {
 interface RelationshipTuningDashboardProps {
     onBack: () => void;
     onSelectNode: (id: string) => void;
+    onGoToReport: () => void;
 }
 
-export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardProps> = ({ onBack, onSelectNode }) => {
+export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardProps> = ({ onBack, onSelectNode, onGoToReport }) => {
     const colors = useColors();
     const { relationships } = useRelationshipStore();
 
@@ -208,6 +212,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const imbalancedCount = imbalancedRelationships.length;
 
     // 3. 동적 넛지(Nudges) 추출
+    // 3. 동적 넛지(Nudges) 추출
     const getDynamicNudges = () => {
         const items = [];
 
@@ -219,18 +224,16 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         if (neglected) {
             items.push({
                 id: neglected.id,
-                type: '우선 추천',
-                category: '소홀해진 관계',
-                name: neglected.name,
-                lastContact: neglected.lastInteraction || '교감 필요',
-                image: neglected.image,
-                actionIcon: Send,
-                actionLabel: '연락하기',
+                type: '관계 회복',
+                target: neglected.name,
+                issue: '최근 교감이 부족하여 멀어지고 있어요',
+                score: neglected.metrics?.trust || 75,
                 color: '#D98B73',
+                action: '안부 묻기',
             });
         }
 
-        // B. 에너지 효율 (보람이 적고 노력이 큰 관계 검색)
+        // B. 에너지 불균형 (보람이 적고 노력이 큰 관계)
         const lowRoi = relationships.find((r: RelationshipNode) =>
             (r.metrics.communication > 70 && r.metrics.satisfaction < 50) || r.id === '5'
         );
@@ -238,18 +241,12 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         if (lowRoi) {
             items.push({
                 id: lowRoi.id,
-                type: '균형 점검',
-                category: '에너지 효율',
-                name: lowRoi.name,
-                lastContact: '"노력은 큰데 보람이 적어요"',
-                actionIcon: Sliders,
-                actionLabel: '조율하기',
+                type: '밸런스 조율',
+                target: lowRoi.name,
+                issue: '쏟는 노력에 비해 돌아오는 에너지가 부족해요',
+                score: lowRoi.metrics?.satisfaction || 40,
                 color: '#4A5D4E',
-                isChart: true,
-                chartData: {
-                    input: lowRoi.metrics.communication || 85,
-                    output: lowRoi.metrics.satisfaction || 25
-                }
+                action: '거리 두기',
             });
         }
 
@@ -261,33 +258,26 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         if (recent && recent.id !== neglected?.id && recent.id !== lowRoi?.id) {
             items.push({
                 id: recent.id,
-                type: '환영하기',
-                category: '새로운 인연',
-                name: recent.name,
-                lastContact: recent.role || '새로운 연결',
-                image: recent.image,
-                actionIcon: Calendar,
-                actionLabel: '약속잡기',
+                type: '관계 형성',
+                target: recent.name,
+                issue: '새로운 인연과 더 깊은 대화를 나눠보세요',
+                score: 80, // 신규 관계 기본 점수
                 color: '#FFB74D',
+                action: '약속 잡기',
             });
         }
 
-        // Fallback if no dynamic nudges are generated
+        // Fallback: 아이템이 하나도 없으면 임의로 생성 (UI 테스트용)
         if (items.length === 0 && relationships.length > 0) {
-            // Example fallback: just pick the first few relationships
-            relationships.slice(0, 3).forEach((r: RelationshipNode, index: number) => {
+            relationships.slice(0, 2).forEach((r: RelationshipNode, i: number) => {
                 items.push({
                     id: r.id,
-                    type: index === 0 ? '긴급' : index === 1 ? '보기' : '신규',
-                    category: r.role || '관계',
-                    name: r.name,
-                    lastContact: r.lastInteraction || '정보 없음',
-                    image: r.image,
-                    actionIcon: index === 0 ? Send : index === 1 ? Sliders : Calendar,
-                    actionLabel: index === 0 ? '연락하기' : index === 1 ? '조율하기' : '약속잡기',
-                    color: index === 0 ? '#D98B73' : index === 1 ? '#4A5D4E' : '#FFB74D',
-                    isChart: index === 1,
-                    chartData: index === 1 ? { input: 70, output: 40 } : undefined,
+                    type: i === 0 ? '관계 점검' : '관계 강화',
+                    target: r.name,
+                    issue: i === 0 ? '최근 스트레스가 감지되었습니다' : '긍정적인 교감이 늘고 있습니다',
+                    score: i === 0 ? 45 : 85,
+                    color: i === 0 ? '#D98B73' : '#4A5D4E',
+                    action: i === 0 ? '점검하기' : '유지하기',
                 });
             });
         }
@@ -295,62 +285,53 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         return items;
     };
 
-    const dynamicNudges = getDynamicNudges();
+    const [nudgeList, setNudgeList] = useState<any[]>([]);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Initial load
+    useEffect(() => {
+        setNudgeList(getDynamicNudges());
+    }, [relationships]);
+
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        // Simulate loading & refresh data
+        setTimeout(() => {
+            const freshNudges = getDynamicNudges();
+            // 셔플 효과를 위해 약간의 순서 변경 (예시)
+            // 실제로는 서버 데이터를 다시 가져오거나 알고리즘 파라미터를 변경해야 함
+            setNudgeList([...freshNudges]);
+            setIsRefreshing(false);
+        }, 800);
+    };
 
     const renderHeader = () => (
-        <View>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={isSelectionMode ? () => setIsSelectionMode(false) : onBack} style={styles.iconBtn}>
-                    {isSelectionMode ? <X size={28} color={colors.primary} /> : <ChevronLeft size={28} color={colors.primary} />}
+        <AppHeader
+            title={isSelectionMode ? '관계 선택' : '관계 튜닝'}
+            leftAction={
+                <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
+                    <ChevronLeft size={24} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.primary }]}>
-                    {isSelectionMode ? '조율 대상 선택' : '튜닝 센터'}
-                </Text>
-                {isSelectionMode ? (
-                    <TouchableOpacity
-                        onPress={() => setSelectedIds(selectedIds.length === filteredRelationships.length ? [] : filteredRelationships.map(r => r.id))}
-                        style={styles.refreshBtn}
-                    >
-                        <Text style={[styles.refreshText, { color: colors.primary }]}>
-                            {selectedIds.length === filteredRelationships.length ? '전체 해제' : '전체 선택'}
-                        </Text>
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity style={styles.refreshBtn}>
-                        <RefreshCw size={18} color={colors.primary} />
-                        <Text style={[styles.refreshText, { color: colors.primary }]}>새로고침</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {!isSelectionMode && (
-                <View style={styles.lensTabContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lensScroll}>
-                        {[
-                            { id: 'None', label: '전체', icon: LayoutGrid },
-                            { id: 'Positive', label: '영혼의 배터리', icon: Star },
-                            { id: 'Negative', label: '에너지 포식자', icon: Zap },
-                            { id: 'Frequency', label: '일상의 중력', icon: History },
-                        ].map((lens) => (
-                            <TouchableOpacity
-                                key={lens.id}
-                                onPress={() => setSelectedLens(lens.id as any)}
-                                style={[
-                                    styles.lensTab,
-                                    { backgroundColor: selectedLens === lens.id ? colors.primary : colors.white },
-                                    selectedLens === lens.id && styles.activeLensTab
-                                ]}
-                            >
-                                <lens.icon size={14} color={selectedLens === lens.id ? 'white' : colors.primary} />
-                                <Text style={[styles.lensTabText, { color: selectedLens === lens.id ? 'white' : colors.primary }]}>
-                                    {lens.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+            }
+            rightAction={
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {isSelectionMode ? (
+                        <TouchableOpacity
+                            onPress={() => setSelectedIds(selectedIds.length === filteredRelationships.length ? [] : filteredRelationships.map(r => r.id))}
+                        >
+                            <CheckCircle2 size={24} color={colors.primary} />
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            onPress={handleRefresh}
+                            disabled={isRefreshing}
+                        >
+                            <RefreshCw size={24} color={colors.primary} style={isRefreshing ? { transform: [{ rotate: '45deg' }] } : {}} />
+                        </TouchableOpacity>
+                    )}
                 </View>
-            )}
-        </View>
+            }
+        />
     );
 
     const filteredRelationships = filterZone
@@ -440,9 +421,9 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             <View style={styles.sectionHeader}>
                 <View style={styles.titleWithIcon}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>균형 요약</Text>
-                    <TouchableOpacity onPress={() => setIsSelectionMode(true)} style={isSelectionMode ? styles.hide : styles.miniSelectBtn}>
-                        <Filter size={14} color={colors.primary} />
-                        <Text style={[styles.miniSelectText, { color: colors.primary }]}>직접 선택</Text>
+                    <TouchableOpacity onPress={onGoToReport} style={styles.miniSelectBtn}>
+                        <BarChart2 size={14} color={colors.primary} />
+                        <Text style={[styles.miniSelectText, { color: colors.primary }]}>상세 보기</Text>
                     </TouchableOpacity>
                 </View>
                 <Text style={styles.sectionSub}>
@@ -550,63 +531,50 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
     const renderNudgeCard = (item: any) => (
         <View key={item.id} style={[styles.nudgeCard, { backgroundColor: colors.white }]}>
-            <View style={styles.cardHeader}>
+            {/* 1. Header Row (Type & Priority) */}
+            <View style={styles.cardHeaderRow}>
                 <View style={[styles.typeBadge, { backgroundColor: item.color + '15' }]}>
                     <Text style={[styles.typeText, { color: item.color }]}>{item.type}</Text>
                 </View>
+                {/* 만약 긴급도가 높다면 표시 */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <AlertCircle size={14} color={item.color} />
+                    <Text style={{ fontSize: 11, color: item.color, fontWeight: '700' }}>주의</Text>
+                </View>
             </View>
 
-            <View style={styles.cardMain}>
-                {item.image ? (
-                    <View style={[styles.avatarWrapper, { borderColor: item.color + '30' }]}>
-                        <Image source={{ uri: item.image }} style={styles.avatar} />
-                        {(item.type === '긴급' || item.type === 'URGENT') && (
-                            <View style={[styles.alertIcon, { backgroundColor: item.color }]}>
-                                <Info size={12} color="white" />
-                            </View>
-                        )}
-                    </View>
-                ) : (
-                    <View style={[styles.iconAvatar, { backgroundColor: item.color + '15' }]}>
-                        <LayoutGrid size={32} color={item.color} />
-                    </View>
-                )}
+            {/* 2. Main Content (Avatar & Info) */}
+            <View style={styles.cardMainContent}>
+                <View style={[styles.avatarWrapper, { borderColor: item.color, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F5' }]}>
+                    {/* Placeholder Image가 없으므로 아이콘으로 대체 */}
+                    <Users size={32} color="#AAAAAA" />
 
-                <Text style={[styles.cardName, { color: colors.primary }]} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.cardCategory}>{item.category}</Text>
+                    <View style={[styles.alertIcon, { backgroundColor: item.color }]}>
+                        <TrendingDown size={14} color="white" />
+                    </View>
+                </View>
+
+                <View style={styles.cardInfoGroup}>
+                    <Text style={[styles.nudgeTargetName, { color: colors.primary }]}>{item.target}</Text>
+                    <Text style={[styles.nudgeIssueText, { color: colors.primary }]}>{item.issue}</Text>
+                </View>
+
+                {/* 3. Metric Bar */}
+                <View style={styles.metricContainer}>
+                    <View style={styles.metricLabelRow}>
+                        <Text style={styles.metricLabel}>관계 에너지</Text>
+                        <Text style={[styles.metricValue, { color: item.color }]}>{item.score}점</Text>
+                    </View>
+                    <View style={styles.metricTrack}>
+                        <View style={[styles.metricFill, { width: `${item.score}%`, backgroundColor: item.color }]} />
+                    </View>
+                </View>
             </View>
 
-            {item.isChart ? (
-                <View style={styles.miniChartContainer}>
-                    <View style={styles.miniChart}>
-                        <View style={styles.chartCol}>
-                            <View style={[styles.chartBar, { height: `${item.chartData?.input || 80}%`, backgroundColor: '#D98B73' }]} />
-                            <Text style={styles.chartLabel}>노력</Text>
-                        </View>
-                        <View style={styles.chartCol}>
-                            <View style={[styles.chartBar, { height: `${item.chartData?.output || 30}%`, backgroundColor: colors.primary + '40' }]} />
-                            <Text style={styles.chartLabel}>보람</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.chartQuote}>{item.lastContact}</Text>
-                </View>
-            ) : (
-                <View style={styles.infoBox}>
-                    <View style={styles.infoRow}>
-                        <History size={14} color="#737874" />
-                        <Text style={styles.infoLabel}>{item.type === '신규' ? '첫 만남' : '마지막 교감'}</Text>
-                    </View>
-                    <Text style={[styles.infoValue, { color: colors.primary }]}>{item.lastContact}</Text>
-                </View>
-            )}
-
-            <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: item.isChart ? 'transparent' : colors.primary, borderWidth: item.isChart ? 1 : 0, borderColor: colors.primary + '30' }]}
-                onPress={() => onSelectNode(item.id)}
-                activeOpacity={0.7}
-            >
-                <item.actionIcon size={18} color={item.isChart ? colors.primary : colors.white} />
-                <Text style={[styles.actionBtnText, { color: item.isChart ? colors.primary : colors.white }]}>{item.actionLabel}</Text>
+            {/* 4. Action Button */}
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: item.color }]} activeOpacity={0.8}>
+                <Text style={styles.actionBtnText}>지금 연락하기</Text>
+                <ArrowRight size={16} color="white" />
             </TouchableOpacity>
         </View>
     );
@@ -776,50 +744,72 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     }
 
     return (
-        <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: '#FCF9F2', flex: 1 }]}>
-            {renderHeader()}
-
+        <HubLayout header={renderHeader()} scrollable={!isSelectionMode}>
             {isSelectionMode ? (
                 renderSelectionList()
             ) : (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                    {renderOrbitVisualization()}
+                <View style={[styles.dashboardContainer, { paddingTop: 12 }]}>
 
+                    <View style={styles.lensTabContainer}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lensScroll}>
+                            {[
+                                { id: 'None', label: '전체', icon: LayoutGrid },
+                                { id: 'Positive', label: '영혼의 배터리', icon: Star },
+                                { id: 'Negative', label: '에너지 포식자', icon: Zap },
+                                { id: 'Frequency', label: '일상의 중력', icon: History },
+                            ].map((lens) => (
+                                <TouchableOpacity
+                                    key={lens.id}
+                                    onPress={() => setSelectedLens(lens.id as any)}
+                                    style={[
+                                        styles.lensTab,
+                                        { backgroundColor: selectedLens === lens.id ? colors.primary : colors.white, borderColor: colors.primary + '10' },
+                                        selectedLens === lens.id && styles.activeLensTab
+                                    ]}
+                                >
+                                    <lens.icon size={14} color={selectedLens === lens.id ? 'white' : colors.primary} />
+                                    <Text style={[styles.lensTabText, { color: selectedLens === lens.id ? 'white' : colors.primary }]}>
+                                        {lens.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {renderOrbitVisualization()}
                     {renderFocusInsight()}
 
                     <View style={styles.nudgeSection}>
                         <View style={styles.nudgeHeader}>
                             <Text style={[styles.sectionTitle, { color: colors.primary }]}>우선 관리</Text>
                             <TouchableOpacity>
-                                <Text style={styles.viewAll}>전체보기</Text>
+                                <Text style={[styles.viewAll, { color: colors.primary }]}>전체보기</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView
+                        <FlatList
                             horizontal
+                            data={nudgeList}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => renderNudgeCard(item)}
                             showsHorizontalScrollIndicator={false}
-                            snapToInterval={width * 0.7 + 16}
-                            decelerationRate="fast"
                             contentContainerStyle={styles.nudgeScroll}
-                        >
-                            {dynamicNudges.map(renderNudgeCard)}
-                            <View style={{ width: 24 }} />
-                        </ScrollView>
+                        />
                     </View>
 
                     <View style={{ height: 120 }} />
-                </ScrollView>
-            )}
 
-            {!isSelectionMode && (
-                <View style={styles.fabContainer}>
-                    <TouchableOpacity
-                        style={[styles.fab, { backgroundColor: lensTuningInfo.color }]}
-                        onPress={handleStartContextualTuning}
-                    >
-                        <lensTuningInfo.icon size={24} color="white" />
-                        <Text style={styles.fabText}>{lensTuningInfo.label}</Text>
-                    </TouchableOpacity>
+                    {!isSelectionMode && (
+                        <View style={styles.fabContainer}>
+                            <TouchableOpacity
+                                style={[styles.fab, { backgroundColor: lensTuningInfo.color }]}
+                                onPress={handleStartContextualTuning}
+                            >
+                                <lensTuningInfo.icon size={24} color="white" />
+                                <Text style={styles.fabText}>{lensTuningInfo.label}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             )}
 
@@ -847,7 +837,6 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 이 수치는 당신의 에너지 분포가 얼마나 균형 잡혀 있는지를 나타냅니다.
                             </Text>
 
-                            {/* Zone별 에너지 분포 차트 */}
                             <View style={[styles.zoneDistributionCard, { backgroundColor: colors.primary + '05' }]}>
                                 <Text style={[styles.zoneDistributionTitle, { color: colors.primary }]}>현재 구역별 에너지 분포</Text>
                                 {(Object.keys(energyPercents) as Array<keyof typeof energyPercents>).map((key) => {
@@ -886,7 +875,6 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 })}
                             </View>
 
-                            {/* 점수 구간 설명 */}
                             <Text style={[styles.sectionDivider, { color: colors.primary }]}>점수 구간별 의미</Text>
 
                             <View style={[styles.guideStatusBox, { backgroundColor: '#4A5D4E10' }]}>
@@ -919,21 +907,25 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     </View>
                 </View>
             )}
-
-        </SafeAreaView>
+        </HubLayout>
     );
 };
 
 const styles = StyleSheet.create({
+    dashboardContainer: {
+        paddingHorizontal: 0,
+        paddingBottom: 40,
+        paddingTop: 12,
+    },
     container: {
         flex: 1,
     },
     header: {
+        height: 64,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 24,
-        paddingVertical: 16,
+        paddingHorizontal: 16,
     },
     iconBtn: {
         padding: 4,
@@ -1101,10 +1093,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     nudgeCard: {
-        width: width * 0.7,
-        height: 340,
+        width: width * 0.72,
+        height: 380, // 높이 증가 (공간 확보)
         borderRadius: 32,
-        padding: 24,
+        padding: 20, // 패딩 약간 축소하여 내부 가용 공간 확보
         marginRight: 16,
         shadowColor: '#4A5D4E',
         shadowOffset: { width: 0, height: 10 },
@@ -1113,127 +1105,113 @@ const styles = StyleSheet.create({
         elevation: 5,
         borderWidth: 1,
         borderColor: 'rgba(74, 93, 78, 0.05)',
-        justifyContent: 'space-between',
+        justifyContent: 'space-between', // 상-중-하 분배
     },
-    cardHeader: {
-        alignItems: 'flex-end',
+    cardHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
     },
     typeBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 100,
     },
     typeText: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 0.5,
+        fontSize: 11,
+        fontWeight: '700',
     },
-    cardMain: {
+    cardMainContent: {
+        flex: 1,
         alignItems: 'center',
+        justifyContent: 'center', // 중앙 정렬
+        gap: 16, // 요소 간 간격 일괄 적용 (Avatar - Info - Metric)
     },
     avatarWrapper: {
-        width: 88,
-        height: 88,
-        borderRadius: 44,
+        width: 80, // 크기 약간 축소 (88 -> 80)
+        height: 80,
+        borderRadius: 40,
         padding: 3,
-        borderWidth: 1,
+        borderWidth: 1.5,
         position: 'relative',
     },
     avatar: {
         width: '100%',
         height: '100%',
-        borderRadius: 40,
+        borderRadius: 100,
     },
     alertIcon: {
         position: 'absolute',
         bottom: 0,
         right: 0,
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 2,
         borderColor: 'white',
+    },
+    cardInfoGroup: {
         alignItems: 'center',
-        justifyContent: 'center',
+        gap: 4,
     },
-    iconAvatar: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
+    nudgeTargetName: {
+        fontSize: 18,
+        fontWeight: '800',
     },
-    cardName: {
-        fontSize: 20,
-        fontWeight: '900',
-        marginTop: 16,
-    },
-    cardCategory: {
+    nudgeIssueText: {
         fontSize: 13,
-        color: '#737874',
+        opacity: 0.7,
+        textAlign: 'center',
+        lineHeight: 18,
+    },
+    metricContainer: {
+        width: '100%',
+        gap: 6,
+    },
+    metricLabelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    metricLabel: {
+        fontSize: 11,
+        color: '#888',
         fontWeight: '600',
     },
-    infoBox: {
-        backgroundColor: '#FCF9F2',
-        padding: 12,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(74, 93, 78, 0.05)',
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 4,
-    },
-    infoLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: '#737874',
-        letterSpacing: 0.5,
-    },
-    infoValue: {
-        fontSize: 14,
+    metricValue: {
+        fontSize: 12,
         fontWeight: '800',
     },
-    miniChartContainer: {
-        alignItems: 'center',
-    },
-    miniChart: {
-        flexDirection: 'row',
-        height: 80,
+    metricTrack: {
         width: '100%',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        gap: 40,
-        paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        height: 6,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 3,
+        overflow: 'hidden',
     },
-    chartCol: {
-        width: 32,
+    metricFill: {
         height: '100%',
-        justifyContent: 'flex-end',
+        borderRadius: 3,
+    },
+    actionBtn: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 20,
+        gap: 8,
+        marginTop: 8, // 버튼과 위 컨텐츠 사이 간격
     },
-    chartBar: {
-        width: '100%',
-        borderTopLeftRadius: 6,
-        borderTopRightRadius: 6,
+    actionBtnText: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: '700',
     },
-    chartLabel: {
-        fontSize: 8,
-        fontWeight: '800',
-        color: '#737874',
-        marginTop: 6,
-    },
-    chartQuote: {
-        fontSize: 11,
-        color: '#737874',
-        fontStyle: 'italic',
-        marginTop: 8,
-        fontWeight: '500',
-    },
+
     // Focus Insight Section
     focusSection: {
         marginTop: 32,
@@ -1454,18 +1432,7 @@ const styles = StyleSheet.create({
     squadMore: {
         padding: 4,
     },
-    actionBtn: {
-        height: 44,
-        borderRadius: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-    },
-    actionBtnText: {
-        fontSize: 13,
-        fontWeight: '800',
-    },
+
     fabContainer: {
         position: 'absolute',
         bottom: 34,

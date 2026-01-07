@@ -10,7 +10,13 @@ import { HubLayout } from '../../layouts/BaseLayout';
 /**
  * MT-14: Integrated Settings Space (The Vault) -> 설정
  */
-export const SettingsScreen = ({ onBack }: { onBack: () => void }) => {
+export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateToProfileEdit, onNavigateToReminders, onNavigateToNotifications }: {
+    onBack: () => void,
+    onNavigateToDataManagement: () => void,
+    onNavigateToProfileEdit: () => void,
+    onNavigateToReminders: () => void,
+    onNavigateToNotifications: () => void
+}) => {
     const colors = useColors();
 
     // Toggle State for Mindfulness Mode
@@ -25,9 +31,13 @@ export const SettingsScreen = ({ onBack }: { onBack: () => void }) => {
         </View>
     );
 
-    const SettingItem = ({ icon: Icon, title, showToggle = false, isLast = false, onToggle }: any) => (
+    const SettingItem = ({ icon: Icon, title, showToggle = false, isLast = false, onToggle, onPress }: any) => (
         <>
-            <TouchableOpacity style={styles.itemContainer} disabled={showToggle}>
+            <TouchableOpacity
+                style={styles.itemContainer}
+                disabled={showToggle}
+                onPress={onPress}
+            >
                 <View style={styles.itemLeft}>
                     <View style={[styles.iconBox, { backgroundColor: '#F0F2EF' }]}>
                         <Icon size={22} color={colors.primary} />
@@ -37,7 +47,7 @@ export const SettingsScreen = ({ onBack }: { onBack: () => void }) => {
                 <View style={styles.itemRight}>
                     {showToggle ? (
                         <Switch
-                            trackColor={{ false: "#E0E0E0", true: colors.primary }}
+                            trackColor={{ false: "#E0E0E0", true: colors.accent }}
                             thumbColor={"#FFFFFF"}
                             ios_backgroundColor="#E0E0E0"
                             onValueChange={onToggle}
@@ -70,46 +80,49 @@ export const SettingsScreen = ({ onBack }: { onBack: () => void }) => {
                 <Text style={[styles.pageTitle, { color: colors.primary }]}>설정</Text>
 
                 {/* Account Section */}
-                <SettingSection title="계정 관리">
-                    <SettingItem icon={User} title="프로필 정보" />
-                    <SettingItem icon={Lock} title="비밀번호 및 보안" />
-                    <SettingItem icon={Link} title="연결된 계정" isLast />
+                <SettingSection title="계정">
+                    <SettingItem
+                        icon={User}
+                        title="프로필 수정"
+                        onPress={onNavigateToProfileEdit}
+                        isLast
+                    />
                 </SettingSection>
 
                 {/* App Settings Section */}
-                <SettingSection title="앱 설정">
-                    <SettingItem icon={Bell} title="알림 설정" />
-                    <SettingItem icon={Moon} title="테마 및 화면" />
-                    <SettingItem icon={Globe} title="언어" isLast />
+                <SettingSection title="알림 및 도구">
+                    <SettingItem
+                        icon={Bell}
+                        title="알림 설정"
+                        onPress={onNavigateToNotifications}
+                    />
+                    <SettingItem
+                        icon={Clock}
+                        title="기록 리마인더"
+                        onPress={onNavigateToReminders}
+                        isLast
+                    />
                 </SettingSection>
 
                 {/* Privacy & Data Section */}
-                <SettingSection title="개인정보 및 데이터">
-                    <SettingItem icon={ShieldCheck} title="데이터 암호화" />
-                    <SettingItem icon={Database} title="데이터 관리" />
-                    <SettingItem icon={FileText} title="개인정보 처리방침" isLast />
-                </SettingSection>
-
-                {/* Wellness Section */}
-                <SettingSection title="도구">
-                    <SettingItem icon={Clock} title="리마인더 설정" />
+                <SettingSection title="데이터 및 보안">
                     <SettingItem
-                        icon={Sparkles}
-                        title="집중 모드"
-                        showToggle={true}
-                        onToggle={(v: boolean) => setIsMindfulnessEnabled(v)}
+                        icon={Database}
+                        title="데이터 관리 (백업/복구)"
+                        onPress={onNavigateToDataManagement}
+                        isLast
                     />
-                    <SettingItem icon={PenTool} title="기록 도우미" isLast />
                 </SettingSection>
 
                 {/* Support Section */}
                 <SettingSection title="고객 지원">
-                    <SettingItem icon={HelpCircle} title="도움말 및 FAQ" />
+                    <SettingItem icon={HelpCircle} title="공지사항" />
                     <SettingItem icon={Headphones} title="문의하기" />
+                    <SettingItem icon={FileText} title="개인정보 처리방침" />
                     <SettingItem icon={Info} title="앱 정보" isLast />
                 </SettingSection>
 
-                <View style={{ height: 100 }} />
+                <View style={{ height: 60 }} />
             </View>
         </HubLayout>
     );

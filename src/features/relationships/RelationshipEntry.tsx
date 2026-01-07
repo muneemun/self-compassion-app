@@ -18,9 +18,11 @@ interface ContactItem {
     image?: string;
 }
 
-export const RelationshipEntry = ({ onBack, onComplete }: { onBack: () => void, onComplete: (id: string) => void }) => {
+export const RelationshipEntry = ({ onBack, onComplete }: {
+    onBack: () => void,
+    onComplete: (data: { name: string; type: string; role: string; phoneNumber?: string; image?: string }) => void
+}) => {
     const colors = useColors();
-    const addRelationship = useRelationshipStore(state => state.addRelationship);
 
     const [mode, setMode] = useState<EntryMode>('choice');
     const [contacts, setContacts] = useState<ContactItem[]>([]);
@@ -128,8 +130,13 @@ export const RelationshipEntry = ({ onBack, onComplete }: { onBack: () => void, 
     };
 
     const handleAddContact = (contact: ContactItem) => {
-        const newId = addRelationship(contact.name, 'friend', 'Acquaintance', contact.phoneNumber, contact.image);
-        onComplete(newId);
+        onComplete({
+            name: contact.name,
+            type: 'friend',
+            role: 'Acquaintance',
+            phoneNumber: contact.phoneNumber,
+            image: contact.image
+        });
     };
 
     const handleManualSubmit = () => {
@@ -152,8 +159,13 @@ export const RelationshipEntry = ({ onBack, onComplete }: { onBack: () => void, 
             setCustomTypes(prev => [...prev, finalType]);
         }
 
-        const newId = addRelationship(manualName, finalType as any, manualRole || 'Acquaintance', manualPhone, manualImage || undefined);
-        onComplete(newId);
+        onComplete({
+            name: manualName,
+            type: finalType,
+            role: manualRole || 'Acquaintance',
+            phoneNumber: manualPhone || undefined,
+            image: manualImage || undefined
+        });
     };
 
     const renderSummaryItem = (label: string, value: string, step: ManualStep) => (

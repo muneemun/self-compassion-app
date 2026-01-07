@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, Alert, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, Alert, SafeAreaView, Modal, TextInput } from 'react-native';
 import Svg, { Circle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
-import { ArrowLeft, Share2, Info, Star, Zap, Activity, Download, Heart, Shield, Layout, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Share2, Info, Star, Zap, Activity, Download, Heart, Shield, Layout, Calendar, Plus, X, Save, ChevronRight } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 
 const { width } = Dimensions.get('window');
@@ -20,6 +20,28 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
     const colors = useColors();
 
     const node = useRelationshipStore(state => state.relationships.find(r => r.id === relationshipId));
+    const addInteraction = useRelationshipStore(state => state.addInteraction);
+
+    if (!node) return null;
+
+    // Log Modal State
+    const [showLogModal, setShowLogModal] = useState(false);
+    const [newLog, setNewLog] = useState({ event: '', temperature: 50 });
+
+    const handleSaveLog = () => {
+        if (!newLog.event.trim()) {
+            Alert.alert('내용 입력', '어떤 활동을 했는지 간단히 적어주세요.');
+            return;
+        }
+
+        setShowLogModal(false);
+
+        setTimeout(() => {
+            const today = new Date().toISOString().split('T')[0];
+            addInteraction(relationshipId, today, newLog.temperature, newLog.event, '');
+            setNewLog({ event: '', temperature: 50 }); // Reset
+        }, 100);
+    };
 
     if (!node) return null;
 
@@ -239,12 +261,26 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                 <ArrowLeft size={24} color={colors.primary} />
             </TouchableOpacity>
             <View style={styles.headerTitleContainer}>
-                <Text style={styles.headerSub}>정기 진단 리포트</Text>
-                <Text style={[styles.headerDate, { color: colors.primary }]}>2026년 10월</Text>
+                <Text style={styles.headerSub}>심화 진단 리포트</Text>
+                <Text style={[styles.headerDate, { color: colors.primary }]}>
+                    {(() => {
+                        const d = new Date(node.rqsResult?.lastChecked || Date.now());
+                        return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+                    })()}
+                </Text>
             </View>
-            <TouchableOpacity style={styles.headerBtn}>
-                <Share2 size={24} color={colors.primary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+                <TouchableOpacity
+                    style={[styles.headerBtn, { width: 40 }]}
+                    onPress={() => setShowLogModal(true)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Plus size={24} color={colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerBtn}>
+                    <Share2 size={24} color={colors.primary} />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
@@ -463,30 +499,40 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                             * 이 리포트는 아래 {node.history?.length || 0}개의 상호작용 데이터와 정밀 진단 결과를 AI가 분석한 결과입니다.
                         </Text>
 
-                        {/* 📋 Detailed Data Log: 날짜순 상호작용 기록 */}
+                        {/* 📋 Detailed Data Log: 최신순 정렬, 상위 5개만 노출 */}
                         <View style={styles.logContainer}>
-                            {node.history && node.history.slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((item, idx) => (
-                                <View key={idx} style={[styles.logItem, { borderLeftColor: item.temperature > 70 ? colors.accent : colors.primary + '20' }]}>
-                                    <View style={styles.logDateLine}>
-                                        <Calendar size={10} color={colors.primary} opacity={0.4} />
-                                        <Text style={styles.logDateText}>{item.date}</Text>
-                                    </View>
-                                    <View style={styles.logContentRow}>
-                                        <Text style={[styles.logEventText, { color: colors.primary }]}>{item.event || "일반 상호작용"}</Text>
-                                        <View style={styles.logIndicatorRow}>
-                                            <View style={[styles.miniIndicator, { backgroundColor: colors.accent + '10' }]}>
-                                                <Text style={[styles.miniIndicatorText, { color: colors.accent }]}>{item.temperature}°</Text>
+                            {node.history && [...node.history]
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // 내림차순 (최신순)
+                                .slice(0, 5) // 최근 5건
+                                .map((item, idx) => (
+                                    <View key={idx} style={[styles.logItem, { borderLeftColor: item.temperature > 70 ? colors.accent : colors.primary + '20' }]}>
+                                        <View style={styles.logDateLine}>
+                                            <Calendar size={10} color={colors.primary} opacity={0.4} />
+                                            <Text style={styles.logDateText}>{item.date}</Text>
+                                        </View>
+                                        <View style={styles.logContentRow}>
+                                            <Text style={[styles.logEventText, { color: colors.primary }]}>{item.event || "일반 상호작용"}</Text>
+                                            <View style={styles.logIndicatorRow}>
+                                                <View style={[styles.miniIndicator, { backgroundColor: colors.accent + '10' }]}>
+                                                    <Text style={[styles.miniIndicatorText, { color: colors.accent }]}>{item.temperature}°</Text>
+                                                </View>
+                                                {item.oxytocin && (
+                                                    <Heart size={10} color="#4CAF50" fill="#4CAF50" />
+                                                )}
+                                                {item.cortisol && item.cortisol > 50 && (
+                                                    <Zap size={10} color="#F44336" />
+                                                )}
                                             </View>
-                                            {item.oxytocin && (
-                                                <Heart size={10} color="#4CAF50" fill="#4CAF50" />
-                                            )}
-                                            {item.cortisol && item.cortisol > 50 && (
-                                                <Zap size={10} color="#F44336" />
-                                            )}
                                         </View>
                                     </View>
-                                </View>
-                            ))}
+                                ))}
+
+                            {(node.history?.length || 0) > 5 && (
+                                <TouchableOpacity style={styles.moreHistoryBtn}>
+                                    <Text style={[styles.moreHistoryText, { color: colors.primary }]}>전체 이력 보기 ({node.history.length - 5}개 더보기)</Text>
+                                    <ChevronRight size={14} color={colors.primary} opacity={0.6} />
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
 
@@ -650,7 +696,65 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                     )}
                 </View>
             )}
-        </View>
+            {/* Log Input Modal */}
+            <Modal
+                transparent
+                visible={showLogModal}
+                animationType="fade"
+                onRequestClose={() => setShowLogModal(false)}
+            >
+                <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowLogModal(false)} />
+                    <View style={[styles.floatingPopupCard, { backgroundColor: colors.white, padding: 24 }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.primary }]}>정서적 개입 기록</Text>
+                            <TouchableOpacity onPress={() => setShowLogModal(false)}>
+                                <X size={24} color={colors.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: colors.primary }]}>무슨 일이 있었나요?</Text>
+                        <TextInput
+                            style={[styles.inputField, { color: colors.primary, borderColor: colors.primary + '30' }]}
+                            placeholder="예: 저녁 식사, 안부 문자, 선물 등"
+                            placeholderTextColor="#999"
+                            value={newLog.event}
+                            onChangeText={(text) => setNewLog({ ...newLog, event: text })}
+                        />
+
+                        <Text style={[styles.inputLabel, { color: colors.primary, marginTop: 20 }]}>정서 온도 ({newLog.temperature}°C)</Text>
+                        <View style={styles.tempSelector}>
+                            {[20, 40, 60, 80, 100].map(temp => (
+                                <TouchableOpacity
+                                    key={temp}
+                                    style={[
+                                        styles.tempChip,
+                                        {
+                                            backgroundColor: newLog.temperature === temp ? colors.accent : '#F5F5F5',
+                                            borderColor: newLog.temperature === temp ? colors.accent : 'transparent'
+                                        }
+                                    ]}
+                                    onPress={() => setNewLog({ ...newLog, temperature: temp })}
+                                >
+                                    <Text style={[styles.tempChipText, { color: newLog.temperature === temp ? 'white' : '#888' }]}>{temp}°</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        <Text style={styles.tempDesc}>
+                            {newLog.temperature >= 80 ? '아주 따뜻하고 좋았어요!' : newLog.temperature >= 60 ? '평범하고 무난했어요.' : '다소 차갑거나 안 좋았어요.'}
+                        </Text>
+
+                        <TouchableOpacity
+                            style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+                            onPress={handleSaveLog}
+                        >
+                            <Save size={18} color="white" />
+                            <Text style={styles.saveBtnText}>기록 저장하기</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        </View >
     );
 };
 
@@ -954,18 +1058,27 @@ const styles = StyleSheet.create({
     evidenceSection: {
         padding: 24,
         paddingBottom: 40,
+        marginTop: 24, // 공간 확보
     },
     evidenceTitle: {
         fontSize: 10,
         fontWeight: '900',
         color: '#9E9E9E',
         letterSpacing: 1.5,
-        marginBottom: 16,
-        textAlign: 'center',
+        // marginBottom: 16, // 제거
+        // textAlign: 'center', // 제거
     },
     evidenceGrid: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        marginTop: 16, // Grid 상단 여백 추가
+    },
+    evidenceHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between', // 좌우 배치
+        gap: 6,
+        marginBottom: 16,
     },
     evidenceItem: {
         alignItems: 'center',
@@ -980,12 +1093,6 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '700',
         color: '#9E9E9E',
-    },
-    evidenceHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 16,
     },
     evidenceSub: {
         fontSize: 9,
@@ -1275,5 +1382,95 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 15,
         fontWeight: '800',
-    }
+    },
+    // Log Modal & Header Styles
+    addLogBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        backgroundColor: '#4A5D4E',
+        gap: 4
+    },
+    addLogBtnText: {
+        color: 'white',
+        fontSize: 11,
+        fontWeight: '700'
+    },
+    moreHistoryBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        gap: 4,
+        marginTop: 4,
+        backgroundColor: 'rgba(0,0,0,0.02)',
+        borderRadius: 12,
+    },
+    moreHistoryText: {
+        fontSize: 12,
+        fontWeight: '600',
+        opacity: 0.6
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        marginBottom: 8,
+        opacity: 0.8,
+    },
+    inputField: {
+        height: 48,
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        fontSize: 14,
+    },
+    tempSelector: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    tempChip: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+    },
+    tempChipText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    tempDesc: {
+        fontSize: 12,
+        color: '#9E9E9E',
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    saveBtn: {
+        height: 52,
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 8,
+    },
+    saveBtnText: {
+        color: 'white',
+        fontSize: 15,
+        fontWeight: '800',
+    },
 });

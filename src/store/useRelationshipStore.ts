@@ -19,6 +19,7 @@ interface RelationshipState {
         rqsResult?: RelationshipNode['rqsResult'];
         event?: string;
     }) => void;
+    addInteraction: (id: string, date: string, temperature: number, title: string, description: string) => void;
 }
 
 // 초기 목업 데이터
@@ -33,7 +34,7 @@ const INITIAL_DATA: RelationshipNode[] = [
         temperature: 98,
         lastInteraction: '2시간 전',
         metrics: { trust: 95, communication: 92, frequency: 100, satisfaction: 98 },
-        history: [{ date: '2024-01-01', temperature: 90, oxytocin: 80, cortisol: 20 }, { date: '2024-02-01', temperature: 98, oxytocin: 95, cortisol: 10 }],
+        history: [{ date: '2024-01-01', temperature: 90, title: '심야 고민 상담', oxytocin: 80, cortisol: 20 }, { date: '2024-02-01', temperature: 98, title: '취업 축하 파티', oxytocin: 95, cortisol: 10 }],
         image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
     },
     {
@@ -45,7 +46,7 @@ const INITIAL_DATA: RelationshipNode[] = [
         temperature: 94,
         lastInteraction: '3개월 전', // 조율 대상: 소홀해진 안전기지 케이스
         metrics: { trust: 98, communication: 30, frequency: 20, satisfaction: 95 },
-        history: [{ date: '2024-01-01', temperature: 88, oxytocin: 90, cortisol: 15 }, { date: '2024-02-01', temperature: 94, oxytocin: 92, cortisol: 12 }],
+        history: [{ date: '2024-01-01', temperature: 88, title: '새해맞이 여행', oxytocin: 90, cortisol: 15 }, { date: '2024-02-01', temperature: 94, title: '주말 브런치', oxytocin: 92, cortisol: 12 }],
         image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
     },
     {
@@ -57,7 +58,7 @@ const INITIAL_DATA: RelationshipNode[] = [
         temperature: 82,
         lastInteraction: '3일 전',
         metrics: { trust: 85, communication: 75, frequency: 60, satisfaction: 80 },
-        history: [{ date: '2024-01-15', temperature: 75 }, { date: '2024-02-01', temperature: 82 }],
+        history: [{ date: '2024-01-15', temperature: 75, title: '업무 피드백' }, { date: '2024-02-01', temperature: 82, title: '점심 식사' }],
         image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
     },
     {
@@ -223,6 +224,32 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
                     history: [...r.history, newHistoryEntry].slice(-12),
                 };
             }),
+        }));
+    },
+
+    addInteraction: (id, date, temperature, title, description) => {
+        const safeTemp = isNaN(temperature) ? 50 : temperature;
+        set((state) => ({
+            relationships: state.relationships.map((r) => {
+                if (r.id !== id) return r;
+                return {
+                    ...r,
+                    lastInteraction: '방금',
+                    temperature: safeTemp,
+                    history: [
+                        ...r.history,
+                        {
+                            date,
+                            temperature: safeTemp,
+                            title,
+                            description,
+                            event: title, // 레거시 호환
+                            oxytocin: safeTemp > 80 ? 85 : 40,
+                            cortisol: safeTemp < 40 ? 75 : 20,
+                        }
+                    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                };
+            })
         }));
     },
 }));

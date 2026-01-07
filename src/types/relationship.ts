@@ -36,7 +36,9 @@ export interface RelationshipNode {
         temperature: number;
         oxytocin?: number;
         cortisol?: number;
-        event?: string;
+        title?: string; // 활동 주제 (ex: 저녁 식사)
+        description?: string; // 상세 내용 (ex: 대화 내용, 기분 등)
+        event?: string; // Legacy (호환성 유지)
     }[];
 
     // Qualitative Influence (RQS)

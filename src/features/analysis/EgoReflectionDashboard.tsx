@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Anima
 import Svg, { Circle, Path, Defs, LinearGradient, Stop, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
+import { AppHeader } from '../../components/AppHeader';
 import { ChevronLeft, Calendar, Brain, TrendingUp, ArrowRight, Zap, Heart, Info, X, Star, Trash2, Users, Battery, History, Sliders, AlertCircle, CheckCircle2 } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { RelationshipNode } from '../../types/relationship';
@@ -195,15 +196,14 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
     };
 
     const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
-                <ChevronLeft size={24} color={colors.primary} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.primary }]}>
-                인사이트
-            </Text>
-            <View style={{ width: 40 }} />
-        </View>
+        <AppHeader
+            title="균형 상세 리포트"
+            leftAction={
+                <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
+                    <ChevronLeft size={24} color={colors.primary} />
+                </TouchableOpacity>
+            }
+        />
     );
 
     const renderLegend = () => (
@@ -614,8 +614,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
     return (
         <>
             <HubLayout header={renderHeader()} scrollable>
-                <View style={styles.container}>
-                    <Text style={[styles.pageTitle, { color: colors.primary }]}>자아 건강 리포트</Text>
+                <View style={[styles.container, { paddingTop: 12 }]}>
 
                     <View style={[styles.filterRow, { zIndex: 2000 }]}>
                         <View>
