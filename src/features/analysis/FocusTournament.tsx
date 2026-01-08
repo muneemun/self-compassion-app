@@ -107,10 +107,10 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
             // 한 구역에 집중된 경우
             if (maxZone === '1') {
                 setLeanType('Stability');
-                setInsightText('당신은 오늘 새로운 자극보다 나를 지탱해주는 [깊은 안정감]을 선택했습니다. 안전 기지를 방어하려는 무의식이 강력하게 작동하고 있네요.');
+                setInsightText('당신은 오늘 새로운 자극보다 나를 지탱해주는 [깊은 안정감]을 선택했습니다. 핵심 그룹을 방어하려는 무의식이 강력하게 작동하고 있네요.');
             } else if (maxZone === '2') {
                 setLeanType('Growth');
-                setInsightText('오늘 당신의 마음은 [성장]을 향해 기울어 있습니다. 서로에게 긍정적인 영감을 주는 관계가 당신의 활력원이 되고 있어요.');
+                setInsightText('오늘 당신의 마음은 [성장]을 향해 기울어 있습니다. 가치관을 공유하는 정서적 공유 그룹과의 교감이 당신의 활력원이 되고 있어요.');
             } else if (maxZone === '4' || maxZone === '5') {
                 setLeanType('Expansion');
                 setInsightText('당신은 익숙함보다 [새로운 연결과 외연]에 더 민감하게 반응하고 있습니다. 관계의 확장을 통해 새로운 에너지를 수혈받고 싶은 상태입니다.');

@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
 import { UI_CONSTANTS, COMMON_STYLES } from '../../theme/LayoutStyles';
-import { ArrowLeft, UserPlus, Zap, Edit3, Check, Search, Users, Camera, Phone, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, UserPlus, Zap, Edit3, Check, Search, Users, Camera, Phone, ChevronRight, X } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 
 type EntryMode = 'choice' | 'sync' | 'manual';
@@ -419,14 +419,14 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
 
     const renderHeader = () => (
         <View style={COMMON_STYLES.headerContainer}>
+            <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
+            <Text style={[styles.headerTitle, { color: colors.primary }]}>관계 추가</Text>
             <TouchableOpacity
                 onPress={handleBackPress}
                 style={COMMON_STYLES.secondaryActionBtn}
             >
-                <ArrowLeft size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
+                <X size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.primary }]}>관계 추가</Text>
-            <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
         </View>
     );
 

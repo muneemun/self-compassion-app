@@ -17,6 +17,7 @@ interface DiagnosisProps {
         name: string;
         image?: string;
     };
+    onViewReport?: (id: string) => void;
 }
 
 type DiagnosisStep = 'CHECKLIST' | 'ANIMATION' | 'RESULT' | 'RQS';
@@ -33,70 +34,70 @@ interface AlgorithmicQuestion {
 const CHECKLIST: AlgorithmicQuestion[] = [
     {
         id: 1,
-        phase: 'Phase A: 핵심 관계 판별',
+        phase: 'Phase A: 핵심 그룹 판별',
         title: '내가 갑자기 입원하거나 큰 위기에 처했을 때 밤낮없이 달려올 사람인가?',
         targetZone: 1,
         description: '위급 상황에서의 헌신성'
     },
     {
         id: 2,
-        phase: 'Phase A: 핵심 관계 판별',
+        phase: 'Phase A: 핵심 그룹 판별',
         title: '나의 가장 부끄러운 비밀이나 취약함을 온전히 드러낼 수 있는가?',
         targetZone: 1,
         description: '심리적 안전감과 정서적 노출'
     },
     {
         id: 3,
-        phase: 'Phase A: 핵심 관계 판별',
+        phase: 'Phase B: 정서적 공유 그룹 판별',
         title: '용건이 없어도 안부를 묻기 위해 한 달에 한 번 이상 연락하고 만나는가?',
         targetZone: 2,
         description: '일상적 교감의 자발성'
     },
     {
         id: 4,
-        phase: 'Phase A: 핵심 관계 판별',
+        phase: 'Phase B: 정서적 공유 그룹 판별',
         title: '이 사람의 행복이나 슬픔이 내 감정에 깊은 영향을 미치는가?',
         targetZone: 2,
         description: '감정적 전이와 공감도'
     },
     {
         id: 5,
-        phase: 'Phase B: 기능적 관계 판별',
+        phase: 'Phase C: 기능적 협력 관계 판별',
         title: '사적인 친밀감은 낮지만, 업무나 목표를 위해 매주 소통해야 하는가?',
         targetZone: 3,
         description: '사적 친밀도는 낮으나 주기적 소통 필요'
     },
     {
         id: 6,
-        phase: 'Phase B: 기능적 관계 판별',
+        phase: 'Phase C: 기능적 협력 관계 판별',
         title: '함께 일하거나 공동체 활동을 할 때 반드시 협력해야 하는 대상인가?',
         targetZone: 3,
         description: '공동의 목표를 위한 필수 협력'
     },
     {
         id: 7,
-        phase: 'Phase C: 인지적 관계 판별',
+        phase: 'Phase D: 단순 인지 관계 판별',
         title: '1년에 한 번이라도 연락을 주고받으며 서로의 근황을 알고 있는가?',
         targetZone: 4,
         description: '최소한의 소통 유지 여부'
     },
     {
         id: 8,
-        phase: 'Phase C: 인지적 관계 판별',
+        phase: 'Phase D: 단순 인지 관계 판별',
         title: '길에서 우연히 만났을 때 10분 이상 막힘없이 대화가 가능한가?',
         targetZone: 4,
         description: '사회적 친숙도 및 인지 상태'
     },
     {
         id: 9,
-        phase: 'Phase D: 관계 정리 판별',
+        phase: 'Phase E: 관계 정리 판별',
         title: '지난 1년간 한 번도 교류가 없었으며 연락할 계획도 없는가?',
         targetZone: 5,
         description: '관계의 휴면/종료 상태'
     },
     {
         id: 10,
-        phase: 'Phase D: 관계 정리 판별',
+        phase: 'Phase E: 관계 정리 판별',
         title: '이 사람의 소식이 내 삶에 어떠한 영향도 주지 않는가?',
         targetZone: 5,
         description: '정서적 단절 및 삭제/차단 검토'
@@ -104,14 +105,14 @@ const CHECKLIST: AlgorithmicQuestion[] = [
 ];
 
 const ZONE_GUIDES: Record<number, any> = {
-    1: { name: '안전 기지', energy: '50%', color: '#D98B73', desc: '무조건적인 수용과 정서적 안전감 제공', title: 'Safety Base' },
-    2: { name: '심리적 우군', energy: '25%', color: '#4A5D4E', desc: '가치관을 공유하며 정기적으로 교류함', title: 'Psychological Ally' },
-    3: { name: '전략적 동행', energy: '15%', color: '#6B7F70', desc: '업무/필요에 의해 자주 보나 유대는 낮음', title: 'Strategic Partner' },
-    4: { name: '사회적 지인', energy: '10%', color: '#8A9A8D', desc: '이름과 얼굴을 아는 인지적 한계선', title: 'Social Acquaintance' },
-    5: { name: '배경 소음', energy: '0%', color: '#B0B0B0', desc: '인지 범위 밖의 타인 및 불필요한 연결', title: 'Background Noise' },
+    1: { name: '핵심 그룹', energy: '50%', color: '#FFB74D', desc: '무조건적인 수용과 정서적 안전감 제공', title: 'Safety Base' },
+    2: { name: '정서적 공유 그룹', energy: '25%', color: '#D98B73', desc: '가치관을 공유하며 정기적으로 교류함', title: 'Psychological Ally' },
+    3: { name: '기능적 협력 관계', energy: '15%', color: '#4A5D4E', desc: '업무/필요에 의해 자주 보나 유대는 낮음', title: 'Strategic Partner' },
+    4: { name: '단순 인지 관계', energy: '10%', color: '#90A4AE', desc: '이름과 얼굴을 아는 인지적 한계선', title: 'Social Acquaintance' },
+    5: { name: '배경 소음(외부 환경)', energy: '0%', color: '#D1D5DB', desc: '인지 범위 밖의 타인 및 불필요한 연결', title: 'Background Noise' },
 };
 
-export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, onComplete, pendingData }: DiagnosisProps) => {
+export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, onComplete, pendingData, onViewReport }: DiagnosisProps) => {
     const colors = useColors();
     const { getRelationshipById, updateRelationship, updateDiagnosisResult } = useRelationshipStore();
     const foundNode = getRelationshipById(relationshipId);
@@ -266,16 +267,16 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
         if (step === 'RESULT' || step === 'RQS') return null;
         return (
             <View style={[COMMON_STYLES.headerContainer, { backgroundColor: colors.background }]}>
-                <TouchableOpacity onPress={handleBackPress} style={COMMON_STYLES.secondaryActionBtn}>
-                    <X size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
-                </TouchableOpacity>
+                <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
                 <View style={styles.headerTitleContainer}>
                     <Text style={[styles.headerSub, { color: colors.primary, opacity: 0.5 }]}>Orbit Diagnosis</Text>
                     <Text style={[styles.headerTitle, { color: colors.primary }]}>
                         {step === 'CHECKLIST' ? '단계별 배치 매뉴얼' : '인덱싱 중...'}
                     </Text>
                 </View>
-                <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
+                <TouchableOpacity onPress={handleBackPress} style={COMMON_STYLES.secondaryActionBtn}>
+                    <X size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
+                </TouchableOpacity>
             </View>
         );
     };
@@ -515,6 +516,10 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                     } else {
                         setStep("RESULT");
                     }
+                }}
+                onViewReport={(id) => {
+                    onViewReport?.(id);
+                    onBack();
                 }}
                 onComplete={(rqsData) => {
                     // RQS 결과와 Zone 결과를 합쳐서 전달

@@ -24,7 +24,7 @@ const BaseLayout: React.FC<LayoutProps> = ({
             style={[styles.safeArea, { backgroundColor: colors.background }]}
         >
             <View style={styles.container}>
-                {header && <View>{header}</View>}
+                {header && <View style={{ zIndex: 1000 }}>{header}</View>}
                 {scrollable ? (
                     <ScrollView contentContainerStyle={styles.scrollContent}>
                         {children}

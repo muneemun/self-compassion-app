@@ -54,6 +54,7 @@ export interface RelationshipNode {
         };
         lastChecked: string;
     };
+    rqsHistory?: RelationshipNode['rqsResult'][];
 }
 
 export interface DiagnosisResult {

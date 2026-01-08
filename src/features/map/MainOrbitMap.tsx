@@ -18,7 +18,7 @@ import { AppHeader } from '../../components/AppHeader';
 import {
     Search, Plus, LocateFixed, LayoutGrid, List,
     ChevronDown, ChevronUp, HeartPulse, X, ChevronRight,
-    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Snowflake
+    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Snowflake, Activity
 } from 'lucide-react-native';
 import { RelationshipList } from '../relationships/RelationshipList';
 import { RELATIONSHIP_TYPE_LABELS, RelationshipNode } from '../../types/relationship';
@@ -38,6 +38,14 @@ import ReAnimated, {
 
 const { width } = Dimensions.get('window');
 const BASE_ORBIT_SIZE = width * 1.1;
+
+// 🧊 Shared Badge Component (Same as RelationshipList)
+const BadgeIcon = ({ color, temperature }: { color: string, temperature: number }) => {
+    const iconSize = 14;
+    if (temperature >= 80) return <Flame color={color} size={iconSize} fill={color} />;
+    if (temperature <= 40) return <Snowflake color={color} size={iconSize} />;
+    return <Activity color={color} size={iconSize} />;
+};
 
 const styles = StyleSheet.create({
     content: {
@@ -196,13 +204,23 @@ const styles = StyleSheet.create({
     },
     modalFullContainer: {
         flex: 1,
-        backgroundColor: '#fff',
     },
     modalHeader: {
         height: 64,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: 20,
+    },
+    modalCloseBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(74,93,78,0.05)',
     },
     modalHeaderSide: {
         width: 44,
@@ -315,8 +333,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        borderRadius: 24,
         marginBottom: 12,
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        shadowColor: '#4a5d4e',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.05,
+        shadowRadius: 16,
+        elevation: 2,
     },
     avatarContainer: {
         position: 'relative',
@@ -364,41 +388,50 @@ const styles = StyleSheet.create({
     actionCardLarge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FBF9',
-        padding: 24,
-        borderRadius: 32,
-        marginBottom: 16,
-        gap: 20,
+        backgroundColor: '#FFFFFF',
+        padding: 12,
+        borderRadius: 20,
+        marginBottom: 8,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(74,93,78,0.05)',
+        shadowColor: '#4A5D4E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
     },
     actionIconBgLarge: {
-        width: 64,
-        height: 64,
-        borderRadius: 24,
+        width: 40,
+        height: 40,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
     actionLabelLarge: {
-        fontSize: 20,
+        fontSize: 14,
         fontWeight: '800',
         color: '#2F332F',
     },
     actionDescLarge: {
-        fontSize: 14,
+        fontSize: 11,
         color: '#8C968D',
         fontWeight: '600',
-        marginTop: 4,
+        marginTop: 0,
     },
     selectedPersonHeader: {
         alignItems: 'center',
-        marginTop: -10,
+        marginTop: 10,
     },
     largeAvatar: {
-        borderRadius: 100,
-        borderWidth: 4,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        borderWidth: 3,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F9F9F9',
-        marginBottom: 16,
+        marginBottom: 12,
         overflow: 'hidden',
     },
     largeAvatarImg: {
@@ -406,7 +439,7 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     actionTitle: {
-        fontSize: 20,
+        fontSize: 16,
         fontWeight: '800',
         color: '#2F332F',
         textAlign: 'center',
@@ -529,23 +562,15 @@ const UserNode = ({
             true
         );
     }, []);
-    const targetRadius = orbitRadius;
-    const targetAngle = initialAngle;
-
-    // Polar Shared Values for "Swirl" effect
-    const radius = useSharedValue(targetRadius);
-    const angle = useSharedValue(targetAngle);
+    // Re-introduce SharedValues to ensure visibility updates
+    const radius = useSharedValue(orbitRadius);
+    const angle = useSharedValue(initialAngle);
 
     useEffect(() => {
-        radius.value = withSpring(targetRadius, { damping: 20, stiffness: 90 });
-
-        // Shortest path angle rotation
-        let delta = targetAngle - (angle.value % 360);
-        if (delta > 180) delta -= 360;
-        if (delta < -180) delta += 360;
-
-        angle.value = withSpring(angle.value + delta, { damping: 20, stiffness: 60 });
-    }, [targetRadius, targetAngle]);
+        // Update values directly with spring animation (No delta accumulation logic to avoid drift)
+        radius.value = withSpring(orbitRadius, { damping: 20, stiffness: 90 });
+        angle.value = withSpring(initialAngle, { damping: 20, stiffness: 60 });
+    }, [orbitRadius, initialAngle]);
 
     const animatedStyle = useAnimatedStyle(() => {
         const rad = (angle.value * Math.PI) / 180;
@@ -732,13 +757,28 @@ interface MainOrbitMapProps {
 
 export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog }: MainOrbitMapProps) => {
     const colors = useColors();
-    const { relationships } = useRelationshipStore();
+    const { relationships, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
     const { userProfile } = useAppStore();
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-    const [selectedFilters, setSelectedFilters] = useState<string[]>(['전체']);
-    const [zoomLevel, setZoomLevel] = useState(2);
+
+    // View State from Store
+    const {
+        zoomLevel,
+        selectedFilters,
+        sortMode,
+        isFilterExpanded,
+        activeSearchTag: storeActiveSearchTag
+    } = orbitMapViewState;
+
     const currentOrbitSize = BASE_ORBIT_SIZE * (1 + (zoomLevel - 2) * 0.25);
-    const [sortMode, setSortMode] = useState<'default' | 'hot' | 'cold'>('default');
+
+    // Actions Wrapper
+    const setZoomLevel = (level: number) => setOrbitMapViewState({ zoomLevel: level });
+    const setSelectedFilters = (filters: string[]) => setOrbitMapViewState({ selectedFilters: filters });
+    const setSortMode = (mode: 'default' | 'hot' | 'cold') => setOrbitMapViewState({ sortMode: mode as any });
+    const setIsFilterExpanded = (expanded: boolean) => setOrbitMapViewState({ isFilterExpanded: expanded });
+    const setActiveSearchTag = (tag: string) => setOrbitMapViewState({ activeSearchTag: tag });
+
 
     // 🌀 Universe Spin State
     const universeRotation = useSharedValue(0);
@@ -765,13 +805,15 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
     }));
 
     const [isMoved, setIsMoved] = useState(false);
-    const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
     // Search & Check-in Modal State
     const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
     const [searchMode, setSearchMode] = useState<'navigation' | 'action'>('action');
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeSearchTag, setActiveSearchTag] = useState('전체');
+    // Use local activeSearchTag derived from store if needed, or sync directly. 
+    // Here we map local logic to store.
+    const activeSearchTag = storeActiveSearchTag;
+
     const [selectedTarget, setSelectedTarget] = useState<RelationshipNode | null>(null);
     const [isActionVisible, setIsActionVisible] = useState(false);
 
@@ -839,11 +881,11 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
             if (sortMode === 'default') {
                 sortedNodes.sort((a, b) => b.id.localeCompare(a.id)); // ID order reversed for consistent layering
             } else if (sortMode === 'hot') {
-                // High temp on top -> High temp at the end of array (ASC sort)
-                sortedNodes.sort((a, b) => a.temperature - b.temperature);
-            } else if (sortMode === 'cold') {
-                // Low temp on top -> Low temp at the end of array (DESC sort)
+                // Hot Mode: High temp near Self (Inner) -> High temp at start of array
                 sortedNodes.sort((a, b) => b.temperature - a.temperature);
+            } else if (sortMode === 'cold') {
+                // Cold Mode: Low temp near Self (Inner) -> Low temp at start of array
+                sortedNodes.sort((a, b) => a.temperature - b.temperature);
             }
 
             const baseCircleRadius = (currentOrbitSize * (zone + 0.5)) / 7; // Spread orbits further out
@@ -1026,10 +1068,9 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
                     if (lastDist.current !== null) {
                         const zoomChange = (dist - lastDist.current) / 100;
-                        setZoomLevel(prev => {
-                            const next = Math.min(5, Math.max(1, prev + zoomChange));
-                            return next;
-                        });
+                        // Use current zoomLevel directly instead of functional update
+                        const next = Math.min(5, Math.max(1, zoomLevel + zoomChange));
+                        setZoomLevel(next);
                     }
                     lastDist.current = dist;
                 } else if (gestureState.numberActiveTouches === 1) {
@@ -1072,7 +1113,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                 </TouchableOpacity>
             }
             rightAction={
-                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
                     <TouchableOpacity
                         onPress={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
                     >
@@ -1134,17 +1175,17 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         };
 
         return (
-            <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: '#fff' }]}>
+            <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: colors.background }]}>
                 <SafeAreaView style={{ flex: 1 }} edges={['top']}>
                     {!isActionVisible ? (
-                        <View style={styles.modalFullContainer}>
+                        <View style={[styles.modalFullContainer, { backgroundColor: colors.background }]}>
                             <View style={styles.modalHeader}>
-                                <View style={styles.modalHeaderSide} />
+                                <View style={{ width: 44 }} />
                                 <Text style={[styles.modalTitle, { color: colors.primary }]}>
                                     {searchMode === 'navigation' ? '인맥 검색' : '정서적 체크인'}
                                 </Text>
                                 <TouchableOpacity
-                                    style={styles.modalHeaderSide}
+                                    style={styles.modalCloseBtn}
                                     onPress={() => setIsSearchModalVisible(false)}
                                 >
                                     <X size={24} color={colors.primary} />
@@ -1191,62 +1232,88 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                             </View>
 
                             <ScrollView style={styles.selectionList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                     <Text style={styles.listSectionLabel}>검색 결과 • {filteredPeople.length}명</Text>
                                 </View>
-                                {filteredPeople.map((person) => (
-                                    <TouchableOpacity
-                                        key={person.id}
-                                        style={[styles.searchResultCard, { backgroundColor: '#F9FBF9' }]}
-                                        onPress={() => handleSelectPerson(person)}
-                                    >
-                                        <View style={styles.avatarContainer}>
-                                            <View style={[styles.miniAvatar, { borderColor: colors.primary, width: 56, height: 56, borderRadius: 28 }]}>
-                                                {person.image ? (
-                                                    <Image source={{ uri: person.image }} style={styles.miniAvatarImg} />
-                                                ) : (
-                                                    <Text style={[styles.avatarInitial, { fontSize: 20 }]}>{person.name.charAt(0)}</Text>
-                                                )}
-                                            </View>
-                                            <View style={[styles.typeBadgeMini, { backgroundColor: '#fff' }]}>
-                                                {person.type === 'family' && <Users size={12} color={colors.accent} />}
-                                                {person.type === 'friend' && <Target size={12} color={colors.accent} />}
-                                                {person.type === 'work' && <Briefcase size={12} color={colors.accent} />}
-                                                {(person.type === 'partner' || person.type === 'other') && <Heart size={12} color={colors.accent} fill={colors.accent} />}
-                                            </View>
-                                        </View>
+                                {filteredPeople.map((person) => {
+                                    // Zone & Dynamics Logic
+                                    const zoneColor = {
+                                        1: '#FFB74D',
+                                        2: '#D98B73',
+                                        3: '#4A5D4E',
+                                        4: '#90A4AE',
+                                        5: '#D1D5DB'
+                                    }[person.zone] || colors.primary;
 
-                                        <View style={styles.infoContainer}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Text style={[styles.personName, { fontSize: 18 }]}>{person.name}</Text>
-                                                <View style={styles.tagBadge}>
-                                                    <Text style={styles.tagBadgeText}>{RELATIONSHIP_TYPE_LABELS[person.type] || person.type}</Text>
+                                    const dynamics = (() => {
+                                        if (person.temperature >= 80) return { color: '#D98B73' };
+                                        if (person.temperature <= 40) return { color: '#90A4AE' };
+                                        return { color: '#4A5D4E' };
+                                    })();
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={person.id}
+                                            style={styles.searchResultCard}
+                                            onPress={() => handleSelectPerson(person)}
+                                        >
+                                            <View style={styles.avatarContainer}>
+                                                <View style={[styles.miniAvatar, { borderColor: zoneColor, borderWidth: 3, width: 64, height: 64, borderRadius: 32, padding: 2 }]}>
+                                                    {person.image ? (
+                                                        <Image source={{ uri: person.image }} style={[styles.miniAvatarImg, { borderRadius: 28 }]} />
+                                                    ) : (
+                                                        <View style={{ flex: 1, width: '100%', height: '100%', borderRadius: 28, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+                                                            <Text style={[styles.avatarInitial, { fontSize: 24 }]}>{person.name.charAt(0)}</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                {/* Badge Icon Positioned Bottom-Right */}
+                                                <View style={{
+                                                    position: 'absolute',
+                                                    bottom: -2,
+                                                    right: -2,
+                                                    width: 26,
+                                                    height: 26,
+                                                    borderRadius: 13,
+                                                    backgroundColor: '#fff',
+                                                    borderWidth: 2,
+                                                    borderColor: dynamics.color,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    <BadgeIcon color={dynamics.color} temperature={person.temperature} />
                                                 </View>
                                             </View>
-                                            <Text style={[styles.personMeta, { fontSize: 13 }]}>
-                                                {person.role} • Zone {person.zone}
-                                            </Text>
-                                        </View>
 
-                                        <View style={styles.tempContainer}>
-                                            <View style={styles.tempBarBackground}>
-                                                <View
-                                                    style={[
-                                                        styles.tempBarFill,
-                                                        {
-                                                            height: `${person.temperature}%`,
-                                                            backgroundColor: person.temperature > 70 ? colors.accent : colors.primary,
-                                                            opacity: person.temperature / 100
-                                                        }
-                                                    ]}
-                                                />
+                                            <View style={styles.infoContainer}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                                    <Text style={[styles.personName, { fontSize: 18, color: colors.primary }]}>{person.name}</Text>
+                                                </View>
+                                                <Text style={[styles.personMeta, { fontSize: 13, color: colors.primary, opacity: 0.6 }]}>
+                                                    {person.role} • Zone {person.zone}
+                                                </Text>
                                             </View>
-                                            <Text style={[styles.tempText, { color: person.temperature > 70 ? colors.accent : colors.primary }]}>
-                                                {person.temperature}°
-                                            </Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                ))}
+
+                                            <View style={styles.tempContainer}>
+                                                <View style={styles.tempBarBackground}>
+                                                    <View
+                                                        style={[
+                                                            styles.tempBarFill,
+                                                            {
+                                                                height: `${person.temperature}%`,
+                                                                backgroundColor: person.temperature > 70 ? colors.accent : colors.primary,
+                                                                opacity: person.temperature / 100
+                                                            }
+                                                        ]}
+                                                    />
+                                                </View>
+                                                <Text style={[styles.tempText, { color: person.temperature > 70 ? colors.accent : colors.primary }]}>
+                                                    {person.temperature}°
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                                 {filteredPeople.length === 0 && (
                                     <View style={styles.emptySearch}>
                                         <Search size={40} color={colors.primary} opacity={0.1} />
@@ -1257,13 +1324,13 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                         </View>
                     ) : (
                         <View style={styles.actionFullScreenView}>
-                            <View style={styles.modalFullContainer}>
+                            <View style={[styles.modalFullContainer, { backgroundColor: colors.background }]}>
                                 <View style={styles.modalHeader}>
-                                    <View style={styles.modalHeaderSide} />
+                                    <View style={{ width: 44 }} />
                                     <Text style={[styles.modalTitle, { color: colors.primary }]}>액션 선택</Text>
                                     <TouchableOpacity
                                         onPress={() => setIsSearchModalVisible(false)}
-                                        style={styles.modalHeaderSide}
+                                        style={styles.modalCloseBtn}
                                     >
                                         <X size={24} color={colors.primary} />
                                     </TouchableOpacity>
@@ -1271,7 +1338,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
                                 <View style={{ paddingHorizontal: 20 }}>
                                     <View style={styles.selectedPersonHeader}>
-                                        <View style={[styles.largeAvatar, { borderColor: colors.primary, width: 100, height: 100, borderRadius: 50 }]}>
+                                        <View style={[styles.largeAvatar, { borderColor: colors.primary }]}>
                                             {selectedTarget?.image ? (
                                                 <Image source={{ uri: selectedTarget.image }} style={styles.largeAvatarImg} />
                                             ) : (

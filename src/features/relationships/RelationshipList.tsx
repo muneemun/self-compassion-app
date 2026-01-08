@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
-import { Plus, Search, Radio, Heart, Users, Target, Briefcase, Menu, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Plus, Search, Radio, Heart, Users, Target, Briefcase, Menu, ChevronDown, ChevronUp, Star, Trash2, Zap, Calendar, Activity, Flame, Snowflake } from 'lucide-react-native';
 import { UI_CONSTANTS, COMMON_STYLES } from '../../theme/LayoutStyles';
 
 const { width } = Dimensions.get('window');
@@ -10,34 +10,48 @@ const { width } = Dimensions.get('window');
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { RelationshipNode, RELATIONSHIP_TYPE_LABELS } from '../../types/relationship';
 
-const BadgeIcon = ({ type, color }: { type: string, color: string }) => {
+const BadgeIcon = ({ color, temperature }: { color: string, temperature: number }) => {
     const iconSize = 14;
-    switch (type) {
-        case 'favorite': return <Heart color={color} size={iconSize} fill={color} />;
-        case 'family': return <Users color={color} size={iconSize} />;
-        case 'work': return <Briefcase color={color} size={iconSize} />;
-        case 'friend': return <Target color={color} size={iconSize} />;
-        default: return null;
-    }
+    if (temperature >= 80) return <Flame color={color} size={iconSize} fill={color} />;
+    if (temperature <= 40) return <Snowflake color={color} size={iconSize} />;
+    return <Activity color={color} size={iconSize} />;
 };
 
 const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect?: (id: string) => void }) => {
     const colors = useColors();
+    const zoneColors: Record<number, string> = {
+        1: '#FFB74D',
+        2: '#D98B73',
+        3: '#4A5D4E',
+        4: '#90A4AE',
+        5: '#D1D5DB'
+    };
+    const zoneColor = zoneColors[node.zone] || colors.primary;
+
+    // 🌀 Calculate Dynamics (Active Interaction State)
+    const dynamics = (() => {
+        if (node.temperature >= 80) return { color: '#D98B73' }; // Flame concept
+        if (node.temperature <= 40) return { color: '#90A4AE' };  // Snowflake concept
+        return { color: '#4A5D4E' }; // Normal Activity concept
+    })();
+
     return (
         <TouchableOpacity
             style={[styles.card, { backgroundColor: colors.white }]}
             onPress={() => onSelect?.(node.id)}
         >
             <View style={styles.avatarContainer}>
-                {node.image ? (
-                    <Image source={{ uri: node.image }} style={styles.avatar} />
-                ) : (
-                    <View style={[styles.avatar, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }]}>
-                        <Users size={32} color={colors.primary} />
-                    </View>
-                )}
-                <View style={[styles.badge, { backgroundColor: colors.background, borderColor: 'rgba(74,93,78,0.1)' }]}>
-                    <BadgeIcon type={node.type} color={colors.accent} />
+                <View style={[styles.avatarWrapper, { borderColor: zoneColor, borderWidth: 3, borderRadius: 36, padding: 2 }]}>
+                    {node.image ? (
+                        <Image source={{ uri: node.image }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }]}>
+                            <Users size={32} color={colors.primary} />
+                        </View>
+                    )}
+                </View>
+                <View style={[styles.badge, { backgroundColor: colors.white, borderColor: dynamics.color }]}>
+                    <BadgeIcon color={dynamics.color} temperature={node.temperature} />
                 </View>
             </View>
 
@@ -99,6 +113,7 @@ interface RelationshipListProps {
     onSelectTab: (tab: string) => void;
     selectedFilters?: string[];
     dynamicTabs?: string[];
+    sortMode?: 'default' | 'hot' | 'cold';
 }
 
 export const RelationshipList = ({
@@ -108,7 +123,8 @@ export const RelationshipList = ({
     selectedTab,
     onSelectTab,
     selectedFilters = ['전체'],
-    dynamicTabs: passedTabs
+    dynamicTabs: passedTabs,
+    sortMode = 'default'
 }: RelationshipListProps) => {
     const colors = useColors();
     const relationships = useRelationshipStore(state => state.relationships);
@@ -122,7 +138,7 @@ export const RelationshipList = ({
             >
                 <Plus color={colors.white} size={UI_CONSTANTS.ICON_SIZE} />
             </TouchableOpacity>
-            <View style={COMMON_STYLES.headerRightGroup}>
+            <View style={[COMMON_STYLES.headerRightGroup, { gap: 20 }]}>
                 <TouchableOpacity style={COMMON_STYLES.secondaryActionBtn}>
                     <Search color={colors.primary} size={UI_CONSTANTS.ICON_SIZE} />
                 </TouchableOpacity>
@@ -135,11 +151,11 @@ export const RelationshipList = ({
 
     const renderInnerContent = () => {
         const zoneFilters = [
-            { id: 'z1', label: '안전 기지', zone: 1 },
-            { id: 'z2', label: '심리적 우군', zone: 2 },
-            { id: 'z3', label: '전략적 동행', zone: 3 },
-            { id: 'z4', label: '사회적 지인', zone: 4 },
-            { id: 'z5', label: '배경 소음', zone: 5 },
+            { id: 'z1', label: '핵심 그룹', zone: 1 },
+            { id: 'z2', label: '정서적 공유 그룹', zone: 2 },
+            { id: 'z3', label: '기능적 협력 관계', zone: 3 },
+            { id: 'z4', label: '단순 인지 관계', zone: 4 },
+            { id: 'z5', label: '배경 소음(외부 환경)', zone: 5 },
         ];
 
         const uniqueTypes = Array.from(new Set(relationships.map(r => RELATIONSHIP_TYPE_LABELS[r.type] || r.type)));
@@ -152,6 +168,12 @@ export const RelationshipList = ({
                 const rZoneLabel = zoneFilters.find(zf => zf.zone === r.zone)?.label;
                 return selectedFilters.includes(rType) || (rZoneLabel && selectedFilters.includes(rZoneLabel));
             });
+
+        const sortedFilteredRelationships = [...filteredRelationships].sort((a, b) => {
+            if (sortMode === 'hot') return b.temperature - a.temperature;
+            if (sortMode === 'cold') return a.temperature - b.temperature;
+            return a.name.localeCompare(b.name);
+        });
 
         return (
             <View style={styles.container}>
@@ -217,10 +239,10 @@ export const RelationshipList = ({
                 <View style={styles.listContent}>
                     {/* Zone 1 */}
                     {(() => {
-                        const zone1Nodes = filteredRelationships.filter(node => node.zone === 1);
+                        const zone1Nodes = sortedFilteredRelationships.filter(node => node.zone === 1);
                         return (
                             <>
-                                <ZoneSection zone={1} title="안전 기지" priority count={zone1Nodes.length} />
+                                <ZoneSection zone={1} title="핵심 그룹" priority count={zone1Nodes.length} />
                                 {zone1Nodes.map(node => (
                                     <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
                                 ))}
@@ -230,10 +252,10 @@ export const RelationshipList = ({
 
                     {/* Zone 2 */}
                     {(() => {
-                        const zone2Nodes = filteredRelationships.filter(node => node.zone === 2);
+                        const zone2Nodes = sortedFilteredRelationships.filter(node => node.zone === 2);
                         return (
                             <>
-                                <ZoneSection zone={2} title="심리적 우군" count={zone2Nodes.length} />
+                                <ZoneSection zone={2} title="정서적 공유 그룹" count={zone2Nodes.length} />
                                 {zone2Nodes.map(node => (
                                     <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
                                 ))}
@@ -243,10 +265,10 @@ export const RelationshipList = ({
 
                     {/* Zone 3 */}
                     {(() => {
-                        const zone3Nodes = filteredRelationships.filter(node => node.zone === 3);
+                        const zone3Nodes = sortedFilteredRelationships.filter(node => node.zone === 3);
                         return (
                             <>
-                                <ZoneSection zone={3} title="전략적 동행" count={zone3Nodes.length} />
+                                <ZoneSection zone={3} title="기능적 협력 관계" count={zone3Nodes.length} />
                                 {zone3Nodes.map(node => (
                                     <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
                                 ))}
@@ -256,10 +278,10 @@ export const RelationshipList = ({
 
                     {/* Zone 4 */}
                     {(() => {
-                        const zone4Nodes = filteredRelationships.filter(node => node.zone === 4);
+                        const zone4Nodes = sortedFilteredRelationships.filter(node => node.zone === 4);
                         return (
                             <>
-                                <ZoneSection zone={4} title="사회적 지인" count={zone4Nodes.length} />
+                                <ZoneSection zone={4} title="단순 인지 관계" count={zone4Nodes.length} />
                                 {zone4Nodes.map(node => (
                                     <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
                                 ))}
@@ -398,6 +420,13 @@ const styles = StyleSheet.create({
     avatarContainer: {
         position: 'relative',
     },
+    avatarWrapper: {
+        borderRadius: 36,
+        padding: 2,
+        borderWidth: 3,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     avatar: {
         width: 64,
         height: 64,
@@ -413,6 +442,23 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    tempWarningBadge: {
+        position: 'absolute',
+        top: -4,
+        left: -4,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
     },
     infoContainer: {
         flex: 1,

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, Alert, SafeAreaView, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, Alert, Modal, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
-import { ArrowLeft, Share2, Info, Star, Zap, Activity, Download, Heart, Shield, Layout, Calendar, Plus, X, Save, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Share2, Info, Star, Zap, Activity, Download, Heart, Shield, Layout, Calendar, Plus, X, Save, ChevronRight, CheckCircle2 } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 
 const { width } = Dimensions.get('window');
@@ -22,9 +23,38 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
     const node = useRelationshipStore(state => state.relationships.find(r => r.id === relationshipId));
     const addInteraction = useRelationshipStore(state => state.addInteraction);
 
+    // Track which RQS report to show by its timestamp
+    const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+
     if (!node) return null;
 
-    // Log Modal State
+    // Derived: Current viewing RQS result (selected or latest)
+    const effectiveRqsResult = (selectedHistoryId ? node.rqsHistory?.find(h => h && h.lastChecked === selectedHistoryId) : null)
+        || node.rqsResult
+        || (() => {
+            const { trust = 50, communication = 50, satisfaction = 50, frequency = 50 } = node.metrics || {};
+            const avg = (trust + communication + satisfaction) / 3;
+            let syntheticGrade = 'B';
+            if (avg > 85) syntheticGrade = 'S';
+            else if (avg > 70) syntheticGrade = 'A';
+            else if (avg < 40) syntheticGrade = 'C';
+
+            return {
+                grade: syntheticGrade,
+                areaScores: {
+                    safety: (trust / 100) * 4,
+                    reciprocity: (communication / 100) * 4,
+                    vitality: (satisfaction / 100) * 4,
+                    growth: ((trust + communication + satisfaction) / 300) * 4
+                },
+                totalScore: Math.round(avg),
+                lastChecked: new Date().toISOString()
+            };
+        })();
+
+    const { grade, areaScores, totalScore } = effectiveRqsResult as any;
+
+    // Log Modal State (Moved down to avoid duplication and fix scope)
     const [showLogModal, setShowLogModal] = useState(false);
     const [newLog, setNewLog] = useState({ event: '', temperature: 50 });
 
@@ -33,41 +63,13 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
             Alert.alert('내용 입력', '어떤 활동을 했는지 간단히 적어주세요.');
             return;
         }
-
         setShowLogModal(false);
-
         setTimeout(() => {
             const today = new Date().toISOString().split('T')[0];
             addInteraction(relationshipId, today, newLog.temperature, newLog.event, '');
-            setNewLog({ event: '', temperature: 50 }); // Reset
+            setNewLog({ event: '', temperature: 50 });
         }, 100);
     };
-
-    if (!node) return null;
-
-    // 🛠️ Fallback: If no RQS result exists, synthesize a "Virtual RQS" from current metrics
-    const effectiveRqsResult = node.rqsResult || (() => {
-        const { trust = 50, communication = 50, satisfaction = 50, frequency = 50 } = node.metrics || {};
-        const avg = (trust + communication + satisfaction) / 3;
-        let syntheticGrade = 'B';
-        if (avg > 85) syntheticGrade = 'S';
-        else if (avg > 70) syntheticGrade = 'A';
-        else if (avg < 40) syntheticGrade = 'C';
-
-        // Map 0-100 metrics to 0-4 RQS scale
-        return {
-            grade: syntheticGrade,
-            areaScores: {
-                safety: (trust / 100) * 4,
-                reciprocity: (communication / 100) * 4,
-                vitality: (satisfaction / 100) * 4,
-                growth: ((trust + communication + satisfaction) / 300) * 4
-            },
-            totalScore: Math.round(avg)
-        };
-    })();
-
-    const { grade, areaScores, totalScore } = effectiveRqsResult as any;
 
     // Grade guides matching the logic in Detail but with more visual focus
     const grades: Record<string, any> = {
@@ -93,7 +95,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
         const PART_A_DIAGNOSIS = {
             S: [
                 `이 사람은 당신의 삶에 가장 단단한 뿌리가 되어주는 존재입니다.`,
-                `서로의 영혼이 맞닿은 안전 기지와 같은 소중한 관계군요.`,
+                `서로의 영혼이 맞닿은 핵심 그룹과 같은 소중한 관계군요.`,
                 `당신이 어떤 풍파를 겪어도 돌아올 수 있는 든든한 안식처입니다.`
             ],
             A: [
@@ -179,11 +181,11 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
         const actionPlanElement = renderActionPlan(pC_options[indexC]);
 
         const zoneGuide = {
-            1: { name: '안전 기지', energy: '전적 수용' },
-            2: { name: '심리적 우군', energy: '정서 경제' },
-            3: { name: '전략적 동행', energy: '효율 지향' },
-            4: { name: '사회적 지인', energy: '인지 한계' },
-            5: { name: '배경 소음', energy: '에너지 차단' },
+            1: { name: '핵심 그룹', energy: '전적 수용' },
+            2: { name: '정서적 공유 그룹', energy: '정서 경제' },
+            3: { name: '기능적 협력 관계', energy: '효율 지향' },
+            4: { name: '단순 인지 관계', energy: '인지 한계' },
+            5: { name: '배경 소음(외부 환경)', energy: '에너지 차단' },
         }[node.zone] || { name: '불분명', energy: '-' };
 
         return {
@@ -333,42 +335,55 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
             months.push(`${d.getMonth() + 1}월`);
         }
 
-        // 📊 Calculate trend values based on actual history
-        const history = node.history || [];
-        const baseScore = totalScore; // Current RQS is the anchor
+        // 📊 Calculate trend values based on actual history (RQS + Interactions)
+        const rqsRecords = node.rqsHistory || (node.rqsResult ? [node.rqsResult] : []);
+        const interactionHistory = node.history || [];
 
-        const trendValues = months.map((_, index) => {
+        const trendData = months.map((_, index) => {
             const monthOffset = 5 - index;
             const targetDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
             const targetMonth = targetDate.getMonth();
             const targetYear = targetDate.getFullYear();
 
-            // Find history items for this specific month
-            const monthItems = history.filter(item => {
+            // 1. Check for RQS diagnosis in this month
+            const monthlyRqs = rqsRecords.filter(r => {
+                if (!r?.lastChecked) return false;
+                const d = new Date(r.lastChecked);
+                return d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+            });
+
+            if (monthlyRqs.length > 0) {
+                const lastIdx = monthlyRqs.length - 1;
+                return {
+                    value: monthlyRqs[lastIdx]?.totalScore ?? totalScore,
+                    isReal: true
+                };
+            }
+
+            // 2. Fallback: Check for interaction history in this month
+            const monthlyInteractions = interactionHistory.filter(item => {
                 const itemDate = new Date(item.date);
                 return itemDate.getMonth() === targetMonth && itemDate.getFullYear() === targetYear;
             });
 
-            if (monthItems.length === 0) {
-                // No data for this month: return a base value with slight variance for visual interest
-                return Math.max(30, baseScore - (monthOffset * 5) - (Math.random() * 5));
+            if (monthlyInteractions.length > 0) {
+                const avgTemp = monthlyInteractions.reduce((acc, curr) => acc + (curr.temperature || 0), 0) / monthlyInteractions.length;
+                return {
+                    value: Math.round((totalScore * 0.4) + (avgTemp * 0.6)),
+                    isReal: true
+                };
             }
 
-            // Calculate engagement score for the month
-            const avgTemp = monthItems.reduce((acc, curr) => acc + (curr.temperature || 0), 0) / monthItems.length;
-            const frequencyBonus = Math.min(monthItems.length * 2, 10); // Max 10 pts bonus for frequency
-
-            // Score = base RQS adjusted by that month's temperature and frequency
-            let monthlyScore = baseScore * 0.7 + (avgTemp * 0.2) + frequencyBonus;
-
-            // Ensure most recent month matches current reality
-            if (monthOffset === 0) return baseScore;
-
-            return Math.min(Math.round(monthlyScore), 100);
+            // 3. Last Resort: Baseline
+            if (monthOffset === 0) return { value: totalScore, isReal: true };
+            return {
+                value: Math.max(40, totalScore - 10),
+                isReal: false
+            };
         });
 
         // Determine trend status
-        const isRising = trendValues[5] >= trendValues[4];
+        const isRising = trendData[5].value >= trendData[4].value;
 
         return (
             <View style={styles.trendSection}>
@@ -389,21 +404,40 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                 </View>
                 <View style={[styles.chartContainer, { backgroundColor: colors.white }]}>
                     <View style={styles.barsArea}>
-                        {trendValues.map((v, i) => (
-                            <View key={i} style={styles.barWrapper}>
-                                <View
-                                    style={[
-                                        styles.bar,
-                                        {
-                                            height: `${Math.max(v, 5)}%`, // Minimum 5% height for visibility
-                                            backgroundColor: i === 5 ? colors.accent : colors.primary + '20'
-                                        },
-                                        i === 5 && styles.activeBar
-                                    ]}
-                                />
-                                <Text style={styles.barLabel}>{months[i]}</Text>
-                            </View>
-                        ))}
+                        {trendData.map((d, i) => {
+                            let barColor = colors.primary + '15'; // Muted (No Real Data)
+                            if (i === 5) {
+                                barColor = colors.accent; // Current Month Highlight
+                            } else if (d.isReal) {
+                                barColor = colors.primary + '80'; // Solid (Actual Data Recorded)
+                            }
+
+                            return (
+                                <View key={i} style={styles.barWrapper}>
+                                    <View
+                                        style={[
+                                            styles.bar,
+                                            {
+                                                height: `${Math.max(d.value, 5)}%`,
+                                                backgroundColor: barColor
+                                            },
+                                            i === 5 && styles.activeBar
+                                        ]}
+                                    />
+                                    <Text style={styles.barLabel}>{months[i]}</Text>
+                                </View>
+                            );
+                        })}
+                    </View>
+                </View>
+                <View style={styles.chartLegend}>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: colors.primary + '80' }]} />
+                        <Text style={styles.legendText}>기록된 데이터</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: colors.primary + '15' }]} />
+                        <Text style={styles.legendText}>데이터 없음(기본값)</Text>
                     </View>
                 </View>
                 <Text style={styles.trendDescription}>
@@ -419,7 +453,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                 <ScrollView contentContainerStyle={styles.container}>
                     {/* Hero Section: RQS Grade */}
                     <View style={styles.heroSection}>
-                        <View style={[styles.heroAura, { backgroundColor: currentGrade.color + '15' }]} />
+                        <View style={[styles.heroAura, { backgroundColor: (grades[grade]?.color || colors.primary) + '15' }]} />
                         <Text style={[styles.totalScoreLabel, { color: colors.primary }]}>Total Grade</Text>
                         <View style={styles.gradeContainer}>
                             <Text style={[styles.gradeText, { color: colors.primary }]}>{grade}</Text>
@@ -431,6 +465,41 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                             {totalScore >= 80 ? "관계 건강 상태가 매우 양호합니다.\n서로에게 큰 힘이 되고 있어요." : "적절한 온도를 유지하고 있습니다.\n조금 더 세심한 관심이 필요합니다."}
                         </Text>
                     </View>
+
+                    {/* History Selector (Horizontal Chips) */}
+                    {node.rqsHistory && node.rqsHistory.length >= 1 && (
+                        <View style={styles.historyContainer}>
+                            <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.primary, opacity: 0.6 }}>진단 기록 히스토리</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyScroll}>
+                                {[...node.rqsHistory].reverse().map((h, idx) => {
+                                    if (!h) return null;
+                                    const hId = h.lastChecked || `history-${idx}`;
+                                    const d = new Date(h.lastChecked || new Date());
+                                    const dateStr = isNaN(d.getTime()) ? 'No Date' : `${d.getMonth() + 1}/${d.getDate()}`;
+                                    const isSelected = selectedHistoryId === hId || (!selectedHistoryId && (node.rqsResult?.lastChecked === hId || idx === 0));
+                                    return (
+                                        <TouchableOpacity
+                                            key={hId}
+                                            style={[
+                                                styles.historyChip,
+                                                {
+                                                    backgroundColor: isSelected ? colors.primary : colors.white,
+                                                    borderColor: colors.primary + '20'
+                                                }
+                                            ]}
+                                            onPress={() => setSelectedHistoryId(hId)}
+                                        >
+                                            <View style={[styles.historyGradeDot, { backgroundColor: grades[h.grade]?.color || colors.primary }]} />
+                                            <Text style={[styles.historyDate, { color: isSelected ? colors.white : colors.primary }]}>{dateStr}</Text>
+                                            {isSelected && <CheckCircle2 size={12} color="white" />}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    )}
 
                     {/* Metrics Grid */}
                     <View style={styles.metricsGrid}>
@@ -484,7 +553,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                                 <Star size={16} color={colors.accent} opacity={0.6} style={{ marginBottom: 6 }} />
                                 <Text style={[styles.evidenceVal, { color: colors.primary }]}>{grade} Grade</Text>
                                 <Text style={styles.evidenceKey}>관계 기초 체력</Text>
-                                <Text style={styles.evidenceSub}>{grades[grade].name}</Text>
+                                <Text style={styles.evidenceSub}>{grades[grade]?.name || 'Unknown'}</Text>
                             </View>
 
                             <View style={[styles.evidenceItem, { backgroundColor: colors.white + '66' }]}>
@@ -607,24 +676,24 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
             {/* AI Prescription Modal Overlay */}
             {(isGenerating || showPrescription) && (
                 <View style={[styles.prescriptionOverlay, { backgroundColor: 'rgba(252, 249, 242, 0.98)' }]}>
-                    {isGenerating ? (
-                        <View style={styles.generatingContainer}>
-                            <View style={styles.capsuleAnimation}>
-                                <View style={[styles.capsuleHalf, { backgroundColor: currentGrade.color }]} />
-                                <View style={[styles.capsuleHalf, { backgroundColor: '#FFF' }]} />
+                    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+                        {isGenerating ? (
+                            <View style={styles.generatingContainer}>
+                                <View style={styles.capsuleAnimation}>
+                                    <View style={[styles.capsuleHalf, { backgroundColor: (grades[grade]?.color || colors.primary) }]} />
+                                    <View style={[styles.capsuleHalf, { backgroundColor: '#FFF' }]} />
+                                </View>
+                                <Text style={[styles.generatingText, { color: colors.primary }]}>AI가 데이터 기반{'\n'}맞춤 처방전을 조제 중입니다...</Text>
                             </View>
-                            <Text style={[styles.generatingText, { color: colors.primary }]}>AI가 데이터 기반{'\n'}맞춤 처방전을 조제 중입니다...</Text>
-                        </View>
-                    ) : (
-                        <SafeAreaView style={{ flex: 1 }}>
+                        ) : (
                             <ScrollView contentContainerStyle={styles.rxScroll} showsVerticalScrollIndicator={false}>
                                 <View style={styles.rxHeader}>
                                     <View style={styles.rxStamp}>
-                                        <Text style={[styles.rxStampText, { color: currentGrade.color }]}>CERTIFIED</Text>
+                                        <Text style={[styles.rxStampText, { color: grades[grade]?.color || colors.primary }]}>CERTIFIED</Text>
                                     </View>
                                     <Text style={styles.rxTag}>ANTIGRAVITY PSYCHOLOGICAL RX</Text>
                                     <Text style={[styles.rxTitle, { color: colors.primary }]}>{prescription.title}</Text>
-                                    <View style={[styles.rxDivider, { backgroundColor: currentGrade.color + '30' }]} />
+                                    <View style={[styles.rxDivider, { backgroundColor: (grades[grade]?.color || colors.primary) + '30' }]} />
                                 </View>
 
                                 <View style={styles.rxSection}>
@@ -638,18 +707,20 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                                     </View>
                                     <View style={styles.rxRow}>
                                         <Text style={styles.rxLabel}>관계 등급</Text>
-                                        <Text style={[styles.rxValue, { color: currentGrade.color, fontWeight: '900' }]}>{grade} Grade ({currentGrade.name})</Text>
+                                        <Text style={[styles.rxValue, { color: grades[grade]?.color || colors.primary, fontWeight: '900' }]}>{grade} Grade ({grades[grade]?.name || 'Unknown'})</Text>
                                     </View>
                                 </View>
 
                                 <View style={[styles.rxMainCard, { backgroundColor: colors.white }]}>
                                     <View style={styles.pillIconContainer}>
-                                        <View style={[styles.pillIcon, { backgroundColor: currentGrade.color }]}>
+                                        <View style={[styles.pillIcon, { backgroundColor: grades[grade]?.color || colors.primary }]}>
                                             <Activity size={24} color="white" />
                                         </View>
-                                        <View>
+                                        <View style={{ flex: 1 }}>
                                             <Text style={styles.pillLabel}>처방 성분</Text>
-                                            <Text style={[styles.pillName, { color: colors.primary }]}>{prescription.pill}</Text>
+                                            <Text style={[styles.pillName, { color: colors.primary }]} numberOfLines={2}>
+                                                {prescription.pill}
+                                            </Text>
                                         </View>
                                     </View>
 
@@ -692,10 +763,11 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                                     </TouchableOpacity>
                                 </View>
                             </ScrollView>
-                        </SafeAreaView>
-                    )}
+                        )}
+                    </SafeAreaView>
                 </View>
             )}
+
             {/* Log Input Modal */}
             <Modal
                 transparent
@@ -754,7 +826,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                     </View>
                 </View>
             </Modal>
-        </View >
+        </View>
     );
 };
 
@@ -1213,8 +1285,8 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     rxScroll: {
-        padding: 24,
-        paddingTop: 40,
+        paddingHorizontal: 20,
+        paddingTop: 20,
     },
     rxHeader: {
         alignItems: 'center',
@@ -1272,7 +1344,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     rxMainCard: {
-        padding: 24,
+        padding: 20,
         borderRadius: 32,
         shadowColor: 'rgba(0,0,0,0.05)',
         shadowOffset: { width: 0, height: 10 },
@@ -1472,5 +1544,52 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 15,
         fontWeight: '800',
+    },
+    // History Selector Styles
+    historyContainer: {
+        marginBottom: 20,
+    },
+    historyScroll: {
+        paddingHorizontal: 20,
+        gap: 10,
+    },
+    historyChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        borderWidth: 1,
+        gap: 6,
+    },
+    historyGradeDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    historyDate: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    chartLegend: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 16,
+        marginTop: 12,
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    legendDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    legendText: {
+        fontSize: 11,
+        fontWeight: '600',
+        opacity: 0.5,
     },
 });

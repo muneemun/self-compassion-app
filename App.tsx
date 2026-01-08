@@ -45,6 +45,7 @@ function App() {
     phoneNumber?: string;
     image?: string;
   } | null>(null);
+  const [autoOpenLog, setAutoOpenLog] = useState(false);
   const hasCompletedOnboarding = useAppStore(state => state.hasCompletedOnboarding);
   const { addRelationship, updateDiagnosisResult } = useRelationshipStore();
 
@@ -76,6 +77,7 @@ function App() {
                           setSelectedNodeId(null);
                         }
                       }}
+                      onViewReport={() => setIsViewingReport(true)}
                       onComplete={(result) => {
                         // 진단 완료 시 실제 프로필 추가
                         if (pendingRelationship) {
@@ -117,13 +119,17 @@ function App() {
                   ) : (
                     <RelationshipDetail
                       relationshipId={selectedNodeId}
-                      onBack={() => setSelectedNodeId(null)}
+                      onBack={() => {
+                        setSelectedNodeId(null);
+                        setAutoOpenLog(false);
+                      }}
                       onDiagnose={(mode) => {
                         setDiagnosisMode(mode);
                         setIsDiagnosing(true);
                       }}
                       onManageProfile={() => setIsManagingProfile(true)}
                       onViewReport={() => setIsViewingReport(true)}
+                      autoOpenLog={autoOpenLog}
                     />
                   )
                 ) : isAddingRelationship ? (
@@ -133,6 +139,7 @@ function App() {
                       setPendingRelationship(data);
                       // 임시 ID로 진단 시작
                       setSelectedNodeId('temp-' + Date.now());
+                      setDiagnosisMode('ZONE'); // Force ZONE diagnosis for new relationships
                       setIsAddingRelationship(false);
                       setIsDiagnosing(true);
                     }}
@@ -152,7 +159,15 @@ function App() {
                         <MainOrbitMap
                           onSelectNode={(id: string) => setSelectedNodeId(id)}
                           onPressAdd={() => setIsAddingRelationship(true)}
-                          onPressSos={() => setActiveTab('sos')}
+                          onDiagnose={(id, mode) => {
+                            setSelectedNodeId(id);
+                            setDiagnosisMode(mode);
+                            setIsDiagnosing(true);
+                          }}
+                          onRecordLog={(id) => {
+                            setSelectedNodeId(id);
+                            setAutoOpenLog(true);
+                          }}
                         />
                       </View>
                       <View style={activeTab === 'insight' ? styles.tabActive : styles.tabHidden}>

@@ -20,116 +20,113 @@ interface RelationshipState {
         event?: string;
     }) => void;
     addInteraction: (id: string, date: string, temperature: number, title: string, description: string) => void;
+
+    // View State Persistence
+    orbitMapViewState: OrbitMapViewState;
+    setOrbitMapViewState: (newState: Partial<OrbitMapViewState>) => void;
 }
 
-// 초기 목업 데이터
-// 초기 목업 데이터 (테스트를 위해 15명으로 확장)
-const INITIAL_DATA: RelationshipNode[] = [
-    {
-        id: '1',
-        name: '김민수',
-        role: '가장 친한 친구',
-        type: 'friend',
-        zone: 1,
-        temperature: 98,
-        lastInteraction: '2시간 전',
-        metrics: { trust: 95, communication: 92, frequency: 100, satisfaction: 98 },
-        history: [{ date: '2024-01-01', temperature: 90, title: '심야 고민 상담', oxytocin: 80, cortisol: 20 }, { date: '2024-02-01', temperature: 98, title: '취업 축하 파티', oxytocin: 95, cortisol: 10 }],
-        image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
-    },
-    {
-        id: '2',
-        name: '최은경',
-        role: '배우자',
-        type: 'partner',
-        zone: 1,
-        temperature: 94,
-        lastInteraction: '3개월 전', // 조율 대상: 소홀해진 안전기지 케이스
-        metrics: { trust: 98, communication: 30, frequency: 20, satisfaction: 95 },
-        history: [{ date: '2024-01-01', temperature: 88, title: '새해맞이 여행', oxytocin: 90, cortisol: 15 }, { date: '2024-02-01', temperature: 94, title: '주말 브런치', oxytocin: 92, cortisol: 12 }],
-        image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-    },
-    {
-        id: '3',
-        name: '정성훈',
-        role: '멘토 / 직장 상사',
-        type: 'work',
-        zone: 2,
-        temperature: 82,
-        lastInteraction: '3일 전',
-        metrics: { trust: 85, communication: 75, frequency: 60, satisfaction: 80 },
-        history: [{ date: '2024-01-15', temperature: 75, title: '업무 피드백' }, { date: '2024-02-01', temperature: 82, title: '점심 식사' }],
-        image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
-    },
-    {
-        id: '5',
-        name: '박준호',
-        role: '비즈니스 파트너',
-        type: 'work',
-        zone: 3,
-        temperature: 55,
-        lastInteraction: '1주일 전', // 조율 대상: 에너지 효율 저하 케이스 (노력 큼, 보람 적음)
-        metrics: { trust: 70, communication: 95, frequency: 90, satisfaction: 40 },
-        history: [{ date: '2024-01-20', temperature: 60 }, { date: '2024-02-01', temperature: 65 }],
-    },
-    {
-        id: '16',
-        name: '이지현',
-        role: '뉴미디어 아티스트',
-        type: 'other',
-        zone: 3,
-        temperature: 50,
-        lastInteraction: '방금 추가됨', // 조율 대상: 새로운 인연 케이스
-        metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
-        history: [],
-        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
-    },
-    {
-        id: '4',
-        name: '이보람',
-        role: '친여동생',
-        type: 'family',
-        zone: 1,
-        temperature: 87,
-        lastInteraction: '어제',
-        metrics: { trust: 90, communication: 65, frequency: 40, satisfaction: 85 },
-        history: [{ date: '2024-01-10', temperature: 92 }, { date: '2024-02-01', temperature: 87 }],
-        image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop',
-    },
-    {
-        id: '6',
-        name: '한소희',
-        role: '대학 동기',
-        type: 'friend',
-        zone: 2,
-        temperature: 78,
-        lastInteraction: '2주 전',
-        metrics: { trust: 80, communication: 70, frequency: 45, satisfaction: 75 },
-        history: [],
-    },
-    {
-        id: '7',
-        name: 'David Wilson',
-        role: 'Global Team Lead',
-        type: 'work',
-        zone: 3,
-        temperature: 58,
-        lastInteraction: '어제',
-        metrics: { trust: 60, communication: 90, frequency: 80, satisfaction: 55 },
-        history: [],
-    },
-    {
-        id: '10',
-        name: '송지효',
-        role: '고등학교 동창',
-        type: 'friend',
-        zone: 5,
-        temperature: 25,
-        lastInteraction: '6개월 전',
-        metrics: { trust: 40, communication: 20, frequency: 10, satisfaction: 30 },
-        history: [],
+export interface OrbitMapViewState {
+    zoomLevel: number;
+    selectedFilters: string[];
+    activeSearchTag: string;
+    sortMode: 'default' | 'hot' | 'cold';
+    isFilterExpanded: boolean;
+}
+
+// 대규모 테스트를 위한 가상 데이터 생성기
+const generateMockRelationships = (count: number): RelationshipNode[] => {
+    const firstNames = ['민준', '서준', '도윤', '예준', '시우', '하준', '주원', '지호', '지후', '준서', '서윤', '서연', '지우', '하윤', '하은', '민서', '지유', '윤서', '채원', '수아', '현우', '동현', '준영', '건우', '태은', '유진', '민지', '수빈'];
+    const lastNames = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황', '안', '송', '전', '홍'];
+    const roles = ['대학 동기', '회사 동료', '초중고 친구', '거래처 담당자', '먼 친척', '동호회 회원', '이웃', '스터디 멤버', '군대 동기', '전 직장 동료', '운동 파트너', '프로젝트 팀원'];
+    const types: RelationshipNode['type'][] = ['friend', 'work', 'family', 'other'];
+
+    const nodes: RelationshipNode[] = [];
+
+    // Safety Base (Zone 1) - 약 5명
+    for (let i = 0; i < 5; i++) {
+        const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        nodes.push({
+            id: `mock-1-${i}`,
+            name,
+            role: '가장 소중한 인연',
+            type: types[Math.floor(Math.random() * types.length)],
+            zone: 1,
+            temperature: 90 + Math.floor(Math.random() * 10),
+            lastInteraction: '오늘',
+            metrics: { trust: 90 + Math.random() * 10, communication: 80 + Math.random() * 20, frequency: 90 + Math.random() * 10, satisfaction: 90 + Math.random() * 10 },
+            history: [],
+        });
     }
-];
+
+    // Support (Zone 2) - 약 25명
+    for (let i = 0; i < 25; i++) {
+        const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        nodes.push({
+            id: `mock-2-${i}`,
+            name,
+            role: roles[Math.floor(Math.random() * roles.length)],
+            type: types[Math.floor(Math.random() * types.length)],
+            zone: 2,
+            temperature: 70 + Math.floor(Math.random() * 20),
+            lastInteraction: '며칠 전',
+            metrics: { trust: 70 + Math.random() * 20, communication: 60 + Math.random() * 30, frequency: 50 + Math.random() * 40, satisfaction: 70 + Math.random() * 20 },
+            history: [],
+        });
+    }
+
+    // Strategic (Zone 3) - 약 40명
+    for (let i = 0; i < 40; i++) {
+        const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        nodes.push({
+            id: `mock-3-${i}`,
+            name,
+            role: roles[Math.floor(Math.random() * roles.length)],
+            type: 'work',
+            zone: 3,
+            temperature: 50 + Math.floor(Math.random() * 20),
+            lastInteraction: '이번 주',
+            metrics: { trust: 50 + Math.random() * 40, communication: 70 + Math.random() * 30, frequency: 60 + Math.random() * 30, satisfaction: 50 + Math.random() * 30 },
+            history: [],
+        });
+    }
+
+    // Social (Zone 4) - 약 50명
+    for (let i = 0; i < 50; i++) {
+        const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        nodes.push({
+            id: `mock-4-${i}`,
+            name,
+            role: '지인',
+            type: 'other',
+            zone: 4,
+            temperature: 30 + Math.floor(Math.random() * 25),
+            lastInteraction: '한 달 전',
+            metrics: { trust: 30 + Math.random() * 50, communication: 30 + Math.random() * 40, frequency: 20 + Math.random() * 40, satisfaction: 30 + Math.random() * 40 },
+            history: [],
+        });
+    }
+
+    // Background (Zone 5) - 나머지 (약 30명)
+    for (let i = 0; i < count - nodes.length; i++) {
+        const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        nodes.push({
+            id: `mock-5-${i}`,
+            name,
+            role: '배경 소음',
+            type: 'other',
+            zone: 5,
+            temperature: 10 + Math.floor(Math.random() * 20),
+            lastInteraction: '기억 안남',
+            metrics: { trust: 20 + Math.random() * 30, communication: 10 + Math.random() * 30, frequency: 5 + Math.random() * 20, satisfaction: 20 + Math.random() * 30 },
+            history: [],
+        });
+    }
+
+    return nodes;
+};
+
+const INITIAL_DATA: RelationshipNode[] = generateMockRelationships(150);
 
 export const useRelationshipStore = create<RelationshipState>((set, get) => ({
     relationships: INITIAL_DATA,
@@ -216,12 +213,27 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
                     event: data.event,
                 };
 
+                const newHistory = [...r.history, newHistoryEntry].slice(-12);
+                let newRqsHistory = r.rqsHistory || [];
+                // If history is empty but we have an existing result, seed it
+                if (newRqsHistory.length === 0 && r.rqsResult) {
+                    newRqsHistory = [r.rqsResult];
+                }
+
+                if (data.rqsResult) {
+                    const isDuplicate = newRqsHistory.some(h => h?.lastChecked === data.rqsResult?.lastChecked);
+                    if (!isDuplicate) {
+                        newRqsHistory = [...newRqsHistory, data.rqsResult].slice(-10);
+                    }
+                }
+
                 return {
                     ...r,
                     temperature: data.temperature ?? r.temperature,
                     zone: data.zone ?? r.zone,
                     rqsResult: data.rqsResult ?? r.rqsResult,
-                    history: [...r.history, newHistoryEntry].slice(-12),
+                    history: newHistory,
+                    rqsHistory: newRqsHistory,
                 };
             }),
         }));
@@ -250,6 +262,20 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
                     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                 };
             })
+        }));
+    },
+
+    // View State Implementation
+    orbitMapViewState: {
+        zoomLevel: 1.0,
+        selectedFilters: ['전체'],
+        activeSearchTag: '전체',
+        sortMode: 'default',
+        isFilterExpanded: false,
+    },
+    setOrbitMapViewState: (newState) => {
+        set((state) => ({
+            orbitMapViewState: { ...state.orbitMapViewState, ...newState }
         }));
     },
 }));

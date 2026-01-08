@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, 
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
 import { UI_CONSTANTS, COMMON_STYLES } from '../../theme/LayoutStyles';
-import { ArrowLeft, Check, Users, Info, X, Shield, ArrowRight, Star, Heart, Zap, TrendingUp, RefreshCw, Activity } from 'lucide-react-native';
+import { ArrowLeft, Check, Users, Info, X, Shield, ArrowRight, Star, Heart, Zap, TrendingUp, RefreshCw, Activity, Sparkles } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 
 const { width, height } = Dimensions.get('window');
@@ -16,6 +16,7 @@ interface RQSTestProps {
         name: string;
         image?: string;
     };
+    onViewReport?: (id: string) => void;
 }
 
 type RQSPhase = 'TEST' | 'ANIMATION' | 'RESULT';
@@ -45,7 +46,7 @@ const GRADES: Record<'S' | 'A' | 'B' | 'C', { name: string; min: number; color: 
     C: { name: '에너지 뱀파이어 (Vampire)', min: 0, color: '#2C2C2C', desc: '[독성 관계] 당신의 자아를 파괴하고 스트레스 호르몬(코르티솔)을 급증시킵니다. 정서적 분리(Gray Rock)를 즉시 시행하고 사적인 유대를 끊으십시오.' },
 };
 
-export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData }: RQSTestProps) => {
+export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onViewReport }: RQSTestProps) => {
     const colors = useColors();
     const { getRelationshipById, updateRelationship, updateDiagnosisResult } = useRelationshipStore();
     const foundNode = getRelationshipById(relationshipId);
@@ -183,14 +184,14 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData }: RQS
 
     const renderHeader = () => (
         <View style={COMMON_STYLES.headerContainer}>
-            <TouchableOpacity onPress={handleBack} style={COMMON_STYLES.secondaryActionBtn}>
-                <X size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
-            </TouchableOpacity>
+            <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
             <View style={{ alignItems: 'center' }}>
                 <Text style={[styles.headerSub, { color: colors.primary, opacity: 0.5 }]}>RQS 심화 진단</Text>
                 <Text style={[styles.headerTitle, { color: colors.primary }]}>캐릭터 판별 테스트</Text>
             </View>
-            <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
+            <TouchableOpacity onPress={handleBack} style={COMMON_STYLES.secondaryActionBtn}>
+                <X size={UI_CONSTANTS.ICON_SIZE} color={colors.primary} />
+            </TouchableOpacity>
         </View>
     );
 
@@ -374,11 +375,40 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData }: RQS
                     </View>
                 </View>
 
+                {/* Contextual Guidance or Actions */}
+                {!!pendingData ? (
+                    <View style={[styles.guidanceBox, { backgroundColor: colors.accent + '08', borderColor: colors.accent + '20' }]}>
+                        <View style={[styles.guidanceIconBox, { backgroundColor: colors.accent }]}>
+                            <Sparkles size={14} color="white" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.guidanceTitle, { color: colors.accent }]}>진단 결과 확인 안내</Text>
+                            <Text style={[styles.guidanceText, { color: colors.primary }]}>
+                                심화 진단 리포트와 심리 처방전은{'\n'}
+                                <Text style={{ fontWeight: '800' }}>인물 상세 페이지</Text>에서 확인하실 수 있습니다.
+                            </Text>
+                        </View>
+                    </View>
+                ) : (
+                    <TouchableOpacity
+                        style={[styles.reportBtn, { borderColor: colors.primary }]}
+                        onPress={() => {
+                            onComplete(localResult);
+                            onViewReport?.(relationshipId);
+                        }}
+                    >
+                        <TrendingUp size={20} color={colors.primary} />
+                        <Text style={[styles.reportBtnText, { color: colors.primary }]}>심화 진단 리포트 보기</Text>
+                    </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                     style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
                     onPress={() => onComplete(localResult)}
                 >
-                    <Text style={styles.confirmText}>결과 저장 및 궤도 확인</Text>
+                    <Text style={styles.confirmText}>
+                        {!!pendingData ? '결과 저장 및 궤도 확인' : '확인 및 닫기'}
+                    </Text>
                     <Check size={20} color="#fff" />
                 </TouchableOpacity>
                 <View style={{ height: 40 }} />
@@ -673,5 +703,50 @@ const styles = StyleSheet.create({
     prevText: {
         fontSize: 13,
         fontWeight: '600',
+    },
+    guidanceBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        padding: 20,
+        borderRadius: 24,
+        borderWidth: 1.5,
+        marginTop: 10,
+        marginBottom: 16,
+    },
+    guidanceIconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    guidanceTitle: {
+        fontSize: 14,
+        fontWeight: '900',
+        marginBottom: 4,
+        letterSpacing: -0.3,
+    },
+    guidanceText: {
+        fontSize: 13,
+        fontWeight: '600',
+        lineHeight: 18,
+        flex: 1,
+        opacity: 0.8,
+    },
+    reportBtn: {
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 1.5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 10,
+        marginBottom: 10,
+    },
+    reportBtnText: {
+        fontSize: 16,
+        fontWeight: '800',
     },
 });

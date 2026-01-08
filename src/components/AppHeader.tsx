@@ -26,14 +26,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
+        paddingLeft: 16,
+        paddingRight: 24, // Increased right padding to prevent button from hugging the edge
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(0,0,0,0.05)',
     },
     sideContainer: {
-        width: 44,
+        minWidth: 44, // Changed from fixed width to minWidth for flexibility
+        flexDirection: 'row', // Ensure content aligns properly
+        justifyContent: 'flex-end', // Align content to the outer edges
         alignItems: 'center',
-        justifyContent: 'center',
     },
     title: {
         fontSize: 18,

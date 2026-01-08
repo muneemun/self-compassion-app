@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, Alert, Modal, TextInput } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle, Line } from 'react-native-svg';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
 import { UI_CONSTANTS, COMMON_STYLES } from '../../theme/LayoutStyles';
-import { ArrowLeft, ArrowRight, MoreHorizontal, Activity, Heart, Calendar, Zap, HeartPulse, CheckCircle2, Plus, Info, X, RefreshCw, Edit3, Shield, TrendingUp, HelpCircle, ChevronRight, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, MoreHorizontal, Activity, Heart, Calendar, Zap, HeartPulse, CheckCircle2, Plus, Info, X, RefreshCw, Edit3, Shield, TrendingUp, HelpCircle, ChevronRight, Sparkles, Star, Trash2, Flame, Snowflake } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 
 const { width } = Dimensions.get('window');
@@ -15,9 +15,10 @@ interface RelationshipDetailProps {
     onDiagnose: (mode: "ZONE" | "RQS") => void;
     onManageProfile: () => void;
     onViewReport: () => void;
+    autoOpenLog?: boolean;
 }
 
-export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManageProfile, onViewReport }: RelationshipDetailProps) => {
+export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManageProfile, onViewReport, autoOpenLog }: RelationshipDetailProps) => {
     const colors = useColors();
     const node = useRelationshipStore(state => state.relationships.find(r => r.id === relationshipId));
     const addInteraction = useRelationshipStore(state => state.addInteraction);
@@ -26,8 +27,15 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     // Log Modal State
     const [showLogModal, setShowLogModal] = useState(false);
-    const [newLog, setNewLog] = useState({ title: '', description: '', temperature: 50 });
+    const [showHealthCheckModal, setShowHealthCheckModal] = useState(false);
+    const [newLog, setNewLog] = useState({ title: '', description: '', temperature: node.temperature, oxytocin: 85, cortisol: 30 });
     const [graphPeriod, setGraphPeriod] = useState<'Weekly' | 'Monthly' | 'Yearly'>('Weekly');
+
+    useEffect(() => {
+        if (autoOpenLog) {
+            setShowLogModal(true);
+        }
+    }, [autoOpenLog]);
 
     const formatDate = (dateStr: string) => {
         const d = new Date(dateStr);
@@ -106,7 +114,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
         setTimeout(() => {
             const today = new Date().toISOString().split('T')[0];
             addInteraction(relationshipId, today, newLog.temperature, newLog.title, newLog.description);
-            setNewLog({ title: '', description: '', temperature: 50 });
+            setNewLog(prev => ({ ...prev, title: '', description: '', temperature: node.temperature }));
         }, 100);
     };
 
@@ -155,13 +163,21 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     const oxytocin = rqs ? Math.round((rqs.areas.vitality + rqs.areas.reciprocity) / 8 * 100) : 85;
     const cortisol = rqs ? Math.round((4 - rqs.areas.safety) / 4 * 100) : 32;
 
-    const getZoneGuide = (zone: number): { name: string; count: string; energy: string; desc: string; color: string } => {
+    // 🌀 Calculate Dynamics (Active Interaction State)
+    const dynamics = useMemo(() => {
+        // Status Colors that fit the concept
+        if (node.temperature >= 80) return { level: 'high', color: '#D98B73' }; // Flame concept
+        if (node.temperature <= 40) return { level: 'low', color: '#90A4AE' };  // Snowflake concept
+        return { level: 'medium', color: '#4A5D4E' }; // Normal Activity concept
+    }, [node.temperature]);
+
+    const getZoneGuide = (zone: number): { name: string; count: string; energy: string; desc: string; color: string, icon: any } => {
         const guides: Record<number, any> = {
-            1: { name: '안전 기지', count: '1~5명', energy: '50%', desc: '무조건적인 수용과 정서적 안전감 제공', color: '#D98B73' },
-            2: { name: '심리적 우군', count: '10~15명', energy: '25%', desc: '가치관을 공유하며 정기적으로 교류함', color: '#4A5D4E' },
-            3: { name: '전략적 동행', count: '유동적', energy: '15%', desc: '업무/필요에 의해 자주 보나 유대는 낮음', color: '#6B7F70' },
-            4: { name: '사회적 지인', count: '최대 150명', energy: '10%', desc: '이름과 얼굴을 아는 인지적 한계선', color: '#8A9A8D' },
-            5: { name: '배경 소음', count: '무제한', energy: '0%', desc: '인지 범위 밖의 타인 및 불필요한 연결', color: '#B0B0B0' },
+            1: { name: '핵심 그룹', count: '1~5명', energy: '50%', desc: '무조건적인 수용과 정서적 안전감 제공', color: '#FFB74D', icon: Heart },
+            2: { name: '정서적 공유 그룹', count: '10~15명', energy: '25%', desc: '가치관을 공유하며 정기적으로 교류함', color: '#D98B73', icon: Star },
+            3: { name: '기능적 협력 관계', count: '유동적', energy: '15%', desc: '업무/필요에 의해 자주 보나 유대는 낮음', color: '#4A5D4E', icon: Zap },
+            4: { name: '단순 인지 관계', count: '최대 150명', energy: '10%', desc: '이름과 얼굴을 아는 인지적 한계선', color: '#90A4AE', icon: Calendar },
+            5: { name: '배경 소음(외부 환경)', count: '무제한', energy: '0%', desc: '인지 범위 밖의 타인 및 불필요한 연결', color: '#D1D5DB', icon: Trash2 },
         };
         return guides[zone] || guides[5];
     };
@@ -198,7 +214,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
         oxytocin: {
             title: '옥시토신 (Oxytocin)',
             sub: '유대감과 치유의 호르몬',
-            info: '상대와 정서적으로 깊이 연결되어 있다고 느낄 때 분비되는 사랑과 신뢰의 물질입니다. 높은 수치는 이 관계가 당신에게 정서적 안도감과 회복의 에너지를 주는 "안전 기지"임을 의미합니다.'
+            info: '상대와 정서적으로 깊이 연결되어 있다고 느낄 때 분비되는 사랑과 신뢰의 물질입니다. 높은 수치는 이 관계가 당신에게 정서적 안도감과 회복의 에너지를 주는 "핵심 그룹"임을 의미합니다.'
         },
         cortisol: {
             title: '코르티솔 (Cortisol)',
@@ -317,25 +333,97 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     };
 
     const handleHealthCheck = () => {
-        Alert.alert(
-            "Relationship Health Check",
-            "어떤 진단을 다시 진행하시겠습니까?",
-            [
-                {
-                    text: "오빗 존(Zone) 재설정",
-                    onPress: () => onDiagnose('ZONE')
-                },
-                {
-                    text: "질적 캐릭터 심화 진단",
-                    onPress: () => onDiagnose('RQS')
-                },
-                {
-                    text: "취소",
-                    style: "cancel"
-                }
-            ]
-        );
+        setShowHealthCheckModal(true);
     };
+
+    const renderHealthCheckModal = () => (
+        <Modal
+            transparent
+            visible={showHealthCheckModal}
+            animationType="fade"
+            onRequestClose={() => setShowHealthCheckModal(false)}
+        >
+            <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowHealthCheckModal(false)} />
+                <View style={[styles.floatingPopupCard, { backgroundColor: colors.white, paddingHorizontal: 24, paddingVertical: 32 }]}>
+                    <View style={styles.modalHeader}>
+                        <View style={{ width: 24 }} />
+                        <Text style={[styles.modalTitle, { color: colors.primary }]}>정서적 체크인</Text>
+                        <TouchableOpacity onPress={() => setShowHealthCheckModal(false)}>
+                            <X size={24} color={colors.primary} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.selectedPersonHeader}>
+                        <View style={[styles.largeAvatar, { borderColor: colors.primary }]}>
+                            {node.image ? (
+                                <Image source={{ uri: node.image }} style={styles.largeAvatarImg} />
+                            ) : (
+                                <Text style={{ fontSize: 32 }}>{node.name.charAt(0)}</Text>
+                            )}
+                        </View>
+                        <Text style={[styles.actionTitle, { color: colors.primary }]}>{node.name}님</Text>
+                        <Text style={[styles.actionSubtitle, { color: colors.primary, opacity: 0.6 }]}>
+                            관계를 건강하게 유지하기 위한{"\n"}진단 액션을 선택해 주세요
+                        </Text>
+                    </View>
+
+                    <View style={styles.actionGrid}>
+                        <TouchableOpacity
+                            style={styles.actionCardLarge}
+                            onPress={() => {
+                                setShowHealthCheckModal(false);
+                                setTimeout(() => setShowLogModal(true), 300);
+                            }}
+                        >
+                            <View style={[styles.actionIconBgLarge, { backgroundColor: '#F0F4F0' }]}>
+                                <Edit3 size={24} color={colors.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.actionLabelLarge, { color: colors.primary }]}>정서 기록</Text>
+                                <Text style={[styles.actionDescLarge, { color: colors.primary, opacity: 0.5 }]}>오늘의 대화나 기분을 기록합니다</Text>
+                            </View>
+                            <ChevronRight size={20} color={colors.primary} opacity={0.3} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.actionCardLarge}
+                            onPress={() => {
+                                setShowHealthCheckModal(false);
+                                onDiagnose('ZONE');
+                            }}
+                        >
+                            <View style={[styles.actionIconBgLarge, { backgroundColor: '#FFF5F0' }]}>
+                                <RefreshCw size={24} color={colors.accent} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.actionLabelLarge, { color: colors.primary }]}>오빗존 재설정</Text>
+                                <Text style={[styles.actionDescLarge, { color: colors.primary, opacity: 0.5 }]}>심리적 거리를 다시 측정합니다</Text>
+                            </View>
+                            <ChevronRight size={20} color={colors.primary} opacity={0.3} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.actionCardLarge}
+                            onPress={() => {
+                                setShowHealthCheckModal(false);
+                                onDiagnose('RQS');
+                            }}
+                        >
+                            <View style={[styles.actionIconBgLarge, { backgroundColor: '#F0F7FF' }]}>
+                                <Zap size={24} color="#4A90E2" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.actionLabelLarge, { color: colors.primary }]}>캐릭터 심화 진단</Text>
+                                <Text style={[styles.actionDescLarge, { color: colors.primary, opacity: 0.5 }]}>관계의 질적 분석을 수행합니다</Text>
+                            </View>
+                            <ChevronRight size={20} color={colors.primary} opacity={0.3} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
 
     const renderHeader = () => (
         <View style={[styles.header, { backgroundColor: colors.background + 'E6' }]}>
@@ -382,7 +470,6 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         onPress={onManageProfile}
                         activeOpacity={0.7}
                     >
-                        <View style={styles.auraBlur} />
                         <View style={styles.avatarShadow}>
                             <View style={[styles.avatarWrapper, { backgroundColor: colors.white, borderWidth: 4, borderColor: rqs ? rqs.color : getZoneGuide(node.zone).color }]}>
                                 {node.image ? (
@@ -393,31 +480,36 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                     </View>
                                 )}
                             </View>
-                            <View style={[styles.statusBadge, { backgroundColor: colors.primary, borderColor: colors.background }]}>
-                                <Activity color={colors.white} size={18} />
-                            </View>
-                            <View style={[styles.editBadge, { backgroundColor: colors.accent }]}>
-                                <Edit3 color={colors.white} size={10} />
+                            <View style={[styles.statusBadge, { backgroundColor: dynamics.color, borderColor: colors.background }]}>
+                                {node.temperature >= 80 ? (
+                                    <Flame color={colors.white} size={18} fill={colors.white} />
+                                ) : node.temperature <= 40 ? (
+                                    <Snowflake color={colors.white} size={18} />
+                                ) : (
+                                    <Activity color={colors.white} size={18} />
+                                )}
                             </View>
                         </View>
                         <View style={styles.profileInfo}>
-                            {node.role && (
-                                <View style={[styles.tag, { backgroundColor: colors.accent + '1A' }]}>
-                                    <Text style={[styles.tagText, { color: colors.accent }]}>{node.role}</Text>
-                                </View>
-                            )}
+                            <Text style={[styles.name, { color: colors.primary }]}>{node.name}</Text>
                             <View style={styles.tagRow}>
-                                <View style={styles.zoneTagContainer}>
-                                    <TouchableOpacity
-                                        style={[styles.tag, { backgroundColor: colors.primary + '0D' }]}
-                                        onPress={() => setActivePopup('zone')}
-                                    >
-                                        <Text style={[styles.tagText, { color: colors.primary, opacity: 0.8 }]}>
-                                            Orbit {node.zone}: {getZoneGuide(node.zone).name}
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                </View>
+                                {node.role && (
+                                    <View style={[styles.tag, { backgroundColor: colors.accent + '1A' }]}>
+                                        <Text style={[styles.tagText, { color: colors.accent }]}>{node.role}</Text>
+                                    </View>
+                                )}
+                                <TouchableOpacity
+                                    style={[styles.tag, { backgroundColor: colors.primary + '0D', flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                                    onPress={() => setActivePopup('zone')}
+                                >
+                                    {(() => {
+                                        const Icon = getZoneGuide(node.zone).icon;
+                                        return <Icon size={14} color={colors.primary} opacity={0.6} />;
+                                    })()}
+                                    <Text style={[styles.tagText, { color: colors.primary, opacity: 0.8 }]}>
+                                        Orbit {node.zone}: {getZoneGuide(node.zone).name}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
                         </View>
                     </TouchableOpacity>
@@ -672,25 +764,6 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         </View>
 
 
-                        {/* Layer Determination Checklist link */}
-                        <TouchableOpacity
-                            style={[styles.rediagnoseLink, { backgroundColor: 'rgba(74, 93, 78, 0.05)', marginTop: 24 }]}
-                            onPress={() => onDiagnose("ZONE")}
-                        >
-                            <Shield size={14} color={colors.primary} style={{ opacity: 0.6 }} />
-                            <Text style={[styles.rediagnoseText, { color: colors.primary }]}>관계 층위 판별 체크리스트 (오빗 존 재설정)</Text>
-                            <ArrowRight size={14} color={colors.primary} />
-                        </TouchableOpacity>
-
-                        {/* RQS Re-diagnose link */}
-                        <TouchableOpacity
-                            style={[styles.rediagnoseLink, { marginTop: 10 }]}
-                            onPress={() => onDiagnose("RQS")}
-                        >
-                            <Activity size={14} color={colors.accent} style={{ opacity: 0.6 }} />
-                            <Text style={[styles.rediagnoseText, { color: colors.accent }]}>질적 캐릭터 심화 진단 다시 하기</Text>
-                            <ArrowRight size={14} color={colors.accent} />
-                        </TouchableOpacity>
                         <View style={{ height: 120 }} />
                     </View>
                 </View>
@@ -765,7 +838,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
             {/* Floating Health Check Button */}
             <View style={styles.fabContainer}>
                 <View style={[styles.fabLabel, { backgroundColor: colors.white + 'F2' }]}>
-                    <Text style={[styles.fabLabelText, { color: colors.primary }]}>건강 확인</Text>
+                    <Text style={[styles.fabLabelText, { color: colors.primary }]}>체크인</Text>
                 </View>
                 <TouchableOpacity
                     style={[styles.fab, { backgroundColor: colors.accent }]}
@@ -845,6 +918,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                     </View>
                 </View>
             </Modal>
+            {renderHealthCheckModal()}
         </View >
     );
 };
@@ -922,7 +996,7 @@ const styles = StyleSheet.create({
     },
     profileInfo: {
         alignItems: 'center',
-        gap: 6,
+        gap: 12,
     },
     name: {
         fontSize: 24,
@@ -934,12 +1008,12 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     tag: {
-        paddingHorizontal: 12,
-        paddingVertical: 5,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         borderRadius: 99,
     },
     tagText: {
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: '800',
         textTransform: 'uppercase',
     },
@@ -959,6 +1033,22 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
+    },
+    tempWarningBadge: {
+        position: 'absolute',
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        borderWidth: 2,
+        borderColor: '#FCF9F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        zIndex: 20,
     },
     statsGrid: {
         flexDirection: 'row',
@@ -1113,11 +1203,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
     },
     saveBtnText: {
         color: '#fff',
@@ -1535,6 +1620,77 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '900',
+    },
+    // Health Check Modal Styles
+    selectedPersonHeader: {
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    largeAvatar: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        borderWidth: 3,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9F9F9',
+        marginBottom: 12,
+        overflow: 'hidden',
+    },
+    largeAvatarImg: {
+        width: '100%',
+        height: '100%',
+    },
+    actionTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#2F332F',
+        textAlign: 'center',
+        letterSpacing: -0.5,
+    },
+    actionSubtitle: {
+        fontSize: 12,
+        textAlign: 'center',
+        marginTop: 4,
+        fontWeight: '600',
+        lineHeight: 20,
+    },
+    actionGrid: {
+        width: '100%',
+        gap: 12,
+        marginTop: 24,
+    },
+    actionCardLarge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        padding: 12,
+        borderRadius: 20,
+        marginBottom: 8,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(74,93,78,0.05)',
+        shadowColor: '#4A5D4E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    actionIconBgLarge: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    actionLabelLarge: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    actionDescLarge: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 2,
     },
 });
 

@@ -26,34 +26,34 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
     // 🔍 1. Zone Information Mapping
     const ZONE_INFO = {
         zone1: {
-            name: '안전 기지 (Safety Base)',
+            name: '핵심 그룹',
             targetMin: 45, targetMax: 55, targetIdeal: 50,
             networkSizeLabel: '1~5명',
-            color: colors.accent, icon: Heart,
+            color: '#FFB74D', icon: Heart,
             desc: '무조건적인 수용과 정서적 안전감을 제공하는 관계입니다. 당신의 자아가 완전히 무장해제하고 쉴 수 있는 가장 핵심적인 심리적 지지층으로, 삶의 회복탄력성을 지탱하는 뿌리입니다.',
             over: '과잉 시 특정인에 대한 의존도가 지나치게 높아져 자생적 회복력이 약해질 수 있습니다.',
             under: '부족 시 근원적인 고립감과 정서적 허기를 느끼며 작은 스트레스에도 쉽게 무너질 수 있습니다.'
         },
         zone2: {
-            name: '심리적 우군 (Allies)',
+            name: '정서적 공유 그룹',
             targetMin: 20, targetMax: 30, targetIdeal: 25,
             networkSizeLabel: '10~15명',
-            color: '#FFB74D', icon: Star,
+            color: '#D98B73', icon: Star,
             desc: '가치관과 취향을 공유하며 정기적으로 에너지를 주고받는 관계입니다. 건강한 자아상을 확인하고 외연을 확장할 수 있는 거울과 같은 역할을 수행합니다.',
             over: '과잉 시 타인의 시너지를 추구하다가 자신의 고유한 색깔과 주도성을 잃을 위험이 있습니다.',
             under: '부족 시 정서적 환기구가 부족해져 일상의 활력이 떨어지고 매너리즘에 빠지기 쉽습니다.'
         },
         zone3: {
-            name: '전략적 동행 (Strategic)',
+            name: '기능적 협력 관계',
             targetMin: 10, targetMax: 20, targetIdeal: 15,
             networkSizeLabel: '유동적',
-            color: colors.primary, icon: Zap,
+            color: '#4A5D4E', icon: Zap,
             desc: '업무적 목표나 사회적 합의를 위해 자주 교류하지만 정서적 유대는 비교적 낮은 관계입니다. 일상의 규칙성과 생산성을 지탱하는 기능적 지지대입니다.',
             over: '과잉 시 사무적 관계에 치여 정서적 소외감을 느끼고 번아웃(Burn-out)이 빠르게 찾아올 수 있습니다.',
             under: '부족 시 소속감이 약해지고 현실적인 협력 기반이 흔들려 사회적 성과 도출에 어려움을 겪을 수 있습니다.'
         },
         zone4: {
-            name: '사회적 지인 (Social)',
+            name: '단순 인지 관계',
             targetMin: 5, targetMax: 15, targetIdeal: 10,
             networkSizeLabel: '최대 150명',
             color: '#90A4AE', icon: Calendar,
@@ -62,7 +62,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             under: '적절한 배경 소음의 차단은 자아를 보호하는 강력한 심리적 방어막이 됩니다.'
         },
         zone5: {
-            name: '배경 소음 (Noise)',
+            name: '배경 소음(외부 환경)',
             targetMin: 0, targetMax: 5, targetIdeal: 0,
             networkSizeLabel: '무제한',
             color: '#D1D5DB', icon: Trash2,
@@ -394,7 +394,9 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                     <View style={styles.gaugeHeaderRow}>
                         <View>
                             <Text style={[styles.gaugeTitle, { color: colors.primary }]}>{ZONE_INFO[selectedZone].name}</Text>
-                            <Text style={[styles.gaugeSubTitle, { color: colors.primary, opacity: 0.5 }]}>현재 {zoneCounts[selectedZone]}명이 머무는 중</Text>
+                            <Text style={[styles.gaugeSubTitle, { color: colors.primary, opacity: 0.5 }]}>
+                                현재 {zoneCounts[selectedZone]}명 (권장 {ZONE_INFO[selectedZone].networkSizeLabel})
+                            </Text>
                         </View>
                         <View style={styles.gaugeStatusBadge}>
                             {(() => {
@@ -473,6 +475,13 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                 <Text style={[styles.zoneDetailBody, { color: colors.primary, opacity: 0.7 }]}>
                     {ZONE_INFO[selectedZone].desc}
                 </Text>
+
+                <View style={[styles.networkSizeBox, { backgroundColor: ZONE_INFO[selectedZone].color + '10' }]}>
+                    <Users size={14} color={ZONE_INFO[selectedZone].color} />
+                    <Text style={[styles.networkSizeText, { color: ZONE_INFO[selectedZone].color }]}>
+                        권장 관계 밀도: {ZONE_INFO[selectedZone].networkSizeLabel}
+                    </Text>
+                </View>
 
                 <View style={{ height: 1, backgroundColor: 'rgba(74,93,78,0.05)', marginVertical: 16 }} />
 
@@ -1080,6 +1089,20 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         lineHeight: 18,
+    },
+    networkSizeBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        marginTop: 16,
+        alignSelf: 'flex-start',
+    },
+    networkSizeText: {
+        fontSize: 12,
+        fontWeight: '800',
     },
     trendStatus: {
         flexDirection: 'row',
