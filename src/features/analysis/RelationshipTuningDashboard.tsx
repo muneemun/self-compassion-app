@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,11 +8,11 @@ import {
     Dimensions,
     Image,
     Alert,
-    FlatList, // Added FlatList
+    FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { ChevronLeft, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2 } from 'lucide-react-native';
+import { ChevronLeft, ChevronUp, ChevronDown, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2 } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { AppHeader } from '../../components/AppHeader';
@@ -24,11 +24,11 @@ const { width } = Dimensions.get('window');
 
 // Define ZONE_INFO outside the component if it's a constant
 const ZONE_INFO = {
-    zone1: { targetMin: 15, targetMax: 25, targetIdeal: 20 }, // 안전기지
-    zone2: { targetMin: 15, targetMax: 25, targetIdeal: 20 }, // 성장
-    zone3: { targetMin: 20, targetMax: 30, targetIdeal: 25 }, // 확장
-    zone4: { targetMin: 10, targetMax: 20, targetIdeal: 15 }, // 탐색
-    zone5: { targetMin: 10, targetMax: 20, targetIdeal: 15 }, // 휴식
+    zone1: { targetMin: 15, targetMax: 25, targetIdeal: 20 }, // 핵심 그룹
+    zone2: { targetMin: 15, targetMax: 25, targetIdeal: 20 }, // 정서적 공유 그룹
+    zone3: { targetMin: 20, targetMax: 30, targetIdeal: 25 }, // 기능적 협력 관계
+    zone4: { targetMin: 10, targetMax: 20, targetIdeal: 15 }, // 단순 인지 관계
+    zone5: { targetMin: 10, targetMax: 20, targetIdeal: 15 }, // 배경 소음(외부 환경)
 };
 
 interface RelationshipTuningDashboardProps {
@@ -49,6 +49,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const [tournamentParticipants, setTournamentParticipants] = useState<RelationshipNode[]>([]);
     const [selectedLens, setSelectedLens] = useState<'None' | 'Positive' | 'Negative' | 'Frequency'>('None');
     const [showStabilityInfo, setShowStabilityInfo] = useState(false);
+    const [isRankingExpanded, setIsRankingExpanded] = useState(false);
 
     // 🎯 Dynamic Tuning Logic (Context-Aware)
     const handleStartContextualTuning = () => {
@@ -72,7 +73,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             sortedData = sortedData.sort((a, b) => getWeight(b.lastInteraction) - getWeight(a.lastInteraction));
         }
 
-        const participants = sortedData.slice(0, 6); // Contextual Top 6
+        const participants = sortedData.slice(0, 10); // Contextual Top 10
         if (participants.length < 2) {
             Alert.alert("분석 데이터 부족", "조율을 진행하기 위한 관계 데이터가 충분하지 않습니다.");
             return;
@@ -124,11 +125,11 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         const imbalancedZones: Array<{ zone: number; name: string; actual: number; target: string; status: 'over' | 'under' }> = [];
 
         const zoneNames: Record<number, string> = {
-            1: '안전기지',
-            2: '심리적 우군',
-            3: '전략적 동행',
-            4: '사회적 지인',
-            5: '배경 소음'
+            1: '핵심 그룹',
+            2: '정서적 공유 그룹',
+            3: '기능적 협력 관계',
+            4: '단순 인지 관계',
+            5: '배경 소음(외부 환경)'
         };
 
         (Object.keys(energyPercents) as Array<keyof typeof energyPercents>).forEach(key => {
@@ -214,16 +215,65 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     // 3. 동적 넛지(Nudges) 추출
     // 3. 동적 넛지(Nudges) 추출
     const getDynamicNudges = () => {
-        const items = [];
+        const items: any[] = [];
+        const status = stabilityStatus; // 이미 계산된 stabilityStatus 사용
 
-        // A. 소홀해진 안전기지 (Zone 1 중 마지막 교감이 오래된 사람 우선 검색)
+        // 🚨 1. 최우선 순위: 핵심 그룹(Zone 1) 에너지 부족 해결
+        const zone1Issue = status.imbalancedZones.find(z => z.zone === 1 && z.status === 'under');
+        if (zone1Issue) {
+            const z1Neglected = relationships.find((r: RelationshipNode) =>
+                r.zone === 1 && (r.lastInteraction?.includes('달') || r.lastInteraction?.includes('주'))
+            );
+            const moveCandidate = relationships.find((r: RelationshipNode) =>
+                r.zone === 2 && r.metrics.satisfaction > 85
+            );
+
+            const target = z1Neglected || moveCandidate || relationships.find(r => r.zone === 1);
+            if (target) {
+                items.push({
+                    id: `prio-z1-${target.id}`,
+                    nodeId: target.id,
+                    type: '핵심 그룹 강화',
+                    target: target.name,
+                    issue: '지탱 에너지가 임계점 이하입니다. 이 관계에 집중하세요.',
+                    score: target.metrics?.trust || 70,
+                    color: '#D4AF37', // Gold for Priority
+                    action: '우선 조율',
+                });
+            }
+        }
+
+        // 🚨 2. 포화 구역 및 대규모 불균형 관리 (135명 등의 이슈)
+        const overZone = status.imbalancedZones.find(z => z.status === 'over');
+        if (overZone && imbalancedCount > 10) {
+            const noiseCandidate = relationships.find((r: RelationshipNode) =>
+                r.zone === overZone.zone && r.metrics.satisfaction < 50
+            ) || relationships.find(r => r.zone === overZone.zone);
+
+            if (noiseCandidate) {
+                items.push({
+                    id: `refactor-${noiseCandidate.id}`,
+                    nodeId: noiseCandidate.id,
+                    type: '구역 재배치',
+                    target: noiseCandidate.name,
+                    issue: `${imbalancedCount}명의 인원이 에너지를 소모 중입니다. 구역을 이동하세요.`,
+                    score: noiseCandidate.metrics?.satisfaction || 40,
+                    color: '#737874', // Gray for refactor
+                    action: '구역 이동',
+                });
+            }
+        }
+
+        // 🟢 3. 기본 넛지: 소홀해진 관계
         const neglected = relationships.find((r: RelationshipNode) =>
-            r.zone === 1 && (r.lastInteraction?.includes('달') || r.lastInteraction?.includes('주') || r.lastInteraction === '확인 필요')
-        ) || relationships.find((r: RelationshipNode) => r.zone === 1);
+            r.zone <= 2 && !items.some(i => i.id.includes(r.id)) &&
+            (r.lastInteraction?.includes('달') || r.lastInteraction?.includes('주') || r.lastInteraction === '확인 필요')
+        );
 
         if (neglected) {
             items.push({
-                id: neglected.id,
+                id: `neglected-${neglected.id}`,
+                nodeId: neglected.id,
                 type: '관계 회복',
                 target: neglected.name,
                 issue: '최근 교감이 부족하여 멀어지고 있어요',
@@ -233,53 +283,40 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             });
         }
 
-        // B. 에너지 불균형 (보람이 적고 노력이 큰 관계)
-        const lowRoi = relationships.find((r: RelationshipNode) =>
-            (r.metrics.communication > 70 && r.metrics.satisfaction < 50) || r.id === '5'
+        // 🟢 4. 새로운 인연
+        const recent = relationships.find((r: RelationshipNode) =>
+            (r.lastInteraction?.includes('방금') || r.lastInteraction?.includes('오늘')) &&
+            !items.some(i => i.id.includes(r.id))
         );
 
-        if (lowRoi) {
+        if (recent) {
             items.push({
-                id: lowRoi.id,
-                type: '밸런스 조율',
-                target: lowRoi.name,
-                issue: '쏟는 노력에 비해 돌아오는 에너지가 부족해요',
-                score: lowRoi.metrics?.satisfaction || 40,
-                color: '#4A5D4E',
-                action: '거리 두기',
-            });
-        }
-
-        // C. 새로운 인연 (최근 추가된 사람)
-        const recent = relationships.find((r: RelationshipNode) =>
-            r.lastInteraction?.includes('방금') || r.lastInteraction?.includes('오늘') || r.id === '16'
-        ) || relationships[relationships.length - 1];
-
-        if (recent && recent.id !== neglected?.id && recent.id !== lowRoi?.id) {
-            items.push({
-                id: recent.id,
+                id: `recent-${recent.id}`,
+                nodeId: recent.id,
                 type: '관계 형성',
                 target: recent.name,
                 issue: '새로운 인연과 더 깊은 대화를 나눠보세요',
-                score: 80, // 신규 관계 기본 점수
+                score: 80,
                 color: '#FFB74D',
                 action: '약속 잡기',
             });
         }
 
-        // Fallback: 아이템이 하나도 없으면 임의로 생성 (UI 테스트용)
-        if (items.length === 0 && relationships.length > 0) {
-            relationships.slice(0, 2).forEach((r: RelationshipNode, i: number) => {
+        // 5. Fallback
+        if (items.length < 2 && relationships.length > 0) {
+            const spare = relationships.find(r => !items.some(i => i.id.includes(r.id)));
+            if (spare) {
                 items.push({
-                    id: r.id,
-                    type: i === 0 ? '관계 점검' : '관계 강화',
-                    target: r.name,
-                    issue: i === 0 ? '최근 스트레스가 감지되었습니다' : '긍정적인 교감이 늘고 있습니다',
-                    score: i === 0 ? 45 : 85,
-                    color: i === 0 ? '#D98B73' : '#4A5D4E',
-                    action: i === 0 ? '점검하기' : '유지하기',
+                    id: `spare-${spare.id}`,
+                    nodeId: spare.id,
+                    type: '일상 점검',
+                    target: spare.name,
+                    issue: '이 관계의 에너지를 한 번 점검해보실까요?',
+                    score: 55,
+                    color: colors.primary,
+                    action: '둘러보기',
                 });
-            });
+            }
         }
 
         return items;
@@ -421,10 +458,6 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             <View style={styles.sectionHeader}>
                 <View style={styles.titleWithIcon}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>균형 요약</Text>
-                    <TouchableOpacity onPress={onGoToReport} style={styles.miniSelectBtn}>
-                        <BarChart2 size={14} color={colors.primary} />
-                        <Text style={[styles.miniSelectText, { color: colors.primary }]}>상세 보기</Text>
-                    </TouchableOpacity>
                 </View>
                 <Text style={styles.sectionSub}>
                     {isSaturated ? '현재 뇌 내 구역이 포화 상태입니다.' : '뇌 내 구역이 비교적 쾌적한 상태입니다.'}{'\n'}
@@ -435,24 +468,24 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             </View>
 
             <View style={[styles.vizCard, { backgroundColor: colors.white }]}>
+                <TouchableOpacity onPress={onGoToReport} style={styles.vizCardDetailBtn}>
+                    <BarChart2 size={14} color={colors.primary} />
+                    <Text style={[styles.miniSelectText, { color: colors.primary }]}>상세 보기</Text>
+                </TouchableOpacity>
                 <View style={styles.radarWrapper}>
                     <Svg height="260" width="260" viewBox="0 0 300 300">
                         {/* Orbit Rings - Touchable Zones */}
-                        <Circle
-                            cx="150" cy="150" r="110" stroke={colors.primary} strokeWidth="1" strokeOpacity="0.1" fill="transparent"
+                        {/* 1. Orbit Rings - Clean dashed lines */}
+                        {/* 1. Orbit Rings - Clean dashed lines (Restored Visibility) */}
+                        <Circle cx="150" cy="150" r="110" stroke="#D9D9D9" strokeWidth="1.5" strokeDasharray="3 3" fill="transparent"
                             onPress={() => { setIsSelectionMode(true); setFilterZone(3); }}
                         />
-                        <Circle
-                            cx="150" cy="150" r="80" stroke={colors.primary} strokeWidth="1" strokeOpacity="0.15" fill="transparent"
+                        <Circle cx="150" cy="150" r="80" stroke="#D9D9D9" strokeWidth="1.5" strokeDasharray="3 3" fill="transparent"
                             onPress={() => { setIsSelectionMode(true); setFilterZone(2); }}
                         />
-                        <Circle
-                            cx="150" cy="150" r="50" stroke={colors.primary} strokeWidth="1" strokeOpacity="0.2" fill="transparent"
+                        <Circle cx="150" cy="150" r="50" stroke="#D9D9D9" strokeWidth="1.5" strokeDasharray="3 3" fill="transparent"
                             onPress={() => { setIsSelectionMode(true); setFilterZone(1); }}
                         />
-
-                        {/* Center Core */}
-                        <Circle cx="150" cy="150" r="18" fill={colors.primary} />
 
                         {/* Dynamic Relationship Nodes */}
                         {relationships.map((r: RelationshipNode, i: number) => {
@@ -494,6 +527,10 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 </React.Fragment>
                             );
                         })}
+
+                        {/* 🎯 Stable Center Core (Self) */}
+                        <Circle cx="150" cy="150" r="18" fill={colors.primary} />
+                        <Circle cx="150" cy="150" r="8" fill="white" opacity="0.9" />
                     </Svg>
                 </View>
 
@@ -563,27 +600,31 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                 <View style={styles.metricContainer}>
                     <View style={styles.metricLabelRow}>
                         <Text style={styles.metricLabel}>관계 에너지</Text>
-                        <Text style={[styles.metricValue, { color: item.color }]}>{item.score}점</Text>
+                        <Text style={[styles.metricValue, { color: item.color }]}>{Math.floor(item.score)}점</Text>
                     </View>
                     <View style={styles.metricTrack}>
-                        <View style={[styles.metricFill, { width: `${item.score}%`, backgroundColor: item.color }]} />
+                        <View style={[styles.metricFill, { width: `${Math.floor(item.score)}%`, backgroundColor: item.color }]} />
                     </View>
                 </View>
             </View>
 
             {/* 4. Action Button */}
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: item.color }]} activeOpacity={0.8}>
-                <Text style={styles.actionBtnText}>지금 연락하기</Text>
+            <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: item.color }]}
+                activeOpacity={0.8}
+                onPress={() => onSelectNode(item.nodeId)}
+            >
+                <Text style={styles.actionBtnText}>확인하기</Text>
                 <ArrowRight size={16} color="white" />
             </TouchableOpacity>
         </View>
     );
 
     const renderFocusInsight = () => {
-        // 상위 5명 관계 추출
+        // 상위 10명 관계 추출 (렌즈별 정렬 로직은 아래에서 수행)
         const topRelationships = [...relationships]
             .sort((a, b) => (b.temperature || 0) - (a.temperature || 0))
-            .slice(0, 5);
+            .slice(0, 10);
 
         if (topRelationships.length === 0) return null;
 
@@ -619,6 +660,15 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     let themeColor = colors.accent;
                     let LensIcon = Star;
 
+                    // Zone Colors for Borders
+                    const zoneColors: Record<number, string> = {
+                        1: '#FFB74D',
+                        2: '#D98B73',
+                        3: '#4A5D4E',
+                        4: '#90A4AE',
+                        5: '#D1D5DB'
+                    };
+
                     if (selectedLens === 'Positive') {
                         sortedData = sortedData.sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
                         themeColor = '#D4AF37'; // Gold
@@ -643,8 +693,9 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         sortedData = sortedData.sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
                     }
 
-                    const topFive = sortedData.slice(0, 5);
-                    const anchor = topFive[0];
+                    const topTen = sortedData.slice(0, 10);
+                    const displayList = isRankingExpanded ? topTen : topTen.slice(0, 5);
+                    const anchor = topTen[0];
                     if (!anchor) return null;
 
                     return (
@@ -655,11 +706,16 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 onPress={() => onSelectNode(anchor.id)}
                                 activeOpacity={0.9}
                             >
-                                <View style={[styles.anchorBadge, { backgroundColor: themeColor + '10' }]}>
-                                    <Text style={[styles.anchorBadgeText, { color: themeColor }]}>NO. 1</Text>
+                                <View style={styles.anchorBadgeRow}>
+                                    <View style={[styles.anchorBadge, { backgroundColor: themeColor + '10' }]}>
+                                        <Text style={[styles.anchorBadgeText, { color: themeColor }]}>NO. 1</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
+                                        {selectedLens === 'Frequency' ? `${anchor.lastInteraction} • ${anchor.temperature}°C` : `${anchor.temperature}°C`}
+                                    </Text>
                                 </View>
                                 <View style={styles.anchorMain}>
-                                    <View style={styles.anchorAvatarWrapper}>
+                                    <View style={[styles.anchorAvatarWrapper, { borderWidth: 3, borderColor: zoneColors[anchor.zone] || '#D1D5DB', borderRadius: 100 }]}>
                                         <View style={[styles.anchorAvatarHalo, { backgroundColor: themeColor + '15' }]} />
                                         {anchor.image ? (
                                             <Image source={{ uri: anchor.image }} style={styles.anchorAvatar as any} />
@@ -678,14 +734,21 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                         <Text style={[styles.personaLabel, { color: themeColor }]}>{anchor.role || '관계'}</Text>
                                     </View>
                                     <Text style={styles.anchorDesc}>
-                                        {selectedLens === 'Negative' ? `심리적 소모도가 가장 높은 관계입니다.` : `현재 당신의 인맥 궤도에서 가장 강력한 영향력을 미치는 존재입니다.`}
+                                        {(() => {
+                                            switch (selectedLens) {
+                                                case 'Positive': return '당신을 가장 따사롭게 회복시키며 긍정 에너지를 공급하는 최고의 지지자입니다.';
+                                                case 'Frequency': return '현재 당신의 물리적 시간과 관심을 가장 많이 점유하고 있는 일상의 중심축입니다.';
+                                                case 'Negative': return '심리적 소모도가 가장 높고 에너지 방어가 필요한 관계입니다.';
+                                                default: return '현재 당신의 인맥 궤도에서 가장 강력한 심리적 영향력을 미치는 존재입니다.';
+                                            }
+                                        })()}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
 
-                            {/* Ranking list (Rank 2-5) */}
+                            {/* Ranking list (Rank 2-10) */}
                             <View style={styles.squadList}>
-                                {topFive.slice(1).map((r, idx) => {
+                                {displayList.slice(1).map((r, idx) => {
                                     const rank = idx + 2;
                                     return (
                                         <TouchableOpacity
@@ -694,7 +757,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                             onPress={() => onSelectNode(r.id)}
                                             activeOpacity={0.7}
                                         >
-                                            <View style={styles.squadAvatarWrapper}>
+                                            <View style={[styles.squadAvatarWrapper, { borderWidth: 2, borderColor: zoneColors[r.zone] || '#D1D5DB', borderRadius: 100 }]}>
                                                 {r.image ? (
                                                     <Image source={{ uri: r.image }} style={styles.squadAvatar as any} />
                                                 ) : (
@@ -709,7 +772,9 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                             <View style={styles.squadInfo}>
                                                 <View style={styles.squadNameRow}>
                                                     <Text style={[styles.squadName, { color: colors.primary }]}>{r.name}</Text>
-                                                    <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>{selectedLens === 'Frequency' ? r.lastInteraction : `${r.temperature}°C`}</Text>
+                                                    <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
+                                                        {selectedLens === 'Frequency' ? `${r.lastInteraction} • ${r.temperature}°C` : `${r.temperature}°C`}
+                                                    </Text>
                                                 </View>
                                                 <View style={styles.squadPersonaRow}>
                                                     <Text style={styles.squadPersonaText}>{r.role || '관계 인지됨'}</Text>
@@ -719,6 +784,19 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                     );
                                 })}
                             </View>
+
+                            {/* View More Button */}
+                            {topTen.length > 5 && (
+                                <TouchableOpacity
+                                    style={[styles.viewMoreRankingBtn, { borderColor: themeColor + '20' }]}
+                                    onPress={() => setIsRankingExpanded(!isRankingExpanded)}
+                                >
+                                    <Text style={[styles.viewMoreRankingText, { color: themeColor }]}>
+                                        {isRankingExpanded ? '간략히 보기' : `순위 더보기 (총 ${topTen.length}명 중 나머지 확인)`}
+                                    </Text>
+                                    {isRankingExpanded ? <ChevronUp size={16} color={themeColor} /> : <ChevronDown size={16} color={themeColor} />}
+                                </TouchableOpacity>
+                            )}
                         </>
                     );
                 })()}
@@ -1238,9 +1316,6 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     anchorBadge: {
-        position: 'absolute',
-        top: 20,
-        left: 20,
         backgroundColor: 'rgba(74, 93, 78, 0.05)',
         paddingHorizontal: 10,
         paddingVertical: 4,
@@ -1772,5 +1847,48 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 12,
         opacity: 0.5,
+    },
+    viewMoreRankingBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        marginTop: 16,
+        gap: 8,
+    },
+    viewMoreRankingText: {
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    anchorBadgeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    tempBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    tempBadgeText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    vizCardDetailBtn: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        zIndex: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(74, 93, 78, 0.05)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 10,
     },
 });

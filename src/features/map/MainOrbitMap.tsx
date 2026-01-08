@@ -1,53 +1,591 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, Dimensions, StyleSheet, Image, TouchableOpacity, Animated, PanResponder, ScrollView, Easing } from 'react-native';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import {
+    View,
+    Text,
+    Dimensions,
+    StyleSheet,
+    Image,
+    TouchableOpacity,
+    Animated as RNAnimated,
+    PanResponder,
+    ScrollView,
+    TextInput
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
 import { AppHeader } from '../../components/AppHeader';
-import { Search, Plus, Thermometer, LocateFixed, LayoutGrid, List, ChevronDown, ChevronUp } from 'lucide-react-native';
+import {
+    Search, Plus, LocateFixed, LayoutGrid, List,
+    ChevronDown, ChevronUp, HeartPulse, X, ChevronRight,
+    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Snowflake
+} from 'lucide-react-native';
 import { RelationshipList } from '../relationships/RelationshipList';
-import { RELATIONSHIP_TYPE_LABELS } from '../../types/relationship';
+import { RELATIONSHIP_TYPE_LABELS, RelationshipNode } from '../../types/relationship';
 import { BlurView } from 'expo-blur';
-import { UI_CONSTANTS, COMMON_STYLES } from '../../theme/LayoutStyles';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
-import { RelationshipNode } from '../../types/relationship';
+import { useAppStore } from '../../store/useAppStore';
+import ReAnimated, {
+    useAnimatedStyle,
+    withSpring,
+    useSharedValue,
+    withTiming,
+    withRepeat,
+    Easing,
+    SharedValue,
+    withSequence
+} from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 const BASE_ORBIT_SIZE = width * 1.1;
+
+const styles = StyleSheet.create({
+    content: {
+        flex: 1,
+    },
+    filterBar: {
+        paddingVertical: 12,
+        backgroundColor: 'transparent',
+        zIndex: 500,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    filterBarExpanded: {
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(74,93,78,0.1)',
+        paddingHorizontal: 20,
+    },
+    filterBarScroll: {
+        paddingHorizontal: 20,
+        gap: 8,
+    },
+    filterGrid: {
+        flex: 1,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        paddingBottom: 10,
+    },
+    filterToggleBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+        marginRight: 12,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: 'transparent',
+        // Shadow for premium feel
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    filterChip: {
+        paddingHorizontal: 18,
+        paddingVertical: 9,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    filterChipText: {
+        fontSize: 14,
+        fontWeight: '700',
+        letterSpacing: -0.2,
+    },
+    orbitCanvas: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1,
+        overflow: 'hidden',
+    },
+    animatedCanvas: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        height: '100%',
+    },
+    orbitRing: {
+        position: 'absolute',
+        borderWidth: 1.5,
+    },
+    centerNode: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 3,
+        padding: 4,
+        backgroundColor: '#fff',
+        zIndex: 5,
+    },
+    centerAvatar: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 40,
+    },
+    userNodeContainer: {
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 6,
+        overflow: 'visible',
+    },
+    avatarWrapper: {
+        borderRadius: 100,
+        borderWidth: 2,
+        backgroundColor: '#fff',
+        padding: 2,
+    },
+    avatar: {
+        width: '100%',
+        height: '100%',
+    },
+    nodeIndicator: {
+        position: 'absolute',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    statusOverlay: {
+        position: 'absolute',
+        bottom: 120,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 15,
+    },
+    statusInfo: {
+        fontSize: 13,
+        fontWeight: '600',
+        backgroundColor: 'rgba(255,255,255,0.7)',
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: 15,
+        overflow: 'hidden',
+        textAlign: 'center',
+    },
+    checkInButton: {
+        position: 'absolute',
+        bottom: 30,
+        alignSelf: 'center',
+        paddingHorizontal: 24,
+        height: 64,
+        borderRadius: 32,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        elevation: 10,
+        zIndex: 100,
+        shadowColor: '#4A5D4E',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+    },
+    checkInText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    modalFullContainer: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    modalHeader: {
+        height: 64,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    modalHeaderSide: {
+        width: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        flex: 1,
+        textAlign: 'center',
+    },
+    searchFilterWrapper: {
+        marginBottom: 20,
+    },
+    searchFilterScroll: {
+        gap: 10,
+    },
+    searchFilterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        justifyContent: 'center',
+    },
+    searchFilterText: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5F7F5',
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        height: 54,
+        marginBottom: 24,
+    },
+    searchInput: {
+        flex: 1,
+        marginLeft: 10,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
+    selectionList: {
+        flex: 1,
+    },
+    listSectionLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#9E9E9E',
+        textTransform: 'uppercase',
+        marginBottom: 16,
+        letterSpacing: 1,
+    },
+    miniAvatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9F9F9',
+        overflow: 'hidden',
+    },
+    miniAvatarImg: {
+        width: '100%',
+        height: '100%',
+    },
+    avatarInitial: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#4A5D4E',
+    },
+    personName: {
+        fontSize: 17,
+        fontWeight: '800',
+        color: '#2F332F',
+    },
+    personMeta: {
+        fontSize: 12,
+        color: '#8C968D',
+        marginTop: 2,
+        fontWeight: '600',
+    },
+    tagBadge: {
+        backgroundColor: 'rgba(217, 139, 115, 0.15)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    tagBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#D98B73',
+    },
+    emptySearch: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 80,
+        gap: 12,
+    },
+    emptySearchText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#8C968D',
+        opacity: 0.5,
+    },
+    searchResultCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 24,
+        marginBottom: 12,
+    },
+    avatarContainer: {
+        position: 'relative',
+    },
+    typeBadgeMini: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderColor: '#F9FBF9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    infoContainer: {
+        flex: 1,
+        marginLeft: 16,
+    },
+    tempContainer: {
+        alignItems: 'center',
+        paddingLeft: 8,
+        gap: 4,
+    },
+    tempBarBackground: {
+        width: 5,
+        height: 32,
+        borderRadius: 2.5,
+        backgroundColor: 'rgba(74,93,78,0.1)',
+        justifyContent: 'flex-end',
+        overflow: 'hidden',
+    },
+    tempBarFill: {
+        width: '100%',
+        borderRadius: 3,
+    },
+    tempText: {
+        fontSize: 10,
+        fontWeight: '800',
+    },
+    actionFullScreenView: {
+        flex: 1,
+    },
+    actionCardLarge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FBF9',
+        padding: 24,
+        borderRadius: 32,
+        marginBottom: 16,
+        gap: 20,
+    },
+    actionIconBgLarge: {
+        width: 64,
+        height: 64,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    actionLabelLarge: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#2F332F',
+    },
+    actionDescLarge: {
+        fontSize: 14,
+        color: '#8C968D',
+        fontWeight: '600',
+        marginTop: 4,
+    },
+    selectedPersonHeader: {
+        alignItems: 'center',
+        marginTop: -10,
+    },
+    largeAvatar: {
+        borderRadius: 100,
+        borderWidth: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9F9F9',
+        marginBottom: 16,
+        overflow: 'hidden',
+    },
+    largeAvatarImg: {
+        width: '100%',
+        height: '100%',
+    },
+    actionTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#2F332F',
+        textAlign: 'center',
+        letterSpacing: -0.5,
+    },
+    actionSubtitle: {
+        fontSize: 14,
+        color: '#8C968D',
+        textAlign: 'center',
+        marginTop: 8,
+        fontWeight: '600',
+    },
+    actionGrid: {
+        width: '100%',
+        gap: 12,
+    },
+    rightControls: {
+        position: 'absolute',
+        right: 16,
+        top: '50%',
+        transform: [{ translateY: -100 }],
+        alignItems: 'center',
+        gap: 16,
+        zIndex: 25,
+    },
+    zoomControls: {
+        borderRadius: 20,
+        padding: 6,
+        gap: 8,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+    },
+    zoomBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    zoomBtnText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    recenterBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(74, 93, 78, 0.05)',
+    },
+    dotNode: {
+        borderRadius: 100,
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    nodeLabelContainer: {
+        position: 'absolute',
+        bottom: -24,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+        borderWidth: 0.5,
+        borderColor: 'rgba(74, 93, 78, 0.15)',
+        minWidth: 60,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    nodeNameText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#2F332F',
+    },
+    avatarAura: {
+        position: 'absolute',
+        zIndex: 1,
+    },
+    dotPulse: {
+        position: 'absolute',
+    },
+    sparkle: {
+        position: 'absolute',
+        backgroundColor: '#fff',
+        borderRadius: 10,
+    },
+});
 
 const UserNode = ({
     node,
     orbitRadius,
     initialAngle,
     zoomLevel,
+    totalNodes,
     onSelectNode
 }: {
     node: RelationshipNode;
     orbitRadius: number;
     initialAngle: number;
     zoomLevel: number;
+    totalNodes: number;
     onSelectNode?: (id: string) => void;
 }) => {
-    const angleRad = (initialAngle * Math.PI) / 180;
-    const x = Math.cos(angleRad) * orbitRadius;
-    const y = Math.sin(angleRad) * orbitRadius;
-
-    // Pulse Animation
-    const pulseAnim = useRef(new Animated.Value(0)).current;
+    const twinkleAnim = useSharedValue(0);
 
     useEffect(() => {
-        // Higher temperature = Slower, deeper pulse (Warm resonance)
-        // Lower temperature = Faster, shallower pulse (Cold vibration)
+        twinkleAnim.value = withRepeat(
+            withTiming(1, {
+                duration: 1500 + Math.random() * 1000,
+                easing: Easing.inOut(Easing.sin)
+            }),
+            -1,
+            true
+        );
+    }, []);
+    const targetRadius = orbitRadius;
+    const targetAngle = initialAngle;
+
+    // Polar Shared Values for "Swirl" effect
+    const radius = useSharedValue(targetRadius);
+    const angle = useSharedValue(targetAngle);
+
+    useEffect(() => {
+        radius.value = withSpring(targetRadius, { damping: 20, stiffness: 90 });
+
+        // Shortest path angle rotation
+        let delta = targetAngle - (angle.value % 360);
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+
+        angle.value = withSpring(angle.value + delta, { damping: 20, stiffness: 60 });
+    }, [targetRadius, targetAngle]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        const rad = (angle.value * Math.PI) / 180;
+        return {
+            transform: [
+                { translateX: Math.cos(rad) * radius.value },
+                { translateY: Math.sin(rad) * radius.value }
+            ]
+        };
+    });
+
+    const twinkleStyle = useAnimatedStyle(() => {
+        const scale = 0.8 + twinkleAnim.value * 0.4;
+        const opacity = 0.7 + twinkleAnim.value * 0.3;
+        return {
+            transform: [{ scale }],
+            opacity
+        };
+    });
+
+    // Pulse Animation
+    const pulseAnim = useRef(new RNAnimated.Value(0)).current;
+
+    useEffect(() => {
+        if (zoomLevel <= 1.5) {
+            pulseAnim.setValue(0);
+            return;
+        }
+
         const duration = node.temperature > 80 ? 3000 : node.temperature > 50 ? 2000 : 1500;
 
-        const animation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
+        const animation = RNAnimated.loop(
+            RNAnimated.sequence([
+                RNAnimated.timing(pulseAnim, {
                     toValue: 1,
                     duration: duration,
                     easing: Easing.inOut(Easing.sin),
                     useNativeDriver: true,
                 }),
-                Animated.timing(pulseAnim, {
+                RNAnimated.timing(pulseAnim, {
                     toValue: 0,
                     duration: duration,
                     easing: Easing.inOut(Easing.sin),
@@ -57,7 +595,7 @@ const UserNode = ({
         );
         animation.start();
         return () => animation.stop();
-    }, [node.temperature]);
+    }, [node.temperature, zoomLevel, pulseAnim]);
 
     const pulseScale = pulseAnim.interpolate({
         inputRange: [0, 1],
@@ -66,52 +604,73 @@ const UserNode = ({
 
     const pulseOpacity = pulseAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [0.3, 0.05], // 더 은은하게 조정하여 메인 라인을 방해하지 않음
+        outputRange: [0.3, 0.05],
     });
 
     const renderContent = () => {
-        // Zoom Level 1: Minimal Dot with Glow
-        if (zoomLevel === 1) {
-            const dotColor = node.temperature > 80 ? '#D98B73' : '#4A5D4E';
+        const densityFactor = totalNodes > 100 ? 0.65 : totalNodes > 50 ? 0.8 : 1.0;
+
+        if (zoomLevel < 1.8) {
+            // Level 1: Visible Dots with Twinkle Effect
+            const dotSize = (zoomLevel < 1.2 ? 14 : 18) * (0.8 + densityFactor * 0.2);
+            const zoneColors: Record<number, string> = {
+                1: '#FFB74D',
+                2: '#D98B73',
+                3: '#4A5D4E',
+                4: '#90A4AE',
+                5: '#D1D5DB'
+            };
+            const dotColor = zoneColors[node.zone] || '#4A5D4E';
+
             return (
                 <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                    <Animated.View style={[
-                        styles.dotPulse,
+                    <ReAnimated.View style={[
+                        styles.dotNode,
+                        twinkleStyle,
                         {
                             backgroundColor: dotColor,
-                            transform: [{ scale: pulseScale }],
-                            opacity: pulseOpacity
+                            width: dotSize,
+                            height: dotSize,
+                            borderRadius: dotSize / 2,
+                            borderWidth: 2,
+                            borderColor: '#fff',
+                            shadowColor: dotColor,
+                            shadowOpacity: 0.5,
+                            shadowRadius: 4,
+                            elevation: 3,
                         }
                     ]} />
-                    <View style={[styles.dotNode, { backgroundColor: dotColor }]} />
                 </View>
             );
         }
 
-        // Zoom Level 2-5: Adaptive Avatar
-        const avatarSize = zoomLevel === 2 ? 32 : zoomLevel === 3 ? 44 : zoomLevel === 4 ? 56 : 68;
-        const showName = zoomLevel >= 4;
-        const showRole = zoomLevel === 5;
-        const accentColor = node.temperature > 80 ? '#D98B73' : '#4A5D4E';
+        const avatarSize = (zoomLevel < 2.5 ? 36 : zoomLevel < 4 ? 48 : 64) * (0.7 + densityFactor * 0.3);
+        const showName = zoomLevel > 2.0;
+
+        const zoneColors: Record<number, string> = {
+            1: '#FFB74D',
+            2: '#D98B73',
+            3: '#4A5D4E',
+            4: '#90A4AE',
+            5: '#D1D5DB'
+        };
+        const accentColor = zoneColors[node.zone] || '#4A5D4E';
 
         return (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                {/* Aura + Avatar Group: Ensures perfect centering regardless of text below */}
-                <View style={{ alignItems: 'center', justifyContent: 'center', width: avatarSize + 10, height: avatarSize + 10 }}>
-                    {/* Resonance Aura Pulse */}
-                    <Animated.View style={[
+                <View style={{ alignItems: 'center', justifyContent: 'center', width: avatarSize + 8, height: avatarSize + 8 }}>
+                    <RNAnimated.View style={[
                         styles.avatarAura,
                         {
-                            width: avatarSize + 10,
-                            height: avatarSize + 10,
-                            borderRadius: (avatarSize + 10) / 2,
+                            width: avatarSize + 8,
+                            height: avatarSize + 8,
+                            borderRadius: (avatarSize + 8) / 2,
                             backgroundColor: accentColor,
                             transform: [{ scale: pulseScale }],
                             opacity: pulseOpacity,
                         }
                     ]} />
 
-                    {/* Content Group (Avatar + Indicator) */}
                     <View style={{ zIndex: 10, alignItems: 'center', justifyContent: 'center' }}>
                         <View style={[
                             styles.avatarWrapper,
@@ -120,47 +679,25 @@ const UserNode = ({
                                 height: avatarSize,
                                 borderRadius: avatarSize / 2,
                                 borderColor: accentColor,
-                                zIndex: 10,
+                                padding: 1.5,
                             }
                         ]}>
                             {node.image ? (
-                                <Image source={{ uri: node.image }} style={[styles.avatar, { borderRadius: (avatarSize - 4) / 2 }]} />
+                                <Image source={{ uri: node.image }} style={[styles.avatar, { borderRadius: (avatarSize - 3) / 2 }]} />
                             ) : (
-                                <View style={[styles.avatar, { borderRadius: (avatarSize - 4) / 2, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ fontSize: avatarSize / 4 }}>{node.name.charAt(0)}</Text>
+                                <View style={[styles.avatar, { borderRadius: (avatarSize - 3) / 2, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
+                                    <Text style={{ fontSize: avatarSize / 3.5 }}>{node.name.charAt(0)}</Text>
                                 </View>
                             )}
                         </View>
-
-                        {/* Indicator - Always on top */}
-                        <View style={[
-                            styles.nodeIndicator,
-                            {
-                                backgroundColor: accentColor,
-                                top: 0,
-                                right: 0,
-                                width: zoomLevel === 2 ? 10 : 14,
-                                height: zoomLevel === 2 ? 10 : 14,
-                                borderRadius: zoomLevel === 2 ? 5 : 7,
-                                zIndex: 20,
-                            }
-                        ]} />
                     </View>
                 </View>
 
-                {/* Info Text Group - Positioned below the avatar group */}
-                {(showName || showRole) && (
-                    <View style={[styles.nodeTextContent, { zIndex: 15 }]}>
-                        {showName && (
-                            <Text style={[styles.nodeName, { color: '#4A5D4E' }]} numberOfLines={1}>
-                                {node.name}
-                            </Text>
-                        )}
-                        {showRole && (
-                            <Text style={[styles.nodeRole, { color: '#4A5D4E' }]} numberOfLines={1}>
-                                {node.role}
-                            </Text>
-                        )}
+                {showName && (
+                    <View style={styles.nodeLabelContainer}>
+                        <Text style={styles.nodeNameText} numberOfLines={1}>
+                            {node.name}
+                        </Text>
                     </View>
                 )}
             </View>
@@ -168,40 +705,90 @@ const UserNode = ({
     };
 
     return (
-        <TouchableOpacity
+        <ReAnimated.View
             style={[
                 styles.userNodeContainer,
-                { transform: [{ translateX: x }, { translateY: y }], width: zoomLevel >= 4 ? 100 : 70, height: zoomLevel >= 4 ? 120 : 70 }
+                animatedStyle,
             ]}
-            onPress={() => onSelectNode?.(node.id)}
-            activeOpacity={0.8}
         >
-            {renderContent()}
-        </TouchableOpacity>
+            <TouchableOpacity
+                onPress={() => onSelectNode?.(node.id)}
+                activeOpacity={0.8}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                style={{ alignItems: 'center', justifyContent: 'center' }}
+            >
+                {renderContent()}
+            </TouchableOpacity>
+        </ReAnimated.View>
     );
 };
 
 interface MainOrbitMapProps {
-    onSelectNode?: (id: string) => void;
-    onPressSos?: () => void;
-    onPressAdd?: () => void;
+    onSelectNode: (id: string) => void;
+    onPressAdd: () => void;
+    onDiagnose: (id: string, mode: 'ZONE' | 'RQS') => void;
+    onRecordLog: (id: string) => void;
 }
 
-export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbitMapProps) => {
+export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog }: MainOrbitMapProps) => {
     const colors = useColors();
     const { relationships } = useRelationshipStore();
+    const { userProfile } = useAppStore();
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
     const [selectedFilters, setSelectedFilters] = useState<string[]>(['전체']);
     const [zoomLevel, setZoomLevel] = useState(2);
+    const currentOrbitSize = BASE_ORBIT_SIZE * (1 + (zoomLevel - 2) * 0.25);
+    const [sortMode, setSortMode] = useState<'default' | 'hot' | 'cold'>('default');
+
+    // 🌀 Universe Spin State
+    const universeRotation = useSharedValue(0);
+
+    // 💓 Self Heartbeat Animation (Solar Amber)
+    const selfPulse = useSharedValue(1);
+
+    useEffect(() => {
+        selfPulse.value = withRepeat(
+            withSequence(
+                withTiming(1.08, { duration: 400, easing: Easing.out(Easing.quad) }),
+                withTiming(1, { duration: 300, easing: Easing.in(Easing.quad) }),
+                withTiming(1.05, { duration: 400, easing: Easing.out(Easing.quad) }),
+                withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.quad) })
+            ),
+            -1,
+            false
+        );
+    }, []);
+
+    const selfHaloStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: selfPulse.value }],
+        opacity: selfPulse.value === 1 ? 0.4 : 0.8 // Pulse opacity for glow effect
+    }));
+
     const [isMoved, setIsMoved] = useState(false);
     const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
+    // Search & Check-in Modal State
+    const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+    const [searchMode, setSearchMode] = useState<'navigation' | 'action'>('action');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeSearchTag, setActiveSearchTag] = useState('전체');
+    const [selectedTarget, setSelectedTarget] = useState<RelationshipNode | null>(null);
+    const [isActionVisible, setIsActionVisible] = useState(false);
+
+    // ✨ Sparkle Effect Values (Removed fake sparkles)
+    const sparkleAnim = useSharedValue(0);
+    const zoomAnim = useSharedValue(zoomLevel);
+
+    useEffect(() => {
+        zoomAnim.value = withTiming(zoomLevel, { duration: 300 });
+    }, [zoomLevel]);
+
     const zoneFilters = [
-        { id: 'z1', label: '안전 기지', zone: 1 },
-        { id: 'z2', label: '심리적 우군', zone: 2 },
-        { id: 'z3', label: '전략적 동행', zone: 3 },
-        { id: 'z4', label: '사회적 지인', zone: 4 },
-        { id: 'z5', label: '배경 소음', zone: 5 },
+        { id: 'z1', label: '핵심 그룹', zone: 1, color: '#FFB74D' },
+        { id: 'z2', label: '정서적 공유 그룹', zone: 2, color: '#D98B73' },
+        { id: 'z3', label: '기능적 협력 관계', zone: 3, color: '#4A5D4E' },
+        { id: 'z4', label: '단순 인지 관계', zone: 4, color: '#90A4AE' },
+        { id: 'z5', label: '배경 소음(외부 환경)', zone: 5, color: '#D1D5DB' },
     ];
 
     const uniqueTypes = Array.from(new Set(relationships.map(r => RELATIONSHIP_TYPE_LABELS[r.type] || r.type)));
@@ -230,6 +817,97 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbit
             const rZoneLabel = zoneFilters.find(zf => zf.zone === r.zone)?.label;
             return selectedFilters.includes(rType) || (rZoneLabel && selectedFilters.includes(rZoneLabel));
         });
+
+    // 🌀 Smart Orbit Engine: Collision Avoidance through Multi-layer Geometric Distribution
+    const distributedNodes = useMemo(() => {
+        const zoneGroups: { [key: number]: RelationshipNode[] } = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+        filteredRelationships.forEach(node => {
+            zoneGroups[node.zone].push(node);
+        });
+
+        const positionedNodes: Array<{ node: RelationshipNode; radius: number; angle: number }> = [];
+        let startAngleOffset = 0; // Cumulative offset for cross-zone spiral flow
+
+        Object.keys(zoneGroups).sort().forEach(zoneStr => {
+            const zone = parseInt(zoneStr);
+            const nodes = zoneGroups[zone];
+            if (nodes.length === 0) return;
+
+            // 1. Sort nodes within the zone based on sortMode
+            // For Z-index: items later in array render ON TOP.
+            let sortedNodes = [...nodes];
+            if (sortMode === 'default') {
+                sortedNodes.sort((a, b) => b.id.localeCompare(a.id)); // ID order reversed for consistent layering
+            } else if (sortMode === 'hot') {
+                // High temp on top -> High temp at the end of array (ASC sort)
+                sortedNodes.sort((a, b) => a.temperature - b.temperature);
+            } else if (sortMode === 'cold') {
+                // Low temp on top -> Low temp at the end of array (DESC sort)
+                sortedNodes.sort((a, b) => b.temperature - a.temperature);
+            }
+
+            const baseCircleRadius = (currentOrbitSize * (zone + 0.5)) / 7; // Spread orbits further out
+            const zoneWidth = currentOrbitSize / 8; // Wider zone for more breathing room
+
+            sortedNodes.forEach((node, idx) => {
+                const progress = idx / sortedNodes.length;
+
+                // If sorting is on, use a spiral line arrangement inside the zone
+                // If default, use a more balanced distribution
+                let angle, radius;
+
+                if (sortMode !== 'default') {
+                    // Swirl Line within Zone
+                    angle = (startAngleOffset + progress * 360) % 360;
+                    // Spiral radius: slightly sloped from inner to outer edge of the zone
+                    const innerToOuterOffset = (progress - 0.5) * (zoneWidth * 0.6);
+                    radius = baseCircleRadius + innerToOuterOffset;
+                } else {
+                    // Balanced Distribution with Golden Angle Jittering to prevent overlap
+                    const maxPerLayer = zone <= 2 ? 5 : (zone === 3 ? 10 : 15);
+                    const numLayers = Math.ceil(sortedNodes.length / maxPerLayer);
+                    const layerIdx = idx % numLayers;
+                    const idxInLayer = Math.floor(idx / numLayers);
+                    const totalInThisLayer = Math.ceil(sortedNodes.length / numLayers);
+
+                    // Add subtle random jitter based on node ID to keep overlaps consistent
+                    const jitterSeed = parseInt(node.id.slice(-2), 16) || 0;
+                    const jitterRadius = (jitterSeed % 10 - 5) * 4;
+                    const jitterAngle = (jitterSeed % 20 - 10);
+
+                    const layerOffset = numLayers > 1
+                        ? (layerIdx - (numLayers - 1) / 2) * (zoneWidth / (numLayers + 0.2))
+                        : 0;
+                    radius = baseCircleRadius + layerOffset + jitterRadius;
+
+                    const baseAngle = (idxInLayer * (360 / totalInThisLayer));
+                    const staggerOffset = layerIdx * (360 / (numLayers * 2.5));
+                    angle = (baseAngle + staggerOffset + startAngleOffset + jitterAngle) % 360;
+                }
+
+                positionedNodes.push({ node, radius, angle });
+            });
+
+            // Adjust next zone start angle to continue the spiral feeling
+            startAngleOffset = (startAngleOffset + 45) % 360;
+        });
+
+        return positionedNodes;
+    }, [filteredRelationships, currentOrbitSize, sortMode, zoomLevel]);
+
+    const cycleSortMode = () => {
+        const modes: Array<'default' | 'hot' | 'cold'> = ['default', 'hot', 'cold'];
+        const nextIndex = (modes.indexOf(sortMode) + 1) % modes.length;
+        const nextMode = modes[nextIndex];
+
+        setSortMode(nextMode);
+
+        // Trigger Swirl Animation: 360 degree rotation
+        universeRotation.value = withTiming(universeRotation.value + 360, {
+            duration: 1200,
+            easing: Easing.bezier(0.4, 0, 0.2, 1)
+        });
+    };
 
     const renderFilterBar = () => (
         <View style={[styles.filterBar, isFilterExpanded && styles.filterBarExpanded]}>
@@ -279,57 +957,100 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbit
                 </ScrollView>
             )}
 
-            <TouchableOpacity
-                style={[styles.filterToggleBtn, { backgroundColor: isFilterExpanded ? colors.primary : colors.white }]}
-                onPress={() => setIsFilterExpanded(!isFilterExpanded)}
-            >
-                {isFilterExpanded ? (
-                    <ChevronUp size={18} color={colors.white} />
-                ) : (
-                    <ChevronDown size={18} color={colors.primary} />
-                )}
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity
+                    style={[
+                        styles.filterToggleBtn,
+                        { backgroundColor: colors.white },
+                        sortMode === 'hot' && { borderColor: '#D98B73' },
+                        sortMode === 'cold' && { borderColor: '#4E90E2' }
+                    ]}
+                    onPress={cycleSortMode}
+                >
+                    {sortMode === 'default' && <ArrowUpDown size={18} color={colors.primary} />}
+                    {sortMode === 'hot' && <Flame size={18} color="#D98B73" fill="#D98B73" />}
+                    {sortMode === 'cold' && <Snowflake size={18} color="#4E90E2" />}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.filterToggleBtn, { backgroundColor: isFilterExpanded ? colors.primary : colors.white }]}
+                    onPress={() => setIsFilterExpanded(!isFilterExpanded)}
+                >
+                    {isFilterExpanded ? (
+                        <ChevronUp size={18} color={colors.white} />
+                    ) : (
+                        <ChevronDown size={18} color={colors.primary} />
+                    )}
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
-    const currentOrbitSize = BASE_ORBIT_SIZE * (1 + (zoomLevel - 2) * 0.25);
+    const panX = useSharedValue(0);
+    const panY = useSharedValue(0);
+    const offsetX = useSharedValue(0);
+    const offsetY = useSharedValue(0);
 
-    // Pan (Drag) State
-    const pan = useRef(new Animated.ValueXY()).current;
+    const canvasAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: panX.value },
+            { translateY: panY.value },
+            { rotate: `${universeRotation.value}deg` }
+        ]
+    }));
 
-    // PanResponder for dragging
+    const lastDist = useRef<number | null>(null);
+
     const panResponder = useRef(
         PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: (_, gestureState) => {
-                // Allow small taps to pass through to children (UserNodes)
-                return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+                return (
+                    gestureState.numberActiveTouches > 1 ||
+                    Math.abs(gestureState.dx) > 5 ||
+                    Math.abs(gestureState.dy) > 5
+                );
             },
             onPanResponderGrant: () => {
-                pan.setOffset({
-                    x: (pan.x as any)._value,
-                    y: (pan.y as any)._value
-                });
+                offsetX.value = panX.value;
+                offsetY.value = panY.value;
+                lastDist.current = null;
             },
-            onPanResponderMove: Animated.event(
-                [null, { dx: pan.x, dy: pan.y }],
-                { useNativeDriver: false }
-            ),
+            onPanResponderMove: (evt, gestureState) => {
+                if (gestureState.numberActiveTouches === 2) {
+                    const touches = evt.nativeEvent.touches;
+                    const dist = Math.sqrt(
+                        Math.pow(touches[0].pageX - touches[1].pageX, 2) +
+                        Math.pow(touches[0].pageY - touches[1].pageY, 2)
+                    );
+
+                    if (lastDist.current !== null) {
+                        const zoomChange = (dist - lastDist.current) / 100;
+                        setZoomLevel(prev => {
+                            const next = Math.min(5, Math.max(1, prev + zoomChange));
+                            return next;
+                        });
+                    }
+                    lastDist.current = dist;
+                } else if (gestureState.numberActiveTouches === 1) {
+                    panX.value = offsetX.value + gestureState.dx;
+                    panY.value = offsetY.value + gestureState.dy;
+                }
+            },
             onPanResponderRelease: () => {
-                pan.flattenOffset();
-                // Check if moved significantly to show recenter button
-                const distance = Math.sqrt(Math.pow((pan.x as any)._value, 2) + Math.pow((pan.y as any)._value, 2));
+                const distance = Math.sqrt(Math.pow(panX.value, 2) + Math.pow(panY.value, 2));
                 setIsMoved(distance > 20);
+                lastDist.current = null;
             }
         })
     ).current;
 
     const handleRecenter = () => {
-        Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: false,
-            friction: 7,
-            tension: 40
-        }).start(() => setIsMoved(false));
+        panX.value = withSpring(0, { damping: 20, stiffness: 80 });
+        panY.value = withSpring(0, { damping: 20, stiffness: 80 }, () => {
+            // After spring finish, update isMoved
+        });
+        setIsMoved(false);
     };
 
     const renderHeader = () => (
@@ -361,7 +1082,15 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbit
                             <LayoutGrid size={22} color={colors.primary} />
                         )}
                     </TouchableOpacity>
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setSearchQuery('');
+                            setActiveSearchTag('전체');
+                            setSearchMode('navigation');
+                            setIsActionVisible(false);
+                            setIsSearchModalVisible(true);
+                        }}
+                    >
                         <Search size={22} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
@@ -369,379 +1098,412 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onPressSos }: MainOrbit
         />
     );
 
-    return (
-        <HubLayout
-            header={renderHeader()}
-            scrollable={false}
-        >
-            <View style={styles.content}>
-                {renderFilterBar()}
+    const renderSearchModal = () => {
+        if (!isSearchModalVisible) return null;
 
-                {viewMode === 'list' ? (
-                    <RelationshipList
-                        hideHeader
-                        onSelectNode={onSelectNode}
-                        onPressAdd={onPressAdd}
-                        selectedTab={selectedFilters[0]} // Legacy fallback
-                        onSelectTab={handleToggleFilter}
-                        selectedFilters={selectedFilters}
-                        dynamicTabs={dynamicTabs}
-                    />
-                ) : (
-                    <>
-                        {/* Orbit Engine with Pan Binding */}
-                        <View style={styles.orbitCanvas} {...panResponder.panHandlers}>
-                            <Animated.View style={[
-                                styles.animatedCanvas,
-                                { transform: pan.getTranslateTransform() }
-                            ]}>
-                                {/* Concentric Orbits */}
-                                {[1, 2, 3, 4, 5].map((level) => {
-                                    const size = (currentOrbitSize * level) / 5;
-                                    return (
-                                        <View
-                                            key={level}
-                                            style={[
-                                                styles.orbitRing,
-                                                {
-                                                    width: size,
-                                                    height: size,
-                                                    borderRadius: size / 2,
-                                                    borderColor: colors.primary,
-                                                    opacity: 0.1 - (level * 0.015)
-                                                }
-                                            ]}
-                                        />
-                                    );
-                                })}
+        const searchTags = dynamicTabs;
 
-                                {/* Relationship Nodes */}
-                                {filteredRelationships.map((node, index) => (
-                                    <UserNode
-                                        key={node.id}
-                                        node={node}
-                                        orbitRadius={(currentOrbitSize * node.zone) / 10}
-                                        initialAngle={(index * 137.5) % 360}
-                                        zoomLevel={zoomLevel} onSelectNode={onSelectNode}
+        const filteredPeople = relationships.filter(r => {
+            const rTypeLabel = RELATIONSHIP_TYPE_LABELS[r.type] || r.type;
+            const rZoneLabel = zoneFilters.find(zf => zf.zone === r.zone)?.label;
+            const matchesQuery = r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                rTypeLabel.toLowerCase().includes(searchQuery.toLowerCase());
+
+            if (activeSearchTag === '전체') return matchesQuery;
+            return matchesQuery && (rTypeLabel === activeSearchTag || rZoneLabel === activeSearchTag);
+        });
+
+        const handleSelectPerson = (person: RelationshipNode) => {
+            if (searchMode === 'navigation') {
+                setIsSearchModalVisible(false);
+                onSelectNode(person.id);
+            } else {
+                setSelectedTarget(person);
+                setIsActionVisible(true);
+            }
+        };
+
+        const handleAction = (type: 'LOG' | 'ZONE' | 'RQS') => {
+            if (!selectedTarget) return;
+            setIsSearchModalVisible(false);
+            if (type === 'LOG') {
+                onRecordLog(selectedTarget.id);
+            } else {
+                onDiagnose(selectedTarget.id, type);
+            }
+        };
+
+        return (
+            <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: '#fff' }]}>
+                <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+                    {!isActionVisible ? (
+                        <View style={styles.modalFullContainer}>
+                            <View style={styles.modalHeader}>
+                                <View style={styles.modalHeaderSide} />
+                                <Text style={[styles.modalTitle, { color: colors.primary }]}>
+                                    {searchMode === 'navigation' ? '인맥 검색' : '정서적 체크인'}
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.modalHeaderSide}
+                                    onPress={() => setIsSearchModalVisible(false)}
+                                >
+                                    <X size={24} color={colors.primary} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={{ paddingHorizontal: 20 }}>
+                                <View style={styles.searchContainer}>
+                                    <Search size={18} color={colors.primary} opacity={0.4} />
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        placeholder="이름이나 태그 검색..."
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                        placeholderTextColor="#999"
+                                        autoFocus
                                     />
-                                ))}
+                                    {searchQuery.length > 0 && (
+                                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                            <X size={18} color={colors.primary} opacity={0.4} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
 
-                                {/* Central User Node */}
-                                {(() => {
-                                    const centerSize = 60 + zoomLevel * 12; // 줌 레벨에 따른 크기 변화 최적화
-                                    return (
-                                        <View style={[
-                                            styles.centerNode,
-                                            {
-                                                borderColor: colors.primary,
-                                                width: centerSize,
-                                                height: centerSize,
-                                                borderRadius: centerSize / 2
-                                            }
-                                        ]}>
-                                            <Image
-                                                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZhog-ssE9RUmUCCo0GoGABZCZVLT5UlTfKbAtHfVBjTugBN624wu5yQg6QyjkAHqZ8kHbkPzMjh8CF2ickkcAgQ-vZWVXR7CHOLRBUQHnjUZOiukl1lRdPUX109jc6q_NbWrvX5slT9QcxjCZjygN5X7yNY5K9ucENvWIWeO9COilETzoXQxBBJMWSeY--MRM51hgmyu4ryOyoesEI_ajcfYwlDbL8PHn2OAjynCA32QMj-grS0DrGw_8HDWBi865kIdqtTd7efo' }}
-                                                style={[styles.centerAvatar, { borderRadius: (centerSize - 8) / 2 }]}
-                                            />
-                                        </View>
-                                    );
-                                })()}
-                            </Animated.View>
-                        </View>
+                                <View style={styles.searchFilterWrapper}>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterScroll}>
+                                        {searchTags.map(tag => (
+                                            <TouchableOpacity
+                                                key={tag}
+                                                style={[
+                                                    styles.searchFilterChip,
+                                                    activeSearchTag === tag ? { backgroundColor: colors.accent } : { backgroundColor: '#F0EADE' }
+                                                ]}
+                                                onPress={() => setActiveSearchTag(tag)}
+                                            >
+                                                <Text style={[
+                                                    styles.searchFilterText,
+                                                    { color: activeSearchTag === tag ? 'white' : colors.primary }
+                                                ]}>{tag}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            </View>
 
-                        {/* Status Indicator */}
-                        <View style={styles.statusOverlay} pointerEvents="none">
-                            <Text style={[styles.statusInfo, { color: colors.primary }]}>
-                                {selectedFilters.includes('전체')
-                                    ? `${relationships.length}명의 모든 관계가 공명 중입니다`
-                                    : `${selectedFilters.join(', ')} 그룹 ${filteredRelationships.length}명이 공명 중입니다`}
-                            </Text>
-                        </View>
-
-                        {/* Vertical Controls Container */}
-                        <View style={styles.rightControls}>
-                            {/* Zoom Levels with Glassmorphism */}
-                            <BlurView
-                                intensity={40}
-                                tint="light"
-                                style={[styles.zoomControls, { backgroundColor: 'rgba(255,255,255,0.3)' }]}
-                            >
-                                {[1, 2, 3, 4, 5].map((level) => (
+                            <ScrollView style={styles.selectionList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                    <Text style={styles.listSectionLabel}>검색 결과 • {filteredPeople.length}명</Text>
+                                </View>
+                                {filteredPeople.map((person) => (
                                     <TouchableOpacity
-                                        key={level}
-                                        style={[
-                                            styles.zoomBtn,
-                                            zoomLevel === level && { backgroundColor: colors.primary }
-                                        ]}
-                                        onPress={() => setZoomLevel(level)}
+                                        key={person.id}
+                                        style={[styles.searchResultCard, { backgroundColor: '#F9FBF9' }]}
+                                        onPress={() => handleSelectPerson(person)}
                                     >
-                                        <Text style={[
-                                            styles.zoomBtnText,
-                                            { color: zoomLevel === level ? colors.white : colors.primary }
-                                        ]}>{level}</Text>
+                                        <View style={styles.avatarContainer}>
+                                            <View style={[styles.miniAvatar, { borderColor: colors.primary, width: 56, height: 56, borderRadius: 28 }]}>
+                                                {person.image ? (
+                                                    <Image source={{ uri: person.image }} style={styles.miniAvatarImg} />
+                                                ) : (
+                                                    <Text style={[styles.avatarInitial, { fontSize: 20 }]}>{person.name.charAt(0)}</Text>
+                                                )}
+                                            </View>
+                                            <View style={[styles.typeBadgeMini, { backgroundColor: '#fff' }]}>
+                                                {person.type === 'family' && <Users size={12} color={colors.accent} />}
+                                                {person.type === 'friend' && <Target size={12} color={colors.accent} />}
+                                                {person.type === 'work' && <Briefcase size={12} color={colors.accent} />}
+                                                {(person.type === 'partner' || person.type === 'other') && <Heart size={12} color={colors.accent} fill={colors.accent} />}
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.infoContainer}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                <Text style={[styles.personName, { fontSize: 18 }]}>{person.name}</Text>
+                                                <View style={styles.tagBadge}>
+                                                    <Text style={styles.tagBadgeText}>{RELATIONSHIP_TYPE_LABELS[person.type] || person.type}</Text>
+                                                </View>
+                                            </View>
+                                            <Text style={[styles.personMeta, { fontSize: 13 }]}>
+                                                {person.role} • Zone {person.zone}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.tempContainer}>
+                                            <View style={styles.tempBarBackground}>
+                                                <View
+                                                    style={[
+                                                        styles.tempBarFill,
+                                                        {
+                                                            height: `${person.temperature}%`,
+                                                            backgroundColor: person.temperature > 70 ? colors.accent : colors.primary,
+                                                            opacity: person.temperature / 100
+                                                        }
+                                                    ]}
+                                                />
+                                            </View>
+                                            <Text style={[styles.tempText, { color: person.temperature > 70 ? colors.accent : colors.primary }]}>
+                                                {person.temperature}°
+                                            </Text>
+                                        </View>
                                     </TouchableOpacity>
                                 ))}
-                            </BlurView>
-
-                            {/* Dynamic Recenter Button */}
-                            {isMoved && (
-                                <TouchableOpacity
-                                    style={[styles.recenterBtn, { backgroundColor: colors.white + 'CC' }]}
-                                    onPress={handleRecenter}
-                                >
-                                    <LocateFixed size={20} color={colors.primary} />
-                                </TouchableOpacity>
-                            )}
+                                {filteredPeople.length === 0 && (
+                                    <View style={styles.emptySearch}>
+                                        <Search size={40} color={colors.primary} opacity={0.1} />
+                                        <Text style={styles.emptySearchText}>검색 결과가 없습니다</Text>
+                                    </View>
+                                )}
+                            </ScrollView>
                         </View>
+                    ) : (
+                        <View style={styles.actionFullScreenView}>
+                            <View style={styles.modalFullContainer}>
+                                <View style={styles.modalHeader}>
+                                    <View style={styles.modalHeaderSide} />
+                                    <Text style={[styles.modalTitle, { color: colors.primary }]}>액션 선택</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setIsSearchModalVisible(false)}
+                                        style={styles.modalHeaderSide}
+                                    >
+                                        <X size={24} color={colors.primary} />
+                                    </TouchableOpacity>
+                                </View>
 
-                        {/* SOS Button */}
+                                <View style={{ paddingHorizontal: 20 }}>
+                                    <View style={styles.selectedPersonHeader}>
+                                        <View style={[styles.largeAvatar, { borderColor: colors.primary, width: 100, height: 100, borderRadius: 50 }]}>
+                                            {selectedTarget?.image ? (
+                                                <Image source={{ uri: selectedTarget.image }} style={styles.largeAvatarImg} />
+                                            ) : (
+                                                <Text style={{ fontSize: 32 }}>{selectedTarget?.name.charAt(0)}</Text>
+                                            )}
+                                        </View>
+                                        <Text style={[styles.actionTitle, { fontSize: 24 }]}>{selectedTarget?.name}님</Text>
+                                        <Text style={styles.actionSubtitle}>수행할 액션을 선택해주세요</Text>
+                                    </View>
+                                </View>
 
-                        {/* SOS Button */}
-                        <TouchableOpacity
-                            style={[styles.sosButton, { backgroundColor: colors.accent }]}
-                            onPress={onPressSos}
-                            activeOpacity={0.9}
-                        >
-                            <Text style={styles.sosText}>SOS</Text>
-                        </TouchableOpacity>
-                    </>
-                )}
+                                <View style={[styles.actionGrid, { marginTop: 40, paddingHorizontal: 20 }]}>
+                                    <TouchableOpacity style={styles.actionCardLarge} onPress={() => handleAction('LOG')}>
+                                        <View style={[styles.actionIconBgLarge, { backgroundColor: '#F0F4F0' }]}>
+                                            <Edit3 size={28} color={colors.primary} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.actionLabelLarge}>정서 기록</Text>
+                                            <Text style={styles.actionDescLarge}>오늘의 대화나 기분을 기록합니다</Text>
+                                        </View>
+                                        <ChevronRight size={20} color={colors.primary} opacity={0.3} />
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity style={styles.actionCardLarge} onPress={() => handleAction('ZONE')}>
+                                        <View style={[styles.actionIconBgLarge, { backgroundColor: '#FFF5F0' }]}>
+                                            <RefreshCw size={28} color={colors.accent} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.actionLabelLarge}>오빗존 재설정</Text>
+                                            <Text style={styles.actionDescLarge}>심리적 거리를 다시 측정합니다</Text>
+                                        </View>
+                                        <ChevronRight size={20} color={colors.primary} opacity={0.3} />
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity style={styles.actionCardLarge} onPress={() => handleAction('RQS')}>
+                                        <View style={[styles.actionIconBgLarge, { backgroundColor: '#F0F7FF' }]}>
+                                            <Zap size={28} color="#4A90E2" />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.actionLabelLarge}>캐릭터 심화 진단</Text>
+                                            <Text style={styles.actionDescLarge}>관계의 질적 분석을 수행합니다</Text>
+                                        </View>
+                                        <ChevronRight size={20} color={colors.primary} opacity={0.3} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+                </SafeAreaView>
             </View>
-        </HubLayout>
+        );
+    };
+
+    return (
+        <>
+            <HubLayout
+                header={renderHeader()}
+                scrollable={false}
+            >
+                <View style={styles.content}>
+                    {renderFilterBar()}
+
+                    {viewMode === 'list' ? (
+                        <RelationshipList
+                            hideHeader
+                            onSelectNode={onSelectNode}
+                            onPressAdd={onPressAdd}
+                            selectedTab={selectedFilters[0]}
+                            onSelectTab={handleToggleFilter}
+                            selectedFilters={selectedFilters}
+                            dynamicTabs={dynamicTabs}
+                            sortMode={sortMode}
+                        />
+                    ) : (
+                        <>
+                            <View style={styles.orbitCanvas} {...panResponder.panHandlers}>
+                                <ReAnimated.View style={[
+                                    styles.animatedCanvas,
+                                    canvasAnimatedStyle
+                                ]}>
+                                    {/* Rings and Zones with shading */}
+                                    {[1, 2, 3, 4, 5].map((level) => {
+                                        const size = (currentOrbitSize * (level + 0.5)) / 3.5; // Sync with node distribution
+                                        const zoneColors: Record<number, string> = {
+                                            1: '#FFB74D',
+                                            2: '#D98B73',
+                                            3: '#4A5D4E',
+                                            4: '#90A4AE',
+                                            5: '#D1D5DB'
+                                        };
+                                        const orbitColor = zoneColors[level] || colors.primary;
+
+                                        return (
+                                            <View
+                                                key={level}
+                                                style={[
+                                                    styles.orbitRing,
+                                                    {
+                                                        width: size,
+                                                        height: size,
+                                                        borderRadius: size / 2,
+                                                        borderColor: orbitColor,
+                                                        borderWidth: 2.5,
+                                                        opacity: 0.25 - (level * 0.03),
+                                                        backgroundColor: level === 1 ? 'rgba(255,183,77,0.03)' : (level % 2 === 0 ? 'rgba(74,93,78,0.03)' : 'transparent')
+                                                    }
+                                                ]}
+                                            />
+                                        );
+                                    })}
+
+                                    {distributedNodes.map(({ node, radius, angle }) => (
+                                        <UserNode
+                                            key={node.id}
+                                            node={node}
+                                            orbitRadius={radius}
+                                            initialAngle={angle}
+                                            zoomLevel={zoomLevel}
+                                            totalNodes={relationships.length}
+                                            onSelectNode={onSelectNode}
+                                        />
+                                    ))}
+
+                                    {(() => {
+                                        const centerSize = 60 + zoomLevel * 12;
+                                        const profileImg = userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
+                                        return (
+                                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                                {/* Solar Amber Heartbeat Glow (Soft & Filled) */}
+                                                <ReAnimated.View style={[
+                                                    {
+                                                        position: 'absolute',
+                                                        width: centerSize + 20,
+                                                        height: centerSize + 20,
+                                                        borderRadius: (centerSize + 20) / 2,
+                                                        backgroundColor: 'rgba(255, 152, 0, 0.4)', // Soft Amber Glow
+                                                        shadowColor: '#FF9800',
+                                                        shadowOffset: { width: 0, height: 0 },
+                                                        shadowOpacity: 0.6,
+                                                        shadowRadius: 20,
+                                                        elevation: 10,
+                                                        zIndex: 4
+                                                    },
+                                                    selfHaloStyle
+                                                ]} />
+
+                                                <View style={[
+                                                    styles.centerNode,
+                                                    {
+                                                        borderColor: '#FF9800', // Solar Amber (Self)
+                                                        width: centerSize,
+                                                        height: centerSize,
+                                                        borderRadius: centerSize / 2
+                                                    }
+                                                ]}>
+                                                    <Image
+                                                        source={{ uri: profileImg }}
+                                                        style={[styles.centerAvatar, { borderRadius: (centerSize - 8) / 2 }]}
+                                                    />
+                                                </View>
+                                            </View>
+                                        );
+                                    })()}
+                                </ReAnimated.View>
+                            </View>
+
+                            <View style={styles.statusOverlay} pointerEvents="none">
+                                <Text style={[styles.statusInfo, { color: colors.primary, marginBottom: 8, fontSize: 10, opacity: 0.6 }]}>
+                                    {zoomLevel < 1.8 ? 'UNIVERSE MODE' : zoomLevel < 3.5 ? 'GALAXY MODE' : 'STAR CLUSTER MODE'}
+                                    {sortMode !== 'default' && ` • ${sortMode.toUpperCase()} FIRST`}
+                                </Text>
+                                <Text style={[styles.statusInfo, { color: colors.primary }]}>
+                                    {selectedFilters.includes('전체')
+                                        ? `${relationships.length}명의 모든 관계가 공명 중입니다`
+                                        : `${selectedFilters.join(', ')} 그룹 ${filteredRelationships.length}명이 공명 중입니다`}
+                                </Text>
+                            </View>
+
+                            <View style={styles.rightControls}>
+                                <BlurView
+                                    intensity={40}
+                                    tint="light"
+                                    style={[styles.zoomControls, { backgroundColor: 'rgba(255,255,255,0.3)' }]}
+                                >
+                                    {[1, 2, 3, 4, 5].map((level) => (
+                                        <TouchableOpacity
+                                            key={level}
+                                            style={[
+                                                styles.zoomBtn,
+                                                Math.round(zoomLevel) === level && { backgroundColor: colors.primary }
+                                            ]}
+                                            onPress={() => setZoomLevel(level)}
+                                        >
+                                            <Text style={[
+                                                styles.zoomBtnText,
+                                                { color: Math.round(zoomLevel) === level ? colors.white : colors.primary }
+                                            ]}>{level}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </BlurView>
+
+                                {isMoved && (
+                                    <TouchableOpacity
+                                        style={[styles.recenterBtn, { backgroundColor: colors.white + 'CC' }]}
+                                        onPress={handleRecenter}
+                                    >
+                                        <LocateFixed size={20} color={colors.primary} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.checkInButton, { backgroundColor: colors.primary }]}
+                                onPress={() => {
+                                    setSearchQuery('');
+                                    setActiveSearchTag('전체');
+                                    setSearchMode('action');
+                                    setSelectedTarget(null);
+                                    setIsActionVisible(false);
+                                    setIsSearchModalVisible(true);
+                                }}
+                                activeOpacity={0.9}
+                            >
+                                <HeartPulse size={28} color={colors.white} />
+                                <Text style={styles.checkInText}>체크인</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+                </View>
+            </HubLayout >
+
+            {renderSearchModal()}
+        </>
     );
 };
-
-const styles = StyleSheet.create({
-    content: {
-        flex: 1,
-    },
-    filterBar: {
-        paddingVertical: 12,
-        backgroundColor: 'transparent',
-        zIndex: 100,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-    filterBarExpanded: {
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(74,93,78,0.1)',
-        paddingHorizontal: 20,
-    },
-    filterBarScroll: {
-        paddingHorizontal: 20,
-        gap: 8,
-    },
-    filterGrid: {
-        flex: 1,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        paddingBottom: 10,
-    },
-    filterToggleBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 8,
-        marginRight: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    filterChip: {
-        paddingHorizontal: 18,
-        paddingVertical: 9,
-        borderRadius: 22, // Full round chip style
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    filterChipText: {
-        fontSize: 14,
-        fontWeight: '700',
-        letterSpacing: -0.2,
-    },
-    orbitCanvas: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    animatedCanvas: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        height: '100%',
-    },
-    orbitRing: {
-        position: 'absolute',
-        borderWidth: 1.5,
-    },
-    centerNode: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        borderWidth: 3,
-        padding: 4,
-        backgroundColor: '#fff',
-        zIndex: 5,
-    },
-    centerAvatar: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 40,
-    },
-    userNodeContainer: {
-        position: 'absolute',
-        width: 70,
-        height: 70,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 6,
-        overflow: 'visible',
-    },
-    avatarWrapper: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        borderWidth: 2,
-        padding: 2,
-        backgroundColor: '#fff',
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 25,
-    },
-    nodeIndicator: {
-        position: 'absolute',
-
-        borderWidth: 2,
-        borderColor: '#fff',
-    },
-    thermostatContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        gap: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(74,93,78,0.05)',
-    },
-    thermostatText: {
-        fontSize: 14,
-        fontWeight: '800',
-    },
-    statusOverlay: {
-        position: 'absolute',
-        bottom: 120,
-        left: 0,
-        right: 0,
-        alignItems: 'center',
-        zIndex: 15,
-    },
-    statusInfo: {
-        fontSize: 13,
-        fontWeight: '600',
-        backgroundColor: 'rgba(255,255,255,0.7)',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 15,
-        overflow: 'hidden',
-    },
-    sosButton: {
-        position: 'absolute',
-        bottom: 40,
-        alignSelf: 'center',
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 8,
-        zIndex: 30,
-    },
-    sosText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '900',
-    },
-    rightControls: {
-        position: 'absolute',
-        right: 16,
-        top: '50%',
-        transform: [{ translateY: -100 }],
-        alignItems: 'center',
-        gap: 16,
-        zIndex: 25,
-    },
-    zoomControls: {
-        borderRadius: 20,
-        padding: 6,
-        gap: 8,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.4)',
-    },
-    zoomBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    zoomBtnText: {
-        fontSize: 12,
-        fontWeight: '800',
-    },
-    recenterBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(74, 93, 78, 0.05)',
-    },
-    dotNode: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        borderWidth: 2,
-        borderColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-    },
-    nodeName: {
-        fontSize: 10,
-        fontWeight: '900',
-        marginTop: 6,
-        textAlign: 'center',
-        textShadowColor: 'rgba(255,255,255,0.8)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
-    },
-    nodeTextContent: { marginTop: 4, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.4)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, }, nodeRole: {
-        fontSize: 8,
-        fontWeight: '600',
-        opacity: 0.5,
-        textAlign: 'center',
-    },
-    avatarAura: {
-        position: 'absolute',
-        zIndex: 1,
-    },
-    dotPulse: {
-        position: 'absolute',
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-    },
-});

@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    TextInput, Image, ScrollView, Animated,
-    KeyboardAvoidingView, Platform, Alert, ActionSheetIOS, Pressable
+    TextInput, Image, ScrollView,
+    KeyboardAvoidingView, Platform, Alert, ActionSheetIOS
 } from 'react-native';
+import ReAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    Easing
+} from 'react-native-reanimated';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -30,25 +38,26 @@ export const ProfileEditScreen = ({ onBack }: ProfileEditScreenProps) => {
     const [birthday, setBirthday] = useState<Date | null>(userProfile?.birthday ? new Date(userProfile.birthday) : null);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    // Aura Animation
-    const auraAnim = new Animated.Value(0);
+    // 💓 Self Heartbeat Animation (Solar Amber)
+    const selfPulse = useSharedValue(1);
 
     useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(auraAnim, {
-                    toValue: 1,
-                    duration: 3000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(auraAnim, {
-                    toValue: 0,
-                    duration: 3000,
-                    useNativeDriver: true,
-                })
-            ])
-        ).start();
+        selfPulse.value = withRepeat(
+            withSequence(
+                withTiming(1.08, { duration: 400, easing: Easing.out(Easing.quad) }),
+                withTiming(1, { duration: 300, easing: Easing.in(Easing.quad) }),
+                withTiming(1.05, { duration: 400, easing: Easing.out(Easing.quad) }),
+                withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.quad) })
+            ),
+            -1,
+            false
+        );
     }, []);
+
+    const selfHaloStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: selfPulse.value }],
+        opacity: selfPulse.value === 1 ? 0.4 : 0.8
+    }));
 
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -145,16 +154,6 @@ export const ProfileEditScreen = ({ onBack }: ProfileEditScreenProps) => {
         </View>
     );
 
-    const auraScale = auraAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [1, 1.1]
-    });
-
-    const auraOpacity = auraAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0.3, 0.6]
-    });
-
     return (
         <HubLayout header={renderHeader()}>
             <KeyboardAvoidingView
@@ -167,15 +166,11 @@ export const ProfileEditScreen = ({ onBack }: ProfileEditScreenProps) => {
                 >
                     {/* Avatar Selection Area */}
                     <View style={styles.avatarSection}>
-                        <Animated.View style={[
+                        <ReAnimated.View style={[
                             styles.avatarAura,
-                            {
-                                backgroundColor: colors.accent + '20',
-                                transform: [{ scale: auraScale }],
-                                opacity: auraOpacity
-                            }
+                            selfHaloStyle
                         ]} />
-                        <View style={[styles.avatarContainer, { borderColor: colors.white }]}>
+                        <View style={[styles.avatarContainer, { borderColor: '#FF9800' }]}>
                             <Image
                                 source={{ uri: avatar }}
                                 style={styles.avatarImage}
@@ -339,6 +334,12 @@ const styles = StyleSheet.create({
         height: 160,
         borderRadius: 80,
         top: -15,
+        backgroundColor: 'rgba(255, 152, 0, 0.4)', // Solar Amber Glow
+        shadowColor: '#FF9800',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 20,
+        elevation: 10,
     },
     avatarContainer: {
         width: 130,
