@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, Alert, Modal, TextInput } from 'react-native';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle, Line } from 'react-native-svg';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
@@ -33,7 +34,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     useEffect(() => {
         if (autoOpenLog) {
-            setShowLogModal(true);
+            setShowHealthCheckModal(true);
         }
     }, [autoOpenLog]);
 
@@ -463,7 +464,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
         }
         } >
             <HubLayout header={renderHeader()} scrollable>
-                <View style={styles.container}>
+                <View style={[styles.container, { paddingBottom: 80 }]}>
                     {/* Profile Section */}
                     <TouchableOpacity
                         style={styles.profileContainer}
@@ -919,6 +920,12 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                 </View>
             </Modal>
             {renderHealthCheckModal()}
+            {/* 하단 시스템 바 가독성 가드 */}
+            <ExpoLinearGradient
+                colors={['transparent', colors.background]}
+                style={styles.navBottomGuard}
+                pointerEvents="none"
+            />
         </View >
     );
 };
@@ -1310,11 +1317,12 @@ const styles = StyleSheet.create({
     },
     fabContainer: {
         position: 'absolute',
-        bottom: 40,
+        bottom: 110,
         right: 20,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        zIndex: 20,
     },
     fabLabel: {
         paddingHorizontal: 12,
@@ -1691,6 +1699,14 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         marginTop: 2,
+    },
+    navBottomGuard: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        zIndex: 10,
     },
 });
 

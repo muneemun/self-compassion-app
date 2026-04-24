@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,6 +25,29 @@ import { DataManagementScreen } from './src/features/settings/DataManagementScre
 import { ProfileEditScreen } from './src/features/settings/ProfileEditScreen';
 import { ReminderSettingsScreen } from './src/features/settings/ReminderSettingsScreen';
 import { NotificationSettingsScreen } from './src/features/settings/NotificationSettingsScreen';
+import { Orbit, SlidersHorizontal, Activity, Rocket } from 'lucide-react-native';
+import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
+
+const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <SvgCircle cx="12" cy="12" r="6" stroke={color} strokeWidth="2" />
+    <SvgPath
+      d="M4 14C4 14 6 11 12 11C18 11 20 14 20 14"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      transform="rotate(-15 12 12)"
+    />
+    <SvgPath
+      d="M4 14C4 14 6 17 12 17C18 17 20 14 20 14"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      transform="rotate(-15 12 12)"
+      opacity="0.5"
+    />
+  </Svg>
+);
 
 function App() {
   const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health'>('map');
@@ -47,7 +71,13 @@ function App() {
   } | null>(null);
   const [autoOpenLog, setAutoOpenLog] = useState(false);
   const hasCompletedOnboarding = useAppStore(state => state.hasCompletedOnboarding);
+  const setHasCompletedOnboarding = useAppStore(state => state.setHasCompletedOnboarding);
   const { addRelationship, updateDiagnosisResult } = useRelationshipStore();
+
+  // [DEV] 강제 데이터 초기화
+  useEffect(() => {
+    setHasCompletedOnboarding(false);
+  }, []);
 
   return (
     <SafeAreaProvider>
@@ -208,34 +238,61 @@ function App() {
                       </View>
                     </View>
 
-                    {/* Bottom Navigation */}
-                    <SafeAreaView edges={['bottom']} style={styles.navContainer}>
-                      <TouchableOpacity
-                        style={[styles.navItem, activeTab === 'map' && styles.activeNavItem]}
-                        onPress={() => setActiveTab('map')}
-                      >
-                        <Text style={[styles.navText, activeTab === 'map' && styles.activeNavText]}>Orbit</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.navItem, activeTab === 'tuning' && styles.activeNavItem]}
-                        onPress={() => setActiveTab('tuning')}
-                      >
-                        <Text style={[styles.navText, activeTab === 'tuning' && styles.activeNavText]}>Tuning</Text>
-                      </TouchableOpacity>
+                    {/* Floating Bottom Navigation */}
+                    <View style={styles.navWrapper}>
+                      <View style={styles.navContainer}>
+                        <TouchableOpacity
+                          style={styles.navItem}
+                          onPress={() => setActiveTab('map')}
+                        >
+                          <View style={styles.iconWrapper}>
+                            {activeTab === 'map' && <View style={styles.activeIconBg} />}
+                            <PlanetIcon color={activeTab === 'map' ? '#4A5D4E' : '#9E9E9E'} size={24} />
+                          </View>
+                          <Text style={[styles.navText, activeTab === 'map' && styles.activeNavText]}>Orbit</Text>
+                        </TouchableOpacity>
 
-                      <TouchableOpacity
-                        style={[styles.navItem, activeTab === 'health' && styles.activeNavItem]}
-                        onPress={() => setActiveTab('health')}
-                      >
-                        <Text style={[styles.navText, activeTab === 'health' && styles.activeNavText]}>Health</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.navItem, activeTab === 'space' && styles.activeNavItem]}
-                        onPress={() => setActiveTab('space')}
-                      >
-                        <Text style={[styles.navText, activeTab === 'space' && styles.activeNavText]}>Space</Text>
-                      </TouchableOpacity>
-                    </SafeAreaView>
+                        <TouchableOpacity
+                          style={styles.navItem}
+                          onPress={() => setActiveTab('tuning')}
+                        >
+                          <View style={styles.iconWrapper}>
+                            {activeTab === 'tuning' && <View style={styles.activeIconBg} />}
+                            <SlidersHorizontal size={22} color={activeTab === 'tuning' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'tuning' ? 2.5 : 2} />
+                          </View>
+                          <Text style={[styles.navText, activeTab === 'tuning' && styles.activeNavText]}>Tuning</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.navItem}
+                          onPress={() => setActiveTab('health')}
+                        >
+                          <View style={styles.iconWrapper}>
+                            {activeTab === 'health' && <View style={styles.activeIconBg} />}
+                            <Activity size={22} color={activeTab === 'health' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'health' ? 2.5 : 2} />
+                          </View>
+                          <Text style={[styles.navText, activeTab === 'health' && styles.activeNavText]}>Health</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.navItem}
+                          onPress={() => setActiveTab('space')}
+                        >
+                          <View style={styles.iconWrapper}>
+                            {activeTab === 'space' && <View style={styles.activeIconBg} />}
+                            <Rocket size={22} color={activeTab === 'space' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'space' ? 2.5 : 2} />
+                          </View>
+                          <Text style={[styles.navText, activeTab === 'space' && styles.activeNavText]}>Space</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Bottom System UI Safe Guard Layer */}
+                    <LinearGradient
+                      colors={['transparent', 'rgba(252, 249, 242, 0.8)', '#FCF9F2']}
+                      style={styles.navBottomGuard}
+                      pointerEvents="none"
+                    />
                   </>
                 )}
             </View>
@@ -257,33 +314,66 @@ const styles = StyleSheet.create({
   tabView: {
     flex: 1,
   },
+  navWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingBottom: 50, // 갤럭시 S23 등 안드로이드 시스템 UI 대응을 위해 여백 추가
+    zIndex: 1000,
+  },
+  navBottomGuard: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 900, // 네비게이션(1000)보다 아래, 콘텐츠보다 위
+  },
   navContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FCF9F2',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(74,93,78,0.1)',
+    backgroundColor: 'rgba(252, 249, 242, 0.95)',
+    borderRadius: 40,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    // Premium Shadow
+    shadowColor: '#4A5D4E',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 93, 78, 0.08)',
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 4,
   },
-  activeNavItem: {
-    borderTopWidth: 2,
-    borderTopColor: '#4A5D4E',
+  iconWrapper: {
+    width: 44,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  activeIconBg: {
+    position: 'absolute',
+    width: 48,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(74, 93, 78, 0.12)',
   },
   navText: {
     color: '#9E9E9E',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 11,
+    letterSpacing: -0.2,
   },
   activeNavText: {
     color: '#4A5D4E',
-    fontWeight: '800',
-  },
-  sosNavText: {
-    color: '#FF5252',
     fontWeight: '800',
   },
   tabActive: {

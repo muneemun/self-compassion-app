@@ -4,6 +4,7 @@ import {
     TextInput, Image, ScrollView,
     KeyboardAvoidingView, Platform, Alert, ActionSheetIOS
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import ReAnimated, {
     useSharedValue,
     useAnimatedStyle,
@@ -34,7 +35,7 @@ export const ProfileEditScreen = ({ onBack }: ProfileEditScreenProps) => {
     const [name, setName] = useState(userProfile?.name || '');
     const [status, setStatus] = useState(userProfile?.status || '');
     const [mbti, setMbti] = useState(userProfile?.mbti || '');
-    const [avatar, setAvatar] = useState(userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80');
+    const [avatar, setAvatar] = useState(userProfile?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_4nbf8XYKfUAdnhk0h_PYVe-cPF_A6hYA9qFKFARMFD5X_qYabF_Q6Ahn_fkVop9cc55TdPKTmst_DJOCIElrUGuKDyp-_k94tXARDdb7vrNXxdd3jErzAMy5B5wgWlGRB8y8M-9gBmW8jww40YT4sCkNxkzhsII5eswcUTMVpRzkwka7PHIu33bUdVOthx2lrxFeMrz1p9nZKI8uSDYzdrGP2WAEkp1NN7cOYU5PBWL7mZ6a6MkSMy_qYSR3Vgv2v2IfX_K4lhQ');
     const [birthday, setBirthday] = useState<Date | null>(userProfile?.birthday ? new Date(userProfile.birthday) : null);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -155,141 +156,150 @@ export const ProfileEditScreen = ({ onBack }: ProfileEditScreenProps) => {
     );
 
     return (
-        <HubLayout header={renderHeader()}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
+        <>
+            <HubLayout header={renderHeader()}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
                 >
-                    {/* Avatar Selection Area */}
-                    <View style={styles.avatarSection}>
-                        <ReAnimated.View style={[
-                            styles.avatarAura,
-                            selfHaloStyle
-                        ]} />
-                        <View style={[styles.avatarContainer, { borderColor: '#FF9800' }]}>
-                            <Image
-                                source={{ uri: avatar }}
-                                style={styles.avatarImage}
-                            />
-                            <TouchableOpacity
-                                style={[styles.cameraBtn, { backgroundColor: colors.primary }]}
-                                onPress={handleAvatarPress}
-                            >
-                                <Camera size={16} color={colors.white} />
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {/* Avatar Selection Area */}
+                        <View style={styles.avatarSection}>
+                            <ReAnimated.View style={[
+                                styles.avatarAura,
+                                selfHaloStyle
+                            ]} />
+                            <View style={[styles.avatarContainer, { borderColor: '#FF9800' }]}>
+                                <Image
+                                    source={{ uri: avatar }}
+                                    style={styles.avatarImage}
+                                />
+                                <TouchableOpacity
+                                    style={[styles.cameraBtn, { backgroundColor: colors.primary }]}
+                                    onPress={handleAvatarPress}
+                                >
+                                    <Camera size={16} color={colors.white} />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={[styles.avatarHint, { color: colors.gray[500] }]}>중심 노드의 이미지를 변경합니다</Text>
+                        </View>
+
+                        {/* Basic Info Group */}
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.groupTitle, { color: colors.primary }]}>기본 정보</Text>
+
+                            <View style={styles.inputContainer}>
+                                <View style={styles.labelRow}>
+                                    <User size={16} color={colors.gray[500]} />
+                                    <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>이름 (닉네임)</Text>
+                                </View>
+                                <TextInput
+                                    style={[styles.textInput, { color: colors.primary, backgroundColor: colors.white }]}
+                                    value={name}
+                                    onChangeText={setName}
+                                    placeholder="이름을 입력하세요"
+                                    placeholderTextColor={colors.gray[400]}
+                                />
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <View style={styles.labelRow}>
+                                    <MessageCircle size={16} color={colors.gray[500]} />
+                                    <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>오늘의 마음 스테이트먼트</Text>
+                                </View>
+                                <TextInput
+                                    style={[styles.textInput, styles.textArea, { color: colors.primary, backgroundColor: colors.white }]}
+                                    value={status}
+                                    onChangeText={setStatus}
+                                    placeholder="나를 표현하는 한 줄 문장"
+                                    placeholderTextColor={colors.gray[400]}
+                                    multiline
+                                    numberOfLines={2}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Emotional Info Group */}
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.groupTitle, { color: colors.primary }]}>정서적 성향</Text>
+
+                            <View style={styles.inputContainer}>
+                                <View style={styles.labelRow}>
+                                    <Sparkles size={16} color={colors.gray[500]} />
+                                    <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>성격 유형 (예: MBTI)</Text>
+                                </View>
+                                <TextInput
+                                    style={[styles.textInput, { color: colors.primary, backgroundColor: colors.white }]}
+                                    value={mbti}
+                                    onChangeText={setMbti}
+                                    placeholder="예: INFJ, 내면의 탐구자 등"
+                                    placeholderTextColor={colors.gray[400]}
+                                />
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <View style={styles.labelRow}>
+                                    <Cake size={16} color={colors.gray[500]} />
+                                    <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>생일 (연간 루틴용)</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.textInput, { backgroundColor: colors.white, justifyContent: 'center' }]}
+                                    onPress={() => setShowDatePicker(true)}
+                                >
+                                    <Text style={{ color: birthday ? colors.primary : colors.gray[400], fontSize: 16 }}>
+                                        {birthday ? birthday.toLocaleDateString() : '생일을 선택하세요'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    value={birthday || new Date()}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    maximumDate={new Date()}
+                                    onChange={(event, selectedDate) => {
+                                        setShowDatePicker(Platform.OS === 'ios');
+                                        if (selectedDate) setBirthday(selectedDate);
+                                    }}
+                                />
+                            )}
+                        </View>
+
+                        {/* Info Only Area */}
+                        <View style={[styles.infoBox, { backgroundColor: colors.primary + '05' }]}>
+                            <Text style={[styles.infoText, { color: colors.primary + '80' }]}>
+                                스페이스 시작일: {new Date(userProfile?.startedAt || Date.now()).toLocaleDateString()}
+                            </Text>
+                        </View>
+
+                        {/* Danger Zone */}
+                        <View style={styles.dangerZone}>
+                            <TouchableOpacity style={styles.dangerBtn}>
+                                <LogOut size={18} color={colors.gray[500]} />
+                                <Text style={[styles.dangerText, { color: colors.gray[500] }]}>로그아웃</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.dangerBtn}>
+                                <Trash2 size={18} color="#FF6B6B" />
+                                <Text style={[styles.dangerText, { color: '#FF6B6B' }]}>계정 탈퇴</Text>
                             </TouchableOpacity>
                         </View>
-                        <Text style={[styles.avatarHint, { color: colors.gray[500] }]}>중심 노드의 이미지를 변경합니다</Text>
-                    </View>
 
-                    {/* Basic Info Group */}
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.groupTitle, { color: colors.primary }]}>기본 정보</Text>
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </HubLayout>
 
-                        <View style={styles.inputContainer}>
-                            <View style={styles.labelRow}>
-                                <User size={16} color={colors.gray[500]} />
-                                <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>이름 (닉네임)</Text>
-                            </View>
-                            <TextInput
-                                style={[styles.textInput, { color: colors.primary, backgroundColor: colors.white }]}
-                                value={name}
-                                onChangeText={setName}
-                                placeholder="이름을 입력하세요"
-                                placeholderTextColor={colors.gray[400]}
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <View style={styles.labelRow}>
-                                <MessageCircle size={16} color={colors.gray[500]} />
-                                <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>오늘의 마음 스테이트먼트</Text>
-                            </View>
-                            <TextInput
-                                style={[styles.textInput, styles.textArea, { color: colors.primary, backgroundColor: colors.white }]}
-                                value={status}
-                                onChangeText={setStatus}
-                                placeholder="나를 표현하는 한 줄 문장"
-                                placeholderTextColor={colors.gray[400]}
-                                multiline
-                                numberOfLines={2}
-                            />
-                        </View>
-                    </View>
-
-                    {/* Emotional Info Group */}
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.groupTitle, { color: colors.primary }]}>정서적 성향</Text>
-
-                        <View style={styles.inputContainer}>
-                            <View style={styles.labelRow}>
-                                <Sparkles size={16} color={colors.gray[500]} />
-                                <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>성격 유형 (예: MBTI)</Text>
-                            </View>
-                            <TextInput
-                                style={[styles.textInput, { color: colors.primary, backgroundColor: colors.white }]}
-                                value={mbti}
-                                onChangeText={setMbti}
-                                placeholder="예: INFJ, 내면의 탐구자 등"
-                                placeholderTextColor={colors.gray[400]}
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <View style={styles.labelRow}>
-                                <Cake size={16} color={colors.gray[500]} />
-                                <Text style={[styles.inputLabel, { color: colors.gray[500] }]}>생일 (연간 루틴용)</Text>
-                            </View>
-                            <TouchableOpacity
-                                style={[styles.textInput, { backgroundColor: colors.white, justifyContent: 'center' }]}
-                                onPress={() => setShowDatePicker(true)}
-                            >
-                                <Text style={{ color: birthday ? colors.primary : colors.gray[400], fontSize: 16 }}>
-                                    {birthday ? birthday.toLocaleDateString() : '생일을 선택하세요'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={birthday || new Date()}
-                                mode="date"
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                maximumDate={new Date()}
-                                onChange={(event, selectedDate) => {
-                                    setShowDatePicker(Platform.OS === 'ios');
-                                    if (selectedDate) setBirthday(selectedDate);
-                                }}
-                            />
-                        )}
-                    </View>
-
-                    {/* Info Only Area */}
-                    <View style={[styles.infoBox, { backgroundColor: colors.primary + '05' }]}>
-                        <Text style={[styles.infoText, { color: colors.primary + '80' }]}>
-                            스페이스 시작일: {new Date(userProfile?.startedAt || Date.now()).toLocaleDateString()}
-                        </Text>
-                    </View>
-
-                    {/* Danger Zone */}
-                    <View style={styles.dangerZone}>
-                        <TouchableOpacity style={styles.dangerBtn}>
-                            <LogOut size={18} color={colors.gray[500]} />
-                            <Text style={[styles.dangerText, { color: colors.gray[500] }]}>로그아웃</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.dangerBtn}>
-                            <Trash2 size={18} color="#FF6B6B" />
-                            <Text style={[styles.dangerText, { color: '#FF6B6B' }]}>계정 탈퇴</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={{ height: 40 }} />
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </HubLayout>
+            {/* 하단 시스템 바 가독성 가드 */}
+            <LinearGradient
+                colors={['transparent', colors.background]}
+                style={styles.navBottomGuard}
+                pointerEvents="none"
+            />
+        </>
     );
 };
 
@@ -436,4 +446,12 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '800',
     },
+    navBottomGuard: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        zIndex: 10,
+    }
 });

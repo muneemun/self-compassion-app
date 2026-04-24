@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, Alert, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
@@ -448,9 +449,9 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <>
             <HubLayout header={renderHeader()} scrollable>
-                <ScrollView contentContainerStyle={styles.container}>
+                <View style={styles.container}>
                     {/* Hero Section: RQS Grade */}
                     <View style={styles.heroSection}>
                         <View style={[styles.heroAura, { backgroundColor: (grades[grade]?.color || colors.primary) + '15' }]} />
@@ -605,62 +606,69 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                         </View>
                     </View>
 
-                    <View style={{ height: 120 }} />
-                </ScrollView>
+                    <View style={{ height: 100 }} />
+                </View>
+            </HubLayout>
 
-                {/* Custom Premium Popup (CR-23 Design) */}
-                {showInfo && (
-                    <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-                        <TouchableOpacity
-                            style={StyleSheet.absoluteFill}
-                            activeOpacity={1}
-                            onPress={() => setShowInfo(false)}
-                        />
-                        <View style={[styles.floatingPopupCard, { backgroundColor: colors.white }]}>
-                            <View style={styles.guideHeader}>
-                                <View>
-                                    <Text style={[styles.guideTitle, { color: colors.primary }]}>관계 건강 점수 분석 모델</Text>
-                                    <Text style={[styles.guideSubTitle, { color: colors.accent }]}>Relationship Analysis Basis</Text>
-                                </View>
-                                <TouchableOpacity onPress={() => setShowInfo(false)} style={styles.popupCloseBtn}>
-                                    <Activity size={20} color={colors.primary} />
-                                </TouchableOpacity>
+            {/* 하단 시스템 바 가독성 가드 */}
+            <ExpoLinearGradient
+                colors={['transparent', colors.background]}
+                style={styles.navBottomGuard}
+                pointerEvents="none"
+            />
+
+            {/* Custom Premium Popup (CR-23 Design) */}
+            {showInfo && (
+                <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={() => setShowInfo(false)}
+                    />
+                    <View style={[styles.floatingPopupCard, { backgroundColor: colors.white }]}>
+                        <View style={styles.guideHeader}>
+                            <View>
+                                <Text style={[styles.guideTitle, { color: colors.primary }]}>관계 건강 점수 분석 모델</Text>
+                                <Text style={[styles.guideSubTitle, { color: colors.accent }]}>Relationship Analysis Basis</Text>
                             </View>
-
-                            <View style={styles.popupScrollContainer}>
-                                <Text style={[styles.guideInfoText, { color: colors.primary }]}>
-                                    귀하의 리포트에서 나타나는 수치는 단순히 느낌이나 추측이 아닌, 실제 기록된 데이터를 바탕으로 분석됩니다.
-                                </Text>
-
-                                <View style={[styles.guideStatusBox, { backgroundColor: colors.primary + '0A' }]}>
-                                    <Text style={[styles.guideStatusLabel, { color: colors.primary }]}>
-                                        1. 기초 신뢰 안정성
-                                    </Text>
-                                    <Text style={[styles.guideStatusDesc, { color: colors.primary, opacity: 0.6 }]}>
-                                        사용자가 직접 응답한 진단 데이터를 통해 관계의 본질적인 단단함을 측정합니다.
-                                    </Text>
-                                </View>
-
-                                <View style={[styles.guideStatusBox, { backgroundColor: colors.primary + '0A', marginTop: 12 }]}>
-                                    <Text style={[styles.guideStatusLabel, { color: colors.primary }]}>
-                                        2. 기록된 상호작용 지표
-                                    </Text>
-                                    <Text style={[styles.guideStatusDesc, { color: colors.primary, opacity: 0.6 }]}>
-                                        타임라인에 기록해온 실제 대화의 온도와 빈도를 통계적으로 환산하여 반영합니다.
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.popupConfirmBtn, { backgroundColor: colors.primary }]}
-                                onPress={() => setShowInfo(false)}
-                            >
-                                <Text style={styles.popupConfirmText}>확인</Text>
+                            <TouchableOpacity onPress={() => setShowInfo(false)} style={styles.popupCloseBtn}>
+                                <Activity size={20} color={colors.primary} />
                             </TouchableOpacity>
                         </View>
+
+                        <View style={styles.popupScrollContainer}>
+                            <Text style={[styles.guideInfoText, { color: colors.primary }]}>
+                                귀하의 리포트에서 나타나는 수치는 단순히 느낌이나 추측이 아닌, 실제 기록된 데이터를 바탕으로 분석됩니다.
+                            </Text>
+
+                            <View style={[styles.guideStatusBox, { backgroundColor: colors.primary + '0A' }]}>
+                                <Text style={[styles.guideStatusLabel, { color: colors.primary }]}>
+                                    1. 기초 신뢰 안정성
+                                </Text>
+                                <Text style={[styles.guideStatusDesc, { color: colors.primary, opacity: 0.6 }]}>
+                                    사용자가 직접 응답한 진단 데이터를 통해 관계의 본질적인 단단함을 측정합니다.
+                                </Text>
+                            </View>
+
+                            <View style={[styles.guideStatusBox, { backgroundColor: colors.primary + '0A', marginTop: 12 }]}>
+                                <Text style={[styles.guideStatusLabel, { color: colors.primary }]}>
+                                    2. 기록된 상호작용 지표
+                                </Text>
+                                <Text style={[styles.guideStatusDesc, { color: colors.primary, opacity: 0.6 }]}>
+                                    타임라인에 기록해온 실제 대화의 온도와 빈도를 통계적으로 환산하여 반영합니다.
+                                </Text>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.popupConfirmBtn, { backgroundColor: colors.primary }]}
+                            onPress={() => setShowInfo(false)}
+                        >
+                            <Text style={styles.popupConfirmText}>확인</Text>
+                        </TouchableOpacity>
                     </View>
-                )}
-            </HubLayout>
+                </View>
+            )}
 
             {/* Floating Action Button */}
             <View style={styles.bottomFabContainer}>
@@ -768,7 +776,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                 </View>
             )}
 
-            {/* Log Input Modal */}
+            {/* Log Modal */}
             <Modal
                 transparent
                 visible={showLogModal}
@@ -826,7 +834,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                     </View>
                 </View>
             </Modal>
-        </View>
+        </>
     );
 };
 
@@ -1217,6 +1225,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+    },
+    navBottomGuard: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        zIndex: 10,
     },
     miniIndicator: {
         paddingHorizontal: 5,

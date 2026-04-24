@@ -4,6 +4,7 @@ import {
     Switch, ScrollView, Platform, Modal, Pressable
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import {
     ChevronLeft, Clock, Calendar, CheckCircle,
@@ -136,191 +137,200 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
     );
 
     return (
-        <HubLayout header={renderHeader()} scrollable>
-            <ScrollView contentContainerStyle={styles.container}>
+        <>
+            <HubLayout header={renderHeader()} scrollable>
+                <View style={styles.container}>
 
-                {/* Section 1: Wellness */}
-                <Text style={[styles.sectionTitle, { color: colors.gray[500] }]}>개인 관리</Text>
-                <SettingsCard
-                    title="오늘 기록 리마인더"
-                    description="오늘 당신의 감정 온도는 몇 도였나요? 잠시 궤도를 멈추고 기록하도록 조용히 노크합니다."
-                    icon={CheckCircle}
-                    isEnabled={isDailyEnabled}
-                    onToggle={setIsDailyEnabled}
-                    tags={['상호작용', '정서개입', '마음흔적']}
-                >
-                    <TouchableOpacity
-                        style={styles.settingItem}
-                        onPress={() => setShowDailyPicker(true)}
+                    {/* Section 1: Wellness */}
+                    <Text style={[styles.sectionTitle, { color: colors.gray[500] }]}>개인 관리</Text>
+                    <SettingsCard
+                        title="오늘 기록 리마인더"
+                        description="오늘 당신의 감정 온도는 몇 도였나요? 잠시 궤도를 멈추고 기록하도록 조용히 노크합니다."
+                        icon={CheckCircle}
+                        isEnabled={isDailyEnabled}
+                        onToggle={setIsDailyEnabled}
+                        tags={['상호작용', '정서개입', '마음흔적']}
                     >
-                        <Text style={[styles.itemLabel, { color: colors.primary }]}>알림 시간</Text>
-                        <View style={[styles.pickerBadge, { backgroundColor: colors.primary + '10' }]}>
-                            <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(dailyTime)}</Text>
-                            <Clock size={14} color={colors.primary} />
-                        </View>
-                    </TouchableOpacity>
-
-                    {showDailyPicker && (
-                        <DateTimePicker
-                            value={dailyTime}
-                            mode="time"
-                            is24Hour={true}
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                            onChange={(event, selectedDate) => {
-                                setShowDailyPicker(Platform.OS === 'ios');
-                                if (selectedDate) setDailyTime(selectedDate);
-                            }}
-                        />
-                    )}
-                </SettingsCard>
-
-                {/* Section 2: Tuning Routine */}
-                <Text style={[styles.sectionTitle, { color: colors.gray[500], marginTop: 32 }]}>관계 관리</Text>
-                <SettingsCard
-                    title="정기 궤도 점검"
-                    description="행성들의 중력이 변하고 있어요. 관계 지도를 재배치하여 균형을 맞출 시간임을 알려드려요."
-                    icon={Orbit}
-                    isEnabled={isTuningEnabled}
-                    onToggle={setIsTuningEnabled}
-                >
-                    <View style={styles.periodChoiceContainer}>
-                        {(Object.keys(PERIOD_INFO) as TuningPeriod[]).map((p) => {
-                            const active = tuningPeriod === p;
-                            return (
-                                <TouchableOpacity
-                                    key={p}
-                                    style={[
-                                        styles.periodBtn,
-                                        { backgroundColor: active ? colors.primary : colors.white, borderColor: active ? colors.primary : colors.gray[200] }
-                                    ]}
-                                    onPress={() => handlePeriodChange(p)}
-                                >
-                                    <Text style={[styles.periodBtnText, { color: active ? colors.white : colors.gray[500] }]}>
-                                        {PERIOD_INFO[p].title.split(' ')[0]}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-
-                    <View style={[styles.guideBox, { backgroundColor: colors.accent + '05' }]}>
-                        <View style={styles.guideHeader}>
-                            {React.createElement(PERIOD_INFO[tuningPeriod].icon, { size: 16, color: colors.accent })}
-                            <Text style={[styles.guideTitle, { color: colors.accent }]}>
-                                {PERIOD_INFO[tuningPeriod].title} 가이드
-                            </Text>
-                        </View>
-                        <Text style={[styles.cardDesc, { color: colors.primary + '90' }]}>
-                            {PERIOD_INFO[tuningPeriod].desc}
-                        </Text>
-
-                        <View style={[styles.previewBadge, { backgroundColor: colors.accent + '15' }]}>
-                            <Text style={[styles.previewText, { color: colors.accent }]}>
-                                {getNextDatePreview()}
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.tuningPickers}>
                         <TouchableOpacity
                             style={styles.settingItem}
-                            onPress={() => setShowAnchorPicker(true)}
+                            onPress={() => setShowDailyPicker(true)}
                         >
-                            <Text style={[styles.itemLabel, { color: colors.primary }]}>점검 시점(Anchor)</Text>
+                            <Text style={[styles.itemLabel, { color: colors.primary }]}>알림 시간</Text>
                             <View style={[styles.pickerBadge, { backgroundColor: colors.primary + '10' }]}>
-                                <Text style={[styles.pickerText, { color: colors.primary }]}>{tuningAnchor}</Text>
-                                <Calendar size={14} color={colors.primary} />
+                                <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(dailyTime)}</Text>
+                                <Clock size={14} color={colors.primary} />
                             </View>
                         </TouchableOpacity>
 
-                        {tuningPeriod === 'weekly' || tuningPeriod === 'monthly' ? (
-                            <TouchableOpacity
-                                style={styles.settingItem}
-                                onPress={() => setShowTuningPicker(true)}
-                            >
-                                <Text style={[styles.itemLabel, { color: colors.primary }]}>점검 시간</Text>
-                                <View style={[styles.pickerBadge, { backgroundColor: colors.primary + '10' }]}>
-                                    <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(tuningTime)}</Text>
-                                    <Clock size={14} color={colors.primary} />
-                                </View>
-                            </TouchableOpacity>
-                        ) : null}
-                    </View>
+                        {showDailyPicker && (
+                            <DateTimePicker
+                                value={dailyTime}
+                                mode="time"
+                                is24Hour={true}
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={(event, selectedDate) => {
+                                    setShowDailyPicker(Platform.OS === 'ios');
+                                    if (selectedDate) setDailyTime(selectedDate);
+                                }}
+                            />
+                        )}
+                    </SettingsCard>
 
-                    {showTuningPicker && (
-                        <DateTimePicker
-                            value={tuningTime}
-                            mode="time"
-                            is24Hour={true}
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                            onChange={(event, selectedDate) => {
-                                setShowTuningPicker(Platform.OS === 'ios');
-                                if (selectedDate) setTuningTime(selectedDate);
-                            }}
-                        />
-                    )}
-                </SettingsCard>
-
-                {/* Anchor Picker Modal */}
-                <Modal
-                    visible={showAnchorPicker}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setShowAnchorPicker(false)}
-                >
-                    <Pressable
-                        style={styles.modalOverlay}
-                        onPress={() => setShowAnchorPicker(false)}
+                    {/* Section 2: Tuning Routine */}
+                    <Text style={[styles.sectionTitle, { color: colors.gray[500], marginTop: 32 }]}>관계 관리</Text>
+                    <SettingsCard
+                        title="정기 궤도 점검"
+                        description="행성들의 중력이 변하고 있어요. 관계 지도를 재배치하여 균형을 맞출 시간임을 알려드려요."
+                        icon={Orbit}
+                        isEnabled={isTuningEnabled}
+                        onToggle={setIsTuningEnabled}
                     >
-                        <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-                        <View style={[styles.modalContent, { backgroundColor: colors.white }]}>
-                            <Text style={[styles.modalTitle, { color: colors.primary }]}>점검 시점 선택</Text>
-                            <View style={styles.dayGrid}>
-                                {ANCHOR_OPTIONS[tuningPeriod].map((anchor) => {
-                                    const isBirthdayOption = anchor === '내 생일';
-                                    const disabled = isBirthdayOption && !hasBirthday;
+                        <View style={styles.periodChoiceContainer}>
+                            {(Object.keys(PERIOD_INFO) as TuningPeriod[]).map((p) => {
+                                const active = tuningPeriod === p;
+                                return (
+                                    <TouchableOpacity
+                                        key={p}
+                                        style={[
+                                            styles.periodBtn,
+                                            { backgroundColor: active ? colors.primary : colors.white, borderColor: active ? colors.primary : colors.gray[200] }
+                                        ]}
+                                        onPress={() => handlePeriodChange(p)}
+                                    >
+                                        <Text style={[styles.periodBtnText, { color: active ? colors.white : colors.gray[500] }]}>
+                                            {PERIOD_INFO[p].title.split(' ')[0]}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
 
-                                    return (
-                                        <TouchableOpacity
-                                            key={anchor}
-                                            disabled={disabled}
-                                            style={[
-                                                styles.dayItem,
-                                                tuningAnchor === anchor && { backgroundColor: colors.accent },
-                                                disabled && { opacity: 0.3, borderColor: colors.gray[200] }
-                                            ]}
-                                            onPress={() => {
-                                                setTuningAnchor(anchor);
-                                                setShowAnchorPicker(false);
-                                            }}
-                                        >
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                <Text style={[
-                                                    styles.dayItemText,
-                                                    { color: tuningAnchor === anchor ? colors.white : colors.primary }
-                                                ]}>
-                                                    {isBirthdayOption && !hasBirthday ? '내 생일 (정보 없음)' : anchor}
-                                                </Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                        <View style={[styles.guideBox, { backgroundColor: colors.accent + '05' }]}>
+                            <View style={styles.guideHeader}>
+                                {React.createElement(PERIOD_INFO[tuningPeriod].icon, { size: 16, color: colors.accent })}
+                                <Text style={[styles.guideTitle, { color: colors.accent }]}>
+                                    {PERIOD_INFO[tuningPeriod].title} 가이드
+                                </Text>
+                            </View>
+                            <Text style={[styles.cardDesc, { color: colors.primary + '90' }]}>
+                                {PERIOD_INFO[tuningPeriod].desc}
+                            </Text>
+
+                            <View style={[styles.previewBadge, { backgroundColor: colors.accent + '15' }]}>
+                                <Text style={[styles.previewText, { color: colors.accent }]}>
+                                    {getNextDatePreview()}
+                                </Text>
                             </View>
                         </View>
-                    </Pressable>
-                </Modal>
 
-                {/* Info Note */}
-                <View style={styles.infoNote}>
-                    <Info size={16} color={colors.gray[400]} />
-                    <Text style={[styles.infoNoteText, { color: colors.gray[400] }]}>
-                        주기가 길어질수록 AI가 더 깊이 있는 질문을 던집니다.
-                    </Text>
+                        <View style={styles.tuningPickers}>
+                            <TouchableOpacity
+                                style={styles.settingItem}
+                                onPress={() => setShowAnchorPicker(true)}
+                            >
+                                <Text style={[styles.itemLabel, { color: colors.primary }]}>점검 시점(Anchor)</Text>
+                                <View style={[styles.pickerBadge, { backgroundColor: colors.primary + '10' }]}>
+                                    <Text style={[styles.pickerText, { color: colors.primary }]}>{tuningAnchor}</Text>
+                                    <Calendar size={14} color={colors.primary} />
+                                </View>
+                            </TouchableOpacity>
+
+                            {tuningPeriod === 'weekly' || tuningPeriod === 'monthly' ? (
+                                <TouchableOpacity
+                                    style={styles.settingItem}
+                                    onPress={() => setShowTuningPicker(true)}
+                                >
+                                    <Text style={[styles.itemLabel, { color: colors.primary }]}>점검 시간</Text>
+                                    <View style={[styles.pickerBadge, { backgroundColor: colors.primary + '10' }]}>
+                                        <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(tuningTime)}</Text>
+                                        <Clock size={14} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+
+                        {showTuningPicker && (
+                            <DateTimePicker
+                                value={tuningTime}
+                                mode="time"
+                                is24Hour={true}
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={(event, selectedDate) => {
+                                    setShowTuningPicker(Platform.OS === 'ios');
+                                    if (selectedDate) setTuningTime(selectedDate);
+                                }}
+                            />
+                        )}
+                    </SettingsCard>
+
+                    {/* Anchor Picker Modal */}
+                    <Modal
+                        visible={showAnchorPicker}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setShowAnchorPicker(false)}
+                    >
+                        <Pressable
+                            style={styles.modalOverlay}
+                            onPress={() => setShowAnchorPicker(false)}
+                        >
+                            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+                            <View style={[styles.modalContent, { backgroundColor: colors.white }]}>
+                                <Text style={[styles.modalTitle, { color: colors.primary }]}>점검 시점 선택</Text>
+                                <View style={styles.dayGrid}>
+                                    {ANCHOR_OPTIONS[tuningPeriod].map((anchor) => {
+                                        const isBirthdayOption = anchor === '내 생일';
+                                        const disabled = isBirthdayOption && !hasBirthday;
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={anchor}
+                                                disabled={disabled}
+                                                style={[
+                                                    styles.dayItem,
+                                                    tuningAnchor === anchor && { backgroundColor: colors.accent },
+                                                    disabled && { opacity: 0.3, borderColor: colors.gray[200] }
+                                                ]}
+                                                onPress={() => {
+                                                    setTuningAnchor(anchor);
+                                                    setShowAnchorPicker(false);
+                                                }}
+                                            >
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                    <Text style={[
+                                                        styles.dayItemText,
+                                                        { color: tuningAnchor === anchor ? colors.white : colors.primary }
+                                                    ]}>
+                                                        {isBirthdayOption && !hasBirthday ? '내 생일 (정보 없음)' : anchor}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+                        </Pressable>
+                    </Modal>
+
+                    {/* Info Note */}
+                    <View style={styles.infoNote}>
+                        <Info size={16} color={colors.gray[400]} />
+                        <Text style={[styles.infoNoteText, { color: colors.gray[400] }]}>
+                            주기가 길어질수록 AI가 더 깊이 있는 질문을 던집니다.
+                        </Text>
+                    </View>
+
+
+                    <View style={{ height: 100 }} />
                 </View>
+            </HubLayout>
 
-                <View style={{ height: 40 }} />
-            </ScrollView>
-        </HubLayout>
+            <LinearGradient
+                colors={['transparent', colors.background]}
+                style={styles.navBottomGuard}
+                pointerEvents="none"
+            />
+        </>
     );
 };
 
@@ -537,5 +547,13 @@ const styles = StyleSheet.create({
     infoNoteText: {
         fontSize: 12,
         fontWeight: '600',
+    },
+    navBottomGuard: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        zIndex: 10,
     }
 });

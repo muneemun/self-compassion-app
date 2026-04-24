@@ -145,6 +145,19 @@ const styles = StyleSheet.create({
         zIndex: 6,
         overflow: 'visible',
     },
+    listViewContainer: {
+        flex: 1,
+        width: '100%',
+    },
+    mapOverlayControls: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 10,
+        pointerEvents: 'box-none',
+    },
     avatarWrapper: {
         borderRadius: 100,
         borderWidth: 2,
@@ -162,7 +175,7 @@ const styles = StyleSheet.create({
     },
     statusOverlay: {
         position: 'absolute',
-        bottom: 120,
+        bottom: 240, // 체크인 버튼(160 + 64) 위로 이동하여 겹침 방지
         left: 0,
         right: 0,
         alignItems: 'center',
@@ -180,7 +193,7 @@ const styles = StyleSheet.create({
     },
     checkInButton: {
         position: 'absolute',
-        bottom: 30,
+        bottom: 160,
         alignSelf: 'center',
         paddingHorizontal: 24,
         height: 64,
@@ -535,21 +548,65 @@ const styles = StyleSheet.create({
     },
 });
 
-const UserNode = ({
-    node,
-    orbitRadius,
-    initialAngle,
-    zoomLevel,
-    totalNodes,
-    onSelectNode
-}: {
+// 💍 OrbitRing Component for high-performance scaling
+const OrbitRing = React.memo(({ level, colors, zoomSharedValue }: { level: number, colors: any, zoomSharedValue: SharedValue<number> }) => {
+    const zoneColors: Record<number, string> = {
+        1: '#FFB74D',
+        2: '#D98B73',
+        3: '#4A5D4E',
+        4: '#90A4AE',
+        5: '#D1D5DB'
+    };
+    const orbitColor = zoneColors[level] || colors.primary;
+
+    const animatedStyle = useAnimatedStyle(() => {
+        // 1단계를 0.55배로 고정하고, 5단계가 현재 4단계 크기(1.9배)가 되도록 공식 수정
+        const scaleFactor = 0.55 + (zoomSharedValue.value - 1) * 0.3375;
+        const baseSize = (BASE_ORBIT_SIZE * (level + 0.5)) / 3.5;
+        const size = baseSize * scaleFactor;
+
+        return {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+        };
+    });
+
+    return (
+        <ReAnimated.View
+            style={[
+                styles.orbitRing,
+                animatedStyle,
+                {
+                    borderColor: orbitColor,
+                    borderWidth: 2.5,
+                    opacity: 0.25 - (level * 0.03),
+                    backgroundColor: level === 1 ? 'rgba(255,183,77,0.03)' : (level % 2 === 0 ? 'rgba(74,93,78,0.03)' : 'transparent')
+                }
+            ]}
+        />
+    );
+});
+
+interface UserNodeProps {
     node: RelationshipNode;
     orbitRadius: number;
     initialAngle: number;
     zoomLevel: number;
+    zoomSharedValue: SharedValue<number>;
     totalNodes: number;
     onSelectNode?: (id: string) => void;
-}) => {
+}
+
+const UserNode = React.memo(({
+    node,
+    orbitRadius,
+    initialAngle,
+    zoomLevel,
+    zoomSharedValue,
+    totalNodes,
+    onSelectNode
+}: UserNodeProps) => {
     const twinkleAnim = useSharedValue(0);
 
     useEffect(() => {
@@ -574,10 +631,14 @@ const UserNode = ({
 
     const animatedStyle = useAnimatedStyle(() => {
         const rad = (angle.value * Math.PI) / 180;
+        const scaleFactor = 0.55 + (zoomSharedValue.value - 1) * 0.3375;
+        const currentRadius = radius.value * scaleFactor;
+
         return {
             transform: [
-                { translateX: Math.cos(rad) * radius.value },
-                { translateY: Math.sin(rad) * radius.value }
+                { translateX: Math.cos(rad) * currentRadius },
+                { translateY: Math.sin(rad) * currentRadius },
+                { scale: Math.min(1.3, scaleFactor) } // 맵 크기에 맞춰 아이콘 팽창률도 조정
             ]
         };
     });
@@ -635,9 +696,9 @@ const UserNode = ({
     const renderContent = () => {
         const densityFactor = totalNodes > 100 ? 0.65 : totalNodes > 50 ? 0.8 : 1.0;
 
-        if (zoomLevel < 1.8) {
-            // Level 1: Visible Dots with Twinkle Effect
-            const dotSize = (zoomLevel < 1.2 ? 14 : 18) * (0.8 + densityFactor * 0.2);
+        if (zoomLevel < 1.5) {
+            // Level 1: Visible Dots
+            const dotSize = 12 * (0.8 + densityFactor * 0.2); // 16px -> 12px로 축소
             const zoneColors: Record<number, string> = {
                 1: '#FFB74D',
                 2: '#D98B73',
@@ -669,8 +730,14 @@ const UserNode = ({
             );
         }
 
-        const avatarSize = (zoomLevel < 2.5 ? 36 : zoomLevel < 4 ? 48 : 64) * (0.7 + densityFactor * 0.3);
-        const showName = zoomLevel > 2.0;
+        // 줌 단계별 정교한 아바타 크기 계층화: 28(G) -> 36(C) -> 42(S) -> 48(O)
+        const avatarSize = (
+            zoomLevel < 2.5 ? 28 :
+                zoomLevel < 3.5 ? 36 :
+                    zoomLevel < 4.5 ? 42 :
+                        48
+        ) * (0.7 + densityFactor * 0.3);
+        const showName = zoomLevel > 2.5;
 
         const zoneColors: Record<number, string> = {
             1: '#FFB74D',
@@ -746,7 +813,7 @@ const UserNode = ({
             </TouchableOpacity>
         </ReAnimated.View>
     );
-};
+});
 
 interface MainOrbitMapProps {
     onSelectNode: (id: string) => void;
@@ -770,7 +837,17 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         activeSearchTag: storeActiveSearchTag
     } = orbitMapViewState;
 
-    const currentOrbitSize = BASE_ORBIT_SIZE * (1 + (zoomLevel - 2) * 0.25);
+    // ⚡ Native Zoom Engine
+    const zoomSharedValue = useSharedValue(zoomLevel);
+
+    // Sync shared value when state changes (e.g. from buttons)
+    useEffect(() => {
+        if (Math.abs(zoomSharedValue.value - zoomLevel) > 0.1) {
+            zoomSharedValue.value = withSpring(zoomLevel, { damping: 20, stiffness: 100 });
+        }
+    }, [zoomLevel]);
+
+    const currentOrbitSize = BASE_ORBIT_SIZE; // Use fixed base size for layout calculations
 
     // Actions Wrapper
     const setZoomLevel = (level: number) => setOrbitMapViewState({ zoomLevel: level });
@@ -833,10 +910,16 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         { id: 'z5', label: '배경 소음(외부 환경)', zone: 5, color: '#D1D5DB' },
     ];
 
-    const uniqueTypes = Array.from(new Set(relationships.map(r => RELATIONSHIP_TYPE_LABELS[r.type] || r.type)));
+    const uniqueTypes = Array.from(new Set((relationships || []).map(r => r && ((r.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r.type)).filter(Boolean))) as string[];
     const dynamicTabs = ['전체', ...zoneFilters.map(z => z.label), ...uniqueTypes];
 
+    const zoomLevelRef = useRef(zoomLevel);
+    useEffect(() => {
+        zoomLevelRef.current = zoomLevel;
+    }, [zoomLevel]);
+
     const handleToggleFilter = (tab: string) => {
+        if (!tab) return;
         if (tab === '전체') {
             setSelectedFilters(['전체']);
             return;
@@ -852,20 +935,27 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         setSelectedFilters(newFilters);
     };
 
-    const filteredRelationships = selectedFilters.includes('전체')
+    const filteredRelationships = (selectedFilters.includes('전체')
         ? relationships
         : relationships.filter(r => {
-            const rType = RELATIONSHIP_TYPE_LABELS[r.type] || r.type;
-            const rZoneLabel = zoneFilters.find(zf => zf.zone === r.zone)?.label;
-            return selectedFilters.includes(rType) || (rZoneLabel && selectedFilters.includes(rZoneLabel));
-        });
+            if (!r) return false;
+            const rType = (r.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r.type;
+            const zoneMatch = zoneFilters.find(zf => zf.zone === r.zone);
+            const rZoneLabel = zoneMatch ? zoneMatch.label : (r.zone ? `Zone ${r.zone}` : '');
+            return (rType && selectedFilters.includes(rType)) || (rZoneLabel && selectedFilters.includes(rZoneLabel));
+        })) || [];
 
     // 🌀 Smart Orbit Engine: Collision Avoidance through Multi-layer Geometric Distribution
     const distributedNodes = useMemo(() => {
         const zoneGroups: { [key: number]: RelationshipNode[] } = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-        filteredRelationships.forEach(node => {
-            zoneGroups[node.zone].push(node);
-        });
+
+        if (filteredRelationships) {
+            filteredRelationships.forEach(node => {
+                if (node && node.zone && zoneGroups[node.zone]) {
+                    zoneGroups[node.zone].push(node);
+                }
+            });
+        }
 
         const positionedNodes: Array<{ node: RelationshipNode; radius: number; angle: number }> = [];
         let startAngleOffset = 0; // Cumulative offset for cross-zone spiral flow
@@ -935,7 +1025,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         });
 
         return positionedNodes;
-    }, [filteredRelationships, currentOrbitSize, sortMode, zoomLevel]);
+    }, [filteredRelationships, currentOrbitSize, sortMode]);
 
     const cycleSortMode = () => {
         const modes: Array<'default' | 'hot' | 'cold'> = ['default', 'hot', 'cold'];
@@ -948,6 +1038,10 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         universeRotation.value = withTiming(universeRotation.value + 360, {
             duration: 1200,
             easing: Easing.bezier(0.4, 0, 0.2, 1)
+        }, (finished) => {
+            if (finished) {
+                universeRotation.value = 0; // 회전 완료 후 0으로 리셋하여 정위치 보정
+            }
         });
     };
 
@@ -1029,9 +1123,9 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
     );
 
     const panX = useSharedValue(0);
-    const panY = useSharedValue(0);
+    const panY = useSharedValue(-120);
     const offsetX = useSharedValue(0);
-    const offsetY = useSharedValue(0);
+    const offsetY = useSharedValue(-120);
 
     const canvasAnimatedStyle = useAnimatedStyle(() => ({
         transform: [
@@ -1067,10 +1161,20 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                     );
 
                     if (lastDist.current !== null) {
-                        const zoomChange = (dist - lastDist.current) / 100;
-                        // Use current zoomLevel directly instead of functional update
-                        const next = Math.min(5, Math.max(1, zoomLevel + zoomChange));
-                        setZoomLevel(next);
+                        const zoomChange = (dist - lastDist.current) / 100; // 민감도 대폭 상향 (150 -> 100)
+                        const next = Math.min(5, Math.max(1, zoomSharedValue.value + zoomChange));
+                        zoomSharedValue.value = next;
+
+                        // 1.5, 2.5, 3.5, 4.5 임계값에서 5단계 모드 전환
+                        const currentLvl = zoomLevelRef.current;
+                        const thresholds = [1.5, 2.5, 3.5, 4.5];
+                        const crossedThreshold = thresholds.some(t =>
+                            (currentLvl < t && next >= t) || (currentLvl >= t && next < t)
+                        );
+
+                        if (crossedThreshold) {
+                            setZoomLevel(Math.round(next));
+                        }
                     }
                     lastDist.current = dist;
                 } else if (gestureState.numberActiveTouches === 1) {
@@ -1079,8 +1183,14 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                 }
             },
             onPanResponderRelease: () => {
-                const distance = Math.sqrt(Math.pow(panX.value, 2) + Math.pow(panY.value, 2));
-                setIsMoved(distance > 20);
+                const distance = Math.sqrt(Math.pow(panX.value, 2) + Math.pow(panY.value - (-120), 2));
+                const isRotated = Math.abs(universeRotation.value % 360) > 1; // 1도 이상 틀어진 경우
+                setIsMoved(distance > 20 || isRotated);
+
+                // 릴리즈 시 가장 가까운 정수 레벨로 스냅
+                const finalZoom = Math.round(zoomSharedValue.value);
+                zoomSharedValue.value = withSpring(finalZoom);
+                setZoomLevel(finalZoom);
                 lastDist.current = null;
             }
         })
@@ -1088,9 +1198,8 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
     const handleRecenter = () => {
         panX.value = withSpring(0, { damping: 20, stiffness: 80 });
-        panY.value = withSpring(0, { damping: 20, stiffness: 80 }, () => {
-            // After spring finish, update isMoved
-        });
+        panY.value = withSpring(-120, { damping: 20, stiffness: 80 });
+        universeRotation.value = withSpring(0, { damping: 20, stiffness: 80 });
         setIsMoved(false);
     };
 
@@ -1300,15 +1409,15 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                         style={[
                                                             styles.tempBarFill,
                                                             {
-                                                                height: `${person.temperature}%`,
-                                                                backgroundColor: person.temperature > 70 ? colors.accent : colors.primary,
-                                                                opacity: person.temperature / 100
+                                                                height: `${Math.max(0, Math.min(100, person.temperature || 0))}%`,
+                                                                backgroundColor: (person.temperature || 0) > 70 ? colors.accent : colors.primary,
+                                                                opacity: Math.max(0.1, (person.temperature || 0) / 100)
                                                             }
                                                         ]}
                                                     />
                                                 </View>
-                                                <Text style={[styles.tempText, { color: person.temperature > 70 ? colors.accent : colors.primary }]}>
-                                                    {person.temperature}°
+                                                <Text style={[styles.tempText, { color: (person.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
+                                                    {person.temperature || 0}°
                                                 </Text>
                                             </View>
                                         </TouchableOpacity>
@@ -1401,174 +1510,179 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                 <View style={styles.content}>
                     {renderFilterBar()}
 
-                    {viewMode === 'list' ? (
+                    {/* List Mode View */}
+                    <View style={[styles.listViewContainer, viewMode === 'list' ? { display: 'flex' } : { display: 'none', height: 0 }]}>
                         <RelationshipList
                             hideHeader
                             onSelectNode={onSelectNode}
                             onPressAdd={onPressAdd}
-                            selectedTab={selectedFilters[0]}
+                            selectedTab={selectedFilters?.[0] || '전체'}
                             onSelectTab={handleToggleFilter}
-                            selectedFilters={selectedFilters}
+                            selectedFilters={selectedFilters || ['전체']}
                             dynamicTabs={dynamicTabs}
                             sortMode={sortMode}
                         />
-                    ) : (
-                        <>
-                            <View style={styles.orbitCanvas} {...panResponder.panHandlers}>
-                                <ReAnimated.View style={[
-                                    styles.animatedCanvas,
-                                    canvasAnimatedStyle
-                                ]}>
-                                    {/* Rings and Zones with shading */}
-                                    {[1, 2, 3, 4, 5].map((level) => {
-                                        const size = (currentOrbitSize * (level + 0.5)) / 3.5; // Sync with node distribution
-                                        const zoneColors: Record<number, string> = {
-                                            1: '#FFB74D',
-                                            2: '#D98B73',
-                                            3: '#4A5D4E',
-                                            4: '#90A4AE',
-                                            5: '#D1D5DB'
-                                        };
-                                        const orbitColor = zoneColors[level] || colors.primary;
+                    </View>
 
-                                        return (
-                                            <View
-                                                key={level}
+                    {/* Map Mode View */}
+                    <View style={[styles.orbitCanvas, viewMode === 'map' ? { display: 'flex' } : { display: 'none' }]} {...panResponder.panHandlers}>
+                        <ReAnimated.View style={[
+                            styles.animatedCanvas,
+                            canvasAnimatedStyle
+                        ]}>
+                            {/* Rings and Zones with shading */}
+                            {[1, 2, 3, 4, 5].map((level) => (
+                                <OrbitRing
+                                    key={level}
+                                    level={level}
+                                    colors={colors}
+                                    zoomSharedValue={zoomSharedValue}
+                                />
+                            ))}
+
+                            {distributedNodes.map(({ node, radius, angle }) => (
+                                <UserNode
+                                    key={node.id}
+                                    node={node}
+                                    orbitRadius={radius}
+                                    initialAngle={angle}
+                                    zoomLevel={zoomLevel}
+                                    zoomSharedValue={zoomSharedValue}
+                                    totalNodes={relationships.length}
+                                    onSelectNode={onSelectNode}
+                                />
+                            ))}
+
+                            {(() => {
+                                const centerSize = 60 + zoomLevel * 12;
+                                const profileImg = userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
+                                return (
+                                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                        {/* Solar Amber Heartbeat Glow (Soft & Filled) */}
+                                        <ReAnimated.View style={[
+                                            {
+                                                position: 'absolute',
+                                                backgroundColor: 'rgba(255, 152, 0, 0.4)', // Soft Amber Glow
+                                                shadowColor: '#FF9800',
+                                                shadowOffset: { width: 0, height: 0 },
+                                                shadowOpacity: 0.6,
+                                                shadowRadius: 20,
+                                                elevation: 10,
+                                                zIndex: 4
+                                            },
+                                            useAnimatedStyle(() => {
+                                                const centerSize = 60 + zoomSharedValue.value * 12;
+                                                return {
+                                                    width: centerSize + 20,
+                                                    height: centerSize + 20,
+                                                    borderRadius: (centerSize + 20) / 2,
+                                                };
+                                            }),
+                                            selfHaloStyle
+                                        ]} />
+
+                                        <ReAnimated.View style={[
+                                            styles.centerNode,
+                                            {
+                                                borderColor: '#FF9800', // Solar Amber (Self)
+                                            },
+                                            useAnimatedStyle(() => {
+                                                const centerSize = 60 + zoomSharedValue.value * 12;
+                                                return {
+                                                    width: centerSize,
+                                                    height: centerSize,
+                                                    borderRadius: centerSize / 2
+                                                };
+                                            })
+                                        ]}>
+                                            <ReAnimated.Image
+                                                source={{ uri: profileImg }}
                                                 style={[
-                                                    styles.orbitRing,
-                                                    {
-                                                        width: size,
-                                                        height: size,
-                                                        borderRadius: size / 2,
-                                                        borderColor: orbitColor,
-                                                        borderWidth: 2.5,
-                                                        opacity: 0.25 - (level * 0.03),
-                                                        backgroundColor: level === 1 ? 'rgba(255,183,77,0.03)' : (level % 2 === 0 ? 'rgba(74,93,78,0.03)' : 'transparent')
-                                                    }
+                                                    styles.centerAvatar,
+                                                    useAnimatedStyle(() => {
+                                                        const centerSize = 60 + zoomSharedValue.value * 12;
+                                                        return {
+                                                            borderRadius: (centerSize - 8) / 2
+                                                        };
+                                                    })
                                                 ]}
                                             />
-                                        );
-                                    })}
+                                        </ReAnimated.View>
+                                    </View>
+                                );
+                            })()}
+                        </ReAnimated.View>
+                    </View>
 
-                                    {distributedNodes.map(({ node, radius, angle }) => (
-                                        <UserNode
-                                            key={node.id}
-                                            node={node}
-                                            orbitRadius={radius}
-                                            initialAngle={angle}
-                                            zoomLevel={zoomLevel}
-                                            totalNodes={relationships.length}
-                                            onSelectNode={onSelectNode}
-                                        />
-                                    ))}
+                    {/* Floating Map Controls (Only visible in Map Mode) */}
+                    <View style={[styles.mapOverlayControls, viewMode === 'map' ? { display: 'flex' } : { display: 'none' }]} pointerEvents="box-none">
+                        <View style={styles.statusOverlay} pointerEvents="none">
+                            <Text style={[styles.statusInfo, { color: colors.primary, marginBottom: 8, fontSize: 10, opacity: 0.6 }]}>
+                                {zoomLevel === 1 ? 'UNIVERSE MODE' :
+                                    zoomLevel === 2 ? 'GALAXY MODE' :
+                                        zoomLevel === 3 ? 'CONSTELLATION MODE' :
+                                            zoomLevel === 4 ? 'STAR CLUSTER MODE' : 'ORBIT FOCUS MODE'}
+                                {sortMode !== 'default' && ` • ${sortMode.toUpperCase()} FIRST`}
+                            </Text>
+                            <Text style={[styles.statusInfo, { color: colors.primary }]}>
+                                {selectedFilters.includes('전체')
+                                    ? `${relationships.length}명의 모든 관계가 공명 중입니다`
+                                    : `${selectedFilters.join(', ')} 그룹 ${filteredRelationships.length}명이 공명 중입니다`}
+                            </Text>
+                        </View>
 
-                                    {(() => {
-                                        const centerSize = 60 + zoomLevel * 12;
-                                        const profileImg = userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
-                                        return (
-                                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                                                {/* Solar Amber Heartbeat Glow (Soft & Filled) */}
-                                                <ReAnimated.View style={[
-                                                    {
-                                                        position: 'absolute',
-                                                        width: centerSize + 20,
-                                                        height: centerSize + 20,
-                                                        borderRadius: (centerSize + 20) / 2,
-                                                        backgroundColor: 'rgba(255, 152, 0, 0.4)', // Soft Amber Glow
-                                                        shadowColor: '#FF9800',
-                                                        shadowOffset: { width: 0, height: 0 },
-                                                        shadowOpacity: 0.6,
-                                                        shadowRadius: 20,
-                                                        elevation: 10,
-                                                        zIndex: 4
-                                                    },
-                                                    selfHaloStyle
-                                                ]} />
-
-                                                <View style={[
-                                                    styles.centerNode,
-                                                    {
-                                                        borderColor: '#FF9800', // Solar Amber (Self)
-                                                        width: centerSize,
-                                                        height: centerSize,
-                                                        borderRadius: centerSize / 2
-                                                    }
-                                                ]}>
-                                                    <Image
-                                                        source={{ uri: profileImg }}
-                                                        style={[styles.centerAvatar, { borderRadius: (centerSize - 8) / 2 }]}
-                                                    />
-                                                </View>
-                                            </View>
-                                        );
-                                    })()}
-                                </ReAnimated.View>
-                            </View>
-
-                            <View style={styles.statusOverlay} pointerEvents="none">
-                                <Text style={[styles.statusInfo, { color: colors.primary, marginBottom: 8, fontSize: 10, opacity: 0.6 }]}>
-                                    {zoomLevel < 1.8 ? 'UNIVERSE MODE' : zoomLevel < 3.5 ? 'GALAXY MODE' : 'STAR CLUSTER MODE'}
-                                    {sortMode !== 'default' && ` • ${sortMode.toUpperCase()} FIRST`}
-                                </Text>
-                                <Text style={[styles.statusInfo, { color: colors.primary }]}>
-                                    {selectedFilters.includes('전체')
-                                        ? `${relationships.length}명의 모든 관계가 공명 중입니다`
-                                        : `${selectedFilters.join(', ')} 그룹 ${filteredRelationships.length}명이 공명 중입니다`}
-                                </Text>
-                            </View>
-
-                            <View style={styles.rightControls}>
-                                <BlurView
-                                    intensity={40}
-                                    tint="light"
-                                    style={[styles.zoomControls, { backgroundColor: 'rgba(255,255,255,0.3)' }]}
-                                >
-                                    {[1, 2, 3, 4, 5].map((level) => (
-                                        <TouchableOpacity
-                                            key={level}
-                                            style={[
-                                                styles.zoomBtn,
-                                                Math.round(zoomLevel) === level && { backgroundColor: colors.primary }
-                                            ]}
-                                            onPress={() => setZoomLevel(level)}
-                                        >
-                                            <Text style={[
-                                                styles.zoomBtnText,
-                                                { color: Math.round(zoomLevel) === level ? colors.white : colors.primary }
-                                            ]}>{level}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </BlurView>
-
-                                {isMoved && (
-                                    <TouchableOpacity
-                                        style={[styles.recenterBtn, { backgroundColor: colors.white + 'CC' }]}
-                                        onPress={handleRecenter}
-                                    >
-                                        <LocateFixed size={20} color={colors.primary} />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.checkInButton, { backgroundColor: colors.primary }]}
-                                onPress={() => {
-                                    setSearchQuery('');
-                                    setActiveSearchTag('전체');
-                                    setSearchMode('action');
-                                    setSelectedTarget(null);
-                                    setIsActionVisible(false);
-                                    setIsSearchModalVisible(true);
-                                }}
-                                activeOpacity={0.9}
+                        <View style={styles.rightControls}>
+                            <BlurView
+                                intensity={40}
+                                tint="light"
+                                style={[styles.zoomControls, { backgroundColor: 'rgba(255,255,255,0.3)' }]}
                             >
-                                <HeartPulse size={28} color={colors.white} />
-                                <Text style={styles.checkInText}>체크인</Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
+                                {[1, 2, 3, 4, 5].map((level) => (
+                                    <TouchableOpacity
+                                        key={level}
+                                        style={[
+                                            styles.zoomBtn,
+                                            Math.round(zoomLevel) === level && { backgroundColor: colors.primary }
+                                        ]}
+                                        onPress={() => setZoomLevel(level)}
+                                    >
+                                        <Text style={[
+                                            styles.zoomBtnText,
+                                            { color: Math.round(zoomLevel) === level ? colors.white : colors.primary }
+                                        ]}>{level}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </BlurView>
+
+                            {isMoved && (
+                                <TouchableOpacity
+                                    style={[styles.recenterBtn, { backgroundColor: colors.white + 'CC' }]}
+                                    onPress={handleRecenter}
+                                >
+                                    <LocateFixed size={20} color={colors.primary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.checkInButton, { backgroundColor: colors.primary }]}
+                            onPress={() => {
+                                setSearchQuery('');
+                                setActiveSearchTag('전체');
+                                setSearchMode('action');
+                                setSelectedTarget(null);
+                                setIsActionVisible(false);
+                                setIsSearchModalVisible(true);
+                            }}
+                            activeOpacity={0.9}
+                        >
+                            <HeartPulse size={28} color={colors.white} />
+                            <Text style={styles.checkInText}>체크인</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </HubLayout >
+
+            </HubLayout>
 
             {renderSearchModal()}
         </>

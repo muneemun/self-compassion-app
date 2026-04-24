@@ -64,11 +64,9 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
-                <ChevronLeft size={24} color={colors.primary} />
-            </TouchableOpacity>
+            <View style={{ width: 44 }} />
             <Text style={[styles.headerTitle, { color: colors.primary }]}>
-                Space
+                스페이스 설정
             </Text>
             <View style={{ width: 44 }} />
         </View>
@@ -77,8 +75,6 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
     return (
         <HubLayout header={renderHeader()} scrollable>
             <View style={styles.container}>
-                <Text style={[styles.pageTitle, { color: colors.primary }]}>설정</Text>
-
                 {/* Account Section */}
                 <SettingSection title="계정">
                     <SettingItem
@@ -122,7 +118,7 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
                     <SettingItem icon={Info} title="앱 정보" isLast />
                 </SettingSection>
 
-                <View style={{ height: 60 }} />
+                <View style={{ height: 180 }} />
             </View>
         </HubLayout>
     );

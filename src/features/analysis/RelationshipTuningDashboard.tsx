@@ -9,16 +9,19 @@ import {
     Image,
     Alert,
     FlatList,
+    Modal,
+    Animated, // Import Added
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { ChevronLeft, ChevronUp, ChevronDown, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2 } from 'lucide-react-native';
+import { ChevronLeft, ChevronUp, ChevronDown, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2, Flame, Snowflake, Activity, Sparkles, Shield } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { AppHeader } from '../../components/AppHeader';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { RelationshipNode } from '../../types/relationship';
 import { FocusTournament } from './FocusTournament';
+import { RelationshipDetail } from '../relationships/RelationshipDetail';
 
 const { width } = Dimensions.get('window');
 
@@ -39,7 +42,7 @@ interface RelationshipTuningDashboardProps {
 
 export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardProps> = ({ onBack, onSelectNode, onGoToReport }) => {
     const colors = useColors();
-    const { relationships } = useRelationshipStore();
+    const { relationships, updateDiagnosisResult } = useRelationshipStore();
 
     // 🕹️ Selection State for Manual Tuning
     const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -48,8 +51,24 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const [isTournamentMode, setIsTournamentMode] = useState(false);
     const [tournamentParticipants, setTournamentParticipants] = useState<RelationshipNode[]>([]);
     const [selectedLens, setSelectedLens] = useState<'None' | 'Positive' | 'Negative' | 'Frequency'>('None');
+
+    // 🌟 Animation for Visualization
+    const blinkAnim = useRef(new Animated.Value(0.3)).current;
+    const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+                Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true })
+            ])
+        ).start();
+    }, []);
     const [showStabilityInfo, setShowStabilityInfo] = useState(false);
     const [isRankingExpanded, setIsRankingExpanded] = useState(false);
+    const [viewingRelationshipId, setViewingRelationshipId] = useState<string | null>(null);
+    const [showCompletePopup, setShowCompletePopup] = useState(false);
+    const [autoOpenLog, setAutoOpenLog] = useState(false);
 
     // 🎯 Dynamic Tuning Logic (Context-Aware)
     const handleStartContextualTuning = () => {
@@ -346,9 +365,18 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         <AppHeader
             title={isSelectionMode ? '관계 선택' : '관계 튜닝'}
             leftAction={
-                <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
-                    <ChevronLeft size={24} color={colors.primary} />
-                </TouchableOpacity>
+                isSelectionMode ? (
+                    <TouchableOpacity
+                        onPress={() => {
+                            setIsSelectionMode(false);
+                            setSelectedIds([]);
+                            setFilterZone(null);
+                        }}
+                        style={styles.iconBtn}
+                    >
+                        <ChevronLeft size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                ) : null
             }
             rightAction={
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -381,53 +409,127 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
     const renderSelectionList = () => (
         <View style={styles.selectionView}>
-            <View style={styles.filterBar}>
-                {[1, 2, 3, 4, 5].map(z => (
-                    <TouchableOpacity
-                        key={z}
-                        onPress={() => setFilterZone(filterZone === z ? null : z)}
-                        style={[
-                            styles.filterChip,
-                            { backgroundColor: filterZone === z ? colors.primary : colors.white },
-                            filterZone === z && { borderColor: colors.primary }
-                        ]}
-                    >
-                        <Text style={[styles.filterChipText, { color: filterZone === z ? 'white' : colors.primary }]}>Zone {z}</Text>
-                    </TouchableOpacity>
-                ))}
+            <View style={{ paddingVertical: 12 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}>
+                    {[
+                        { z: 1, label: '핵심' },
+                        { z: 2, label: '정서' },
+                        { z: 3, label: '협력' },
+                        { z: 4, label: '인지' },
+                        { z: 5, label: '외부' }
+                    ].map(item => (
+                        <TouchableOpacity
+                            key={item.z}
+                            onPress={() => setFilterZone(filterZone === item.z ? null : item.z)}
+                            style={{
+                                paddingHorizontal: 16,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                backgroundColor: filterZone === item.z ? colors.primary : '#F0EADE',
+                                borderWidth: 1,
+                                borderColor: filterZone === item.z ? colors.primary : 'transparent'
+                            }}
+                        >
+                            <Text style={{
+                                fontSize: 13,
+                                fontWeight: '700',
+                                color: filterZone === item.z ? 'white' : colors.primary
+                            }}>
+                                Zone {item.z} {item.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             <ScrollView contentContainerStyle={styles.selectionScroll}>
-                {filteredRelationships.map((r: RelationshipNode) => (
-                    <TouchableOpacity
-                        key={r.id}
-                        style={[styles.selectionItem, { backgroundColor: colors.white }]}
-                        onPress={() => toggleSelect(r.id)}
-                    >
-                        <View style={styles.selectionAvatarRow}>
-                            <View style={styles.selectionAvatarWrapper}>
-                                {r.image ? (
-                                    <Image source={{ uri: r.image }} style={styles.selectionAvatar as any} />
-                                ) : (
-                                    <View style={[styles.selectionAvatarDefault, { backgroundColor: colors.primary + '10' }]}>
-                                        <LayoutGrid size={24} color={colors.primary} />
-                                    </View>
-                                )}
-                            </View>
-                            <View style={styles.selectionInfo}>
-                                <Text style={[styles.selectionName, { color: colors.primary }]}>{r.name}</Text>
-                                <Text style={styles.selectionZone}>Zone {r.zone} • {r.role || '관계'}</Text>
-                            </View>
-                        </View>
-                        <View style={[
-                            styles.checkBox,
-                            { borderColor: colors.primary + '30', backgroundColor: selectedIds.includes(r.id) ? colors.primary : 'transparent' }
-                        ]}>
-                            {selectedIds.includes(r.id) && <Check size={14} color="white" />}
-                        </View>
-                    </TouchableOpacity>
-                ))}
+                {filteredRelationships.map((r: RelationshipNode) => {
+                    const zoneColor = {
+                        1: '#FFB74D',
+                        2: '#D98B73',
+                        3: '#4A5D4E',
+                        4: '#90A4AE',
+                        5: '#D1D5DB'
+                    }[r.zone] || colors.primary;
 
+                    const dynamics = (() => {
+                        if ((r.temperature || 0) >= 80) return { color: '#D98B73', icon: Flame };
+                        if ((r.temperature || 0) <= 40) return { color: '#90A4AE', icon: Snowflake };
+                        return { color: '#4A5D4E', icon: Activity };
+                    })();
+                    const DynamicsIcon = dynamics.icon;
+
+                    return (
+                        <TouchableOpacity
+                            key={r.id}
+                            style={[
+                                styles.selectionItem,
+                                { backgroundColor: colors.white, paddingVertical: 12, paddingHorizontal: 16, height: 'auto', alignItems: 'center' }
+                            ]}
+                            onPress={() => toggleSelect(r.id)}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                                {/* Avatar Section */}
+                                <View style={{ width: 56, height: 56 }}>
+                                    <View style={{
+                                        width: '100%', height: '100%', borderRadius: 28, borderWidth: 3,
+                                        borderColor: zoneColor, padding: 2, alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        {r.image ? (
+                                            <Image source={{ uri: r.image }} style={{ width: '100%', height: '100%', borderRadius: 24 }} />
+                                        ) : (
+                                            <View style={{ width: '100%', height: '100%', borderRadius: 24, backgroundColor: colors.primary + '10', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.primary }}>{r.name.charAt(0)}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                    {/* Badge */}
+                                    <View style={{
+                                        position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
+                                        backgroundColor: '#fff', borderWidth: 2, borderColor: dynamics.color, alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <DynamicsIcon size={10} color={dynamics.color} fill={dynamics.color} />
+                                    </View>
+                                </View>
+
+                                {/* Info Section */}
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 16, fontWeight: '800', color: colors.primary, marginBottom: 2 }}>{r.name}</Text>
+                                    <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.6, fontWeight: '600' }}>
+                                        {r.role || '관계'} • Zone {r.zone}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Right Section: Temp Bar & Checkbox */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{ width: 4, height: 32, backgroundColor: '#E0E0E0', borderRadius: 2 }}>
+                                    <View style={{
+                                        width: '100%',
+                                        height: `${r.temperature || 50}%`,
+                                        backgroundColor: (r.temperature || 0) > 70 ? colors.accent : colors.primary,
+                                        position: 'absolute', bottom: 0, borderRadius: 2
+                                    }} />
+                                </View>
+                                <View style={{ alignItems: 'flex-end', minWidth: 24 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '800', color: (r.temperature || 0) > 70 ? colors.accent : colors.primary, marginBottom: 2 }}>
+                                        {r.temperature || 0}°
+                                    </Text>
+                                </View>
+                                <View style={[
+                                    styles.checkBox,
+                                    {
+                                        borderColor: selectedIds.includes(r.id) ? colors.primary : '#D1D5DB',
+                                        backgroundColor: selectedIds.includes(r.id) ? colors.primary : 'transparent',
+                                        marginLeft: 4
+                                    }
+                                ]}>
+                                    {selectedIds.includes(r.id) && <Check size={14} color="white" />}
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })}
                 {filteredRelationships.length === 0 && (
                     <View style={styles.emptySelection}>
                         <Info size={40} color={colors.primary} opacity={0.2} />
@@ -450,7 +552,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     <Text style={styles.startTuningText}>{selectedIds.length}명 비교 시작하기</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </View >
     );
 
     const renderOrbitVisualization = () => (
@@ -459,33 +561,111 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                 <View style={styles.titleWithIcon}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>균형 요약</Text>
                 </View>
-                <Text style={styles.sectionSub}>
-                    {isSaturated ? '현재 뇌 내 구역이 포화 상태입니다.' : '뇌 내 구역이 비교적 쾌적한 상태입니다.'}{'\n'}
-                    <Text style={{ color: imbalancedCount > 0 ? '#D98B73' : colors.primary, fontWeight: '800' }}>
-                        {imbalancedCount > 0 ? `${imbalancedCount}개의 관계를 재조정해야 합니다.` : '모든 관계가 평온하게 유지되고 있습니다.'}
-                    </Text>
-                </Text>
+                {/* Insight Card Style Summary */}
+                <View style={{ marginTop: 12, backgroundColor: '#F5F7F6', borderRadius: 16, padding: 16 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4, fontWeight: '600' }}>현재 마음의 여유</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isSaturated ? '#EF5350' : '#4A5D4E' }} />
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#333' }}>
+                                    {isSaturated ? '여유 없음' : '충분함'}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={{ width: 1, height: '100%', backgroundColor: '#E0E0E0', marginHorizontal: 16 }} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4, fontWeight: '600' }}>우선 조율 포인트</Text>
+                            <Text style={{
+                                fontSize: 14,
+                                fontWeight: '700',
+                                color: stabilityStatus.imbalancedZones.length > 0
+                                    ? (stabilityStatus.imbalancedZones[0].status === 'over' ? '#EF5350' : '#FFB74D')
+                                    : '#4A5D4E'
+                            }}>
+                                {stabilityStatus.imbalancedZones.length > 0
+                                    ? `Zone ${stabilityStatus.imbalancedZones[0].zone} (${stabilityStatus.imbalancedZones[0].status === 'over' ? '비움 필요' : '채움 필요'})`
+                                    : '균형 잡힘'}
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={{ borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingTop: 12 }}>
+                        <Text style={{ fontSize: 13, color: '#555', lineHeight: 20 }}>
+                            {stabilityStatus.imbalancedZones.length > 0
+                                ? `현재 Zone ${stabilityStatus.imbalancedZones[0].zone} 영역이 ${stabilityStatus.imbalancedZones[0].status === 'over' ? '너무 혼잡합니다. 관계를 정리하여 마음의 공간을 확보하세요.' : '너무 빈약합니다. 소중한 사람들과 더 자주 교류하여 에너지를 채우세요.'}`
+                                : "관계 에너지가 적절하게 흐르고 있어 마음이 쾌적한 상태입니다."}
+                        </Text>
+                    </View>
+                </View>
             </View>
 
-            <View style={[styles.vizCard, { backgroundColor: colors.white }]}>
+            <View style={[styles.vizCard, { backgroundColor: colors.white, height: 'auto', aspectRatio: undefined, paddingVertical: 24, justifyContent: 'flex-start' }]}>
                 <TouchableOpacity onPress={onGoToReport} style={styles.vizCardDetailBtn}>
                     <BarChart2 size={14} color={colors.primary} />
                     <Text style={[styles.miniSelectText, { color: colors.primary }]}>상세 보기</Text>
                 </TouchableOpacity>
+                {/* 🏷️ Legend for Visualization */}
+                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginBottom: 12, marginTop: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF5350', borderWidth: 2, borderColor: '#EF5350' }} />
+                        <Text style={{ fontSize: 11, color: '#555', fontWeight: '600' }}>과다</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FFB74D' }} />
+                        <Text style={{ fontSize: 11, color: '#555', fontWeight: '600' }}>부족</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ccc', borderStyle: 'dotted' }} />
+                        <Text style={{ fontSize: 11, color: '#999' }}>적정</Text>
+                    </View>
+                </View>
+
                 <View style={styles.radarWrapper}>
                     <Svg height="260" width="260" viewBox="0 0 300 300">
-                        {/* Orbit Rings - Touchable Zones */}
-                        {/* 1. Orbit Rings - Clean dashed lines */}
-                        {/* 1. Orbit Rings - Clean dashed lines (Restored Visibility) */}
-                        <Circle cx="150" cy="150" r="110" stroke="#D9D9D9" strokeWidth="1.5" strokeDasharray="3 3" fill="transparent"
-                            onPress={() => { setIsSelectionMode(true); setFilterZone(3); }}
-                        />
-                        <Circle cx="150" cy="150" r="80" stroke="#D9D9D9" strokeWidth="1.5" strokeDasharray="3 3" fill="transparent"
-                            onPress={() => { setIsSelectionMode(true); setFilterZone(2); }}
-                        />
-                        <Circle cx="150" cy="150" r="50" stroke="#D9D9D9" strokeWidth="1.5" strokeDasharray="3 3" fill="transparent"
-                            onPress={() => { setIsSelectionMode(true); setFilterZone(1); }}
-                        />
+                        {/* Orbit Rings - Touchable Zones with Diagnostic Styles */}
+                        {/* 1. Halo Layer (Error Status Glow) - Drawn BEHIND track */}
+                        {[
+                            { z: 3, r: 110 },
+                            { z: 2, r: 80 },
+                            { z: 1, r: 50 }
+                        ].map(ring => {
+                            const issue = stabilityStatus.imbalancedZones.find(z => z.zone === ring.z);
+                            if (!issue) return null; // Skip if normal
+
+                            const isOver = issue.status === 'over';
+                            const glowColor = isOver ? "#EF5350" : "#FFB74D";
+
+                            return (
+                                <AnimatedCircle
+                                    key={`halo-${ring.z}`}
+                                    cx="150" cy="150" r={ring.r}
+                                    stroke={glowColor}
+                                    strokeWidth={24} // Wide glow
+                                    strokeOpacity={blinkAnim.interpolate({
+                                        inputRange: [0.3, 1],
+                                        outputRange: [0.1, 0.25] // Subtle pulsing opacity
+                                    })}
+                                    fill="none"
+                                />
+                            );
+                        })}
+
+                        {/* 2. Track Layer (Thin Guide Lines) - Always visible, Clean */}
+                        {[
+                            { z: 3, r: 110 },
+                            { z: 2, r: 80 },
+                            { z: 1, r: 50 }
+                        ].map(ring => (
+                            <Circle
+                                key={`track-${ring.z}`}
+                                cx="150" cy="150" r={ring.r}
+                                stroke="#D9D9D9"
+                                strokeWidth="1.5"
+                                strokeDasharray="3 3"
+                                fill="transparent"
+                                onPress={() => { setIsSelectionMode(true); setFilterZone(ring.z); }}
+                            />
+                        ))}
 
                         {/* Dynamic Relationship Nodes */}
                         {relationships.map((r: RelationshipNode, i: number) => {
@@ -534,7 +714,8 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     </Svg>
                 </View>
 
-                <View style={[styles.vizOverlay, { bottom: 12 }]}>
+                {/* Info Section (Moved Below Orbit) */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', paddingHorizontal: 24, marginTop: 24 }}>
                     <View style={styles.stabilityBadgeContainer}>
                         <TouchableOpacity
                             style={[styles.stabilityBadge, { backgroundColor: stabilityStatus.color }]}
@@ -641,6 +822,33 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
         return (
             <View style={styles.focusSection}>
+                {/* 🔍 Lens Tabs (Moved Here) */}
+                <View style={[styles.lensTabContainer, { marginBottom: 24, marginHorizontal: -24 }]}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lensScroll}>
+                        {[
+                            { id: 'None', label: '전체', icon: LayoutGrid },
+                            { id: 'Positive', label: '영혼의 배터리', icon: Star },
+                            { id: 'Negative', label: '에너지 포식자', icon: Zap },
+                            { id: 'Frequency', label: '일상의 중력', icon: History },
+                        ].map((lens) => (
+                            <TouchableOpacity
+                                key={lens.id}
+                                onPress={() => setSelectedLens(lens.id as any)}
+                                style={[
+                                    styles.lensTab,
+                                    { backgroundColor: selectedLens === lens.id ? colors.primary : colors.white, borderColor: colors.primary + '10' },
+                                    selectedLens === lens.id && styles.activeLensTab
+                                ]}
+                            >
+                                <lens.icon size={14} color={selectedLens === lens.id ? 'white' : colors.primary} />
+                                <Text style={[styles.lensTabText, { color: selectedLens === lens.id ? 'white' : colors.primary }]}>
+                                    {lens.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+
                 <View style={styles.focusHeader}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>
                         {selectedLens === 'Positive' ? '✨ 영혼의 배터리 순위' :
@@ -807,17 +1015,74 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
     if (isTournamentMode) {
         return (
-            <FocusTournament
-                participants={tournamentParticipants}
-                onComplete={(winners) => {
-                    console.log('Tournament complete, winners:', winners);
-                    setIsTournamentMode(false);
-                    setIsSelectionMode(false);
-                    setSelectedIds([]);
-                }}
-                onClose={() => setIsTournamentMode(false)}
-                entryLens={selectedLens}
-            />
+            <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, display: viewingRelationshipId ? 'none' : 'flex' }}>
+                    <FocusTournament
+                        participants={tournamentParticipants}
+                        onComplete={(winners) => {
+                            // 📈 우선순위에 따른 정서 온도 가중치 반영
+                            const isNegative = selectedLens === 'Negative';
+
+                            winners.forEach((id, index) => {
+                                const node = relationships.find(r => r.id === id);
+                                if (node) {
+                                    let weight = 0;
+                                    if (isNegative) {
+                                        // 에너지 디톡스 가중치 (점진적 하향)
+                                        if (index === 0) weight = -5;
+                                        else if (index === 1) weight = -3;
+                                        else if (index === 2) weight = -1;
+                                    } else {
+                                        // 일반 조율 가중치
+                                        if (index === 0) weight = 7;
+                                        else if (index === 1) weight = 4;
+                                        else if (index === 2) weight = 2;
+                                    }
+
+                                    if (weight !== 0) {
+                                        const currentTemp = node.temperature || 50;
+                                        const newTemp = Math.max(0, Math.min(100, currentTemp + weight));
+
+                                        updateDiagnosisResult(id, {
+                                            temperature: newTemp,
+                                            event: isNegative ? '에너지 디톡스 반영' : '집중 조율 반영'
+                                        });
+                                    }
+                                }
+                            });
+
+                            setShowCompletePopup(true);
+                            setIsTournamentMode(false); // 팝업이 포함된 메인 레이아웃으로 전환
+                            setIsSelectionMode(false);
+                            setSelectedIds([]);
+                        }}
+                        onClose={() => setIsTournamentMode(false)}
+                        entryLens={selectedLens}
+                        onSelectParticipant={(id, autoCheckIn) => {
+                            setViewingRelationshipId(id);
+                            if (autoCheckIn) setAutoOpenLog(true);
+                        }}
+                        visible={!viewingRelationshipId}
+                    />
+                </View>
+                {viewingRelationshipId && (
+                    <Modal visible={true} transparent animationType="slide">
+                        <View style={[StyleSheet.absoluteFill, { zIndex: 10, backgroundColor: colors.background }]}>
+                            <RelationshipDetail
+                                relationshipId={viewingRelationshipId}
+                                onBack={() => {
+                                    setViewingRelationshipId(null);
+                                    setAutoOpenLog(false);
+                                }}
+                                onDiagnose={() => { }}
+                                onManageProfile={() => { }}
+                                onViewReport={() => { }}
+                                autoOpenLog={autoOpenLog}
+                            />
+                        </View>
+                    </Modal>
+                )}
+            </View>
         );
     }
 
@@ -828,31 +1093,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             ) : (
                 <View style={[styles.dashboardContainer, { paddingTop: 12 }]}>
 
-                    <View style={styles.lensTabContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lensScroll}>
-                            {[
-                                { id: 'None', label: '전체', icon: LayoutGrid },
-                                { id: 'Positive', label: '영혼의 배터리', icon: Star },
-                                { id: 'Negative', label: '에너지 포식자', icon: Zap },
-                                { id: 'Frequency', label: '일상의 중력', icon: History },
-                            ].map((lens) => (
-                                <TouchableOpacity
-                                    key={lens.id}
-                                    onPress={() => setSelectedLens(lens.id as any)}
-                                    style={[
-                                        styles.lensTab,
-                                        { backgroundColor: selectedLens === lens.id ? colors.primary : colors.white, borderColor: colors.primary + '10' },
-                                        selectedLens === lens.id && styles.activeLensTab
-                                    ]}
-                                >
-                                    <lens.icon size={14} color={selectedLens === lens.id ? 'white' : colors.primary} />
-                                    <Text style={[styles.lensTabText, { color: selectedLens === lens.id ? 'white' : colors.primary }]}>
-                                        {lens.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
+
 
                     {renderOrbitVisualization()}
                     {renderFocusInsight()}
@@ -875,7 +1116,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         />
                     </View>
 
-                    <View style={{ height: 120 }} />
+                    <View style={{ height: 260 }} />
 
                     {!isSelectionMode && (
                         <View style={styles.fabContainer}>
@@ -892,7 +1133,13 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             )}
 
             {/* Premium Guide Popup (Insight Style) */}
-            {showStabilityInfo && (
+            {/* ℹ️ 관계 안정성 지표 안내 팝업 */}
+            <Modal
+                visible={showStabilityInfo}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowStabilityInfo(false)}
+            >
                 <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
                     <TouchableOpacity
                         style={StyleSheet.absoluteFill}
@@ -984,7 +1231,84 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         </TouchableOpacity>
                     </View>
                 </View>
-            )}
+            </Modal>
+
+            {/* 🎉 집중 조율 완료 커스텀 팝업 */}
+            <Modal
+                visible={showCompletePopup}
+                transparent
+                animationType="fade"
+                onRequestClose={() => {
+                    setShowCompletePopup(false);
+                    setIsTournamentMode(false);
+                }}
+            >
+                <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <View style={[styles.floatingPopupCard, { backgroundColor: '#FFFFFF' }]}>
+                        <View style={styles.guideHeader}>
+                            <View>
+                                <Text style={[styles.guideTitle, { color: colors.primary }]}>
+                                    {selectedLens === 'Negative' ? "디톡스 완료" : "조율 완료"}
+                                </Text>
+                                <Text style={[styles.guideSubTitle, { color: selectedLens === 'Negative' ? '#D98B73' : colors.accent }]}>
+                                    {selectedLens === 'Negative' ? "Energy Detox" : "Tuning Success"}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => {
+                                setShowCompletePopup(false);
+                                setIsTournamentMode(false);
+                            }} style={styles.popupCloseBtn}>
+                                <X size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={[styles.popupScrollContainer, { alignItems: 'center', paddingVertical: 32 }]}>
+                            <View style={{ backgroundColor: (selectedLens === 'Negative' ? '#D98B73' : colors.primary) + '10', width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+                                {selectedLens === 'Negative' ? (
+                                    <Shield size={40} color="#D98B73" />
+                                ) : (
+                                    <Sparkles size={40} color={colors.primary} />
+                                )}
+                            </View>
+                            <Text style={{ fontSize: 20, fontWeight: '900', color: colors.primary, marginBottom: 12, textAlign: 'center' }}>
+                                {selectedLens === 'Negative'
+                                    ? "마음의 방어선이\n설정되었습니다!"
+                                    : "무의식의 우선순위가\n정서 온도에 반영되었습니다!"}
+                            </Text>
+                            <Text style={{ fontSize: 15, color: colors.primary, opacity: 0.6, textAlign: 'center', lineHeight: 22 }}>
+                                {selectedLens === 'Negative'
+                                    ? "소모적인 관계로부터 당신의 에너지를\n지키기 위한 변화를 오빗 맵에서 확인하세요."
+                                    : "오빗 맵에서 변화된 인맥들의\n새로운 위치와 에너지를 확인해보세요."}
+                            </Text>
+
+                            <View style={{ marginTop: 32, width: '100%', gap: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.primary + '05', padding: 16, borderRadius: 16 }}>
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4A5D4E' }} />
+                                    <Text style={{ fontSize: 14, color: colors.primary, fontWeight: '700' }}>
+                                        {selectedLens === 'Negative' ? "심리적 에너지 보존 모드 가동" : "관계망 안정성 지수 향상 완료"}
+                                    </Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.primary + '03', padding: 16, borderRadius: 16 }}>
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedLens === 'Negative' ? '#D98B73' : '#FFD700' }} />
+                                    <Text style={{ fontSize: 14, color: colors.primary, fontWeight: '700' }}>
+                                        {selectedLens === 'Negative' ? "지목된 포식자 온도 하향 및 거리두기" : "상위 1~3위 인맥 정서 온도 보너스 반영"}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.popupConfirmBtn, { backgroundColor: colors.primary, marginTop: 16 }]}
+                            onPress={() => {
+                                setShowCompletePopup(false);
+                                setIsTournamentMode(false);
+                            }}
+                        >
+                            <Text style={styles.popupConfirmText}>확인</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </HubLayout>
     );
 };
@@ -1031,7 +1355,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     scrollContent: {
-        paddingBottom: 120,
+        paddingBottom: 220, // 하단 플로팅 메뉴 가림 방지를 위해 충분한 여백 확보
     },
     vizSection: {
         paddingHorizontal: 24,
@@ -1510,7 +1834,7 @@ const styles = StyleSheet.create({
 
     fabContainer: {
         position: 'absolute',
-        bottom: 34,
+        bottom: 160, // 하단 플로팅 메뉴 위로 확실하게 이동
         left: 0,
         right: 0,
         alignItems: 'center',
@@ -1624,7 +1948,7 @@ const styles = StyleSheet.create({
         right: 0,
         paddingHorizontal: 24,
         paddingTop: 20,
-        paddingBottom: 40,
+        paddingBottom: 160, // 하단 플로팅 메뉴 가림 방지를 위해 추가 패딩
         backgroundColor: '#FCF9F2',
         borderTopWidth: 1,
         borderTopColor: 'rgba(74, 93, 78, 0.05)',

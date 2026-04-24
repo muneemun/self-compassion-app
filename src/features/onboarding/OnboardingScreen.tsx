@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, TextInput, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, TextInput, KeyboardAvoidingView, Platform, Image, Alert, ActionSheetIOS } from 'react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { useAppStore } from '../../store/useAppStore';
-import { ArrowRight, Sparkles, Heart, ShieldCheck, Compass, Lock, Zap, MessageSquare, Anchor, Eye } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ArrowRight, Sparkles, Heart, ShieldCheck, Compass, Lock, Zap, MessageSquare, Anchor, Eye, Camera } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
 const ONBOARDING_STEPS = [
     {
         id: 1,
-        title: "관계의 무게를 덜고,\n마음의 균형을\n균형을 지키다.",
+        title: "관계의 무게를 덜고,\n마음의 균형을 지키다.",
         description: "복잡한 세상 속, 당신만의 소셜 우주를 시각화하고 내면의 균형을 찾아보세요.",
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC0W4CHJde2_tDzfgLnzZ3eNStIIZV3WbHM8kOrCN5-sYrCKvmSuqoXP3Dz6LXluncnpXmLcHVebCDIJSCZDfu_Kmn0-gbj2aqZzA5z340yN7uxVchrEVFQJ0la6-4kf3s2SXUMgg6a300LZ66X7Lwmc_QrC58eP0n5DDKTx-FrbqM0WrSJsxuFL_cp6EfoJlHRe830xyXIYlvLfV8F5iEJVgUrwyXwlokqC0-2It6uNOoqLeuZc6btIWzedy2ai3tjo3D6sDLZpBQ",
         type: 'hero'
@@ -53,11 +54,76 @@ export const OnboardingScreen = () => {
 
     const [step, setStep] = useState(0);
     const [name, setName] = useState('');
+    const [avatar, setAvatar] = useState('https://lh3.googleusercontent.com/aida-public/AB6AXuD_4nbf8XYKfUAdnhk0h_PYVe-cPF_A6hYA9qFKFARMFD5X_qYabF_Q6Ahn_fkVop9cc55TdPKTmst_DJOCIElrUGuKDyp-_k94tXARDdb7vrNXxdd3jErzAMy5B5wgWlGRB8y8M-9gBmW8jww40YT4sCkNxkzhsII5eswcUTMVpRzkwka7PHIu33bUdVOthx2lrxFeMrz1p9nZKI8uSDYzdrGP2WAEkp1NN7cOYU5PBWL7mZ6a6MkSMy_qYSR3Vgv2v2IfX_K4lhQ');
+
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const slideAnim = useRef(new Animated.Value(0)).current;
     const orbitRotate = useRef(new Animated.Value(0)).current;
     const floatAnim = useRef(new Animated.Value(0)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    const handlePickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('권한 필요', '이미지를 선택하려면 갤러리 접근 권한이 필요합니다.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setAvatar(result.assets[0].uri);
+        }
+    };
+
+    const handleTakePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('권한 필요', '사진을 찍으려면 카메라 접근 권한이 필요합니다.');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setAvatar(result.assets[0].uri);
+        }
+    };
+
+    const handleAvatarPress = () => {
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options: ['취소', '앨범에서 선택', '카메라로 촬영'],
+                    cancelButtonIndex: 0,
+                    title: '프로필 사진 설정'
+                },
+                (buttonIndex) => {
+                    if (buttonIndex === 1) handlePickImage();
+                    else if (buttonIndex === 2) handleTakePhoto();
+                }
+            );
+        } else {
+            Alert.alert(
+                '프로필 사진 설정',
+                '이미지를 가져올 방법을 선택하세요.',
+                [
+                    { text: '취소', style: 'cancel' },
+                    { text: '앨범에서 선택', onPress: handlePickImage },
+                    { text: '카메라로 촬영', onPress: handleTakePhoto },
+                ]
+            );
+        }
+    };
 
     useEffect(() => {
         Animated.loop(
@@ -119,7 +185,7 @@ export const OnboardingScreen = () => {
             });
         } else if (step === ONBOARDING_STEPS.length) {
             if (name.trim()) {
-                setUserProfile({ name });
+                setUserProfile({ name, avatar });
                 setHasCompletedOnboarding(true);
             }
         }
@@ -270,14 +336,22 @@ export const OnboardingScreen = () => {
             );
         } else {
             return (
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.stepContent}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={[styles.stepContent, { justifyContent: 'flex-start' }]}
+                >
                     <View style={styles.avatarOuterWrapper}>
-                        <Image
-                            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_4nbf8XYKfUAdnhk0h_PYVe-cPF_A6hYA9qFKFARMFD5X_qYabF_Q6Ahn_fkVop9cc55TdPKTmst_DJOCIElrUGuKDyp-_k94tXARDdb7vrNXxdd3jErzAMy5B5wgWlGRB8y8M-9gBmW8jww40YT4sCkNxkzhsII5eswcUTMVpRzkwka7PHIu33bUdVOthx2lrxFeMrz1p9nZKI8uSDYzdrGP2WAEkp1NN7cOYU5PBWL7mZ6a6MkSMy_qYSR3Vgv2v2IfX_K4lhQ' }}
-                            style={styles.aiAvatar}
-                        />
+                        <TouchableOpacity style={styles.avatarContainer} onPress={handleAvatarPress}>
+                            <Image
+                                source={{ uri: avatar }}
+                                style={styles.aiAvatar}
+                            />
+                            <View style={[styles.cameraBtn, { backgroundColor: colors.primary }]}>
+                                <Camera size={14} color="white" />
+                            </View>
+                        </TouchableOpacity>
                         <View style={[styles.speechBubble, { backgroundColor: colors.white }]}>
-                            <Text style={[styles.speechText, { color: colors.primary }]}>무게를 덜고 온기를 더할 준비가 되었나요?{"\n"}당신의 이름을 알려주세요.</Text>
+                            <Text style={[styles.speechText, { color: colors.primary }]}>무게를 덜고 온기를 더할 준비가 되었나요?{"\n"}이름과 사진을 등록해주세요.</Text>
                         </View>
                     </View>
                     <TextInput
@@ -307,6 +381,7 @@ export const OnboardingScreen = () => {
 
             <Animated.View style={[
                 styles.content,
+                step === ONBOARDING_STEPS.length ? { justifyContent: 'flex-start', paddingTop: 60 } : {},
                 { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
             ]}>
                 {renderStepContent()}
@@ -575,5 +650,29 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 20,
         fontWeight: '800',
+    },
+    avatarContainer: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        marginBottom: 20,
+        position: 'relative',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+    },
+    cameraBtn: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: 'white',
     }
 });

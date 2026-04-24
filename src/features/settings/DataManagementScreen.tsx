@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, Dimensions, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
     ChevronLeft, ShieldCheck, Database, Heart, RefreshCw,
     FileText, HardDrive, Lock as LockIcon, History,
@@ -100,92 +101,102 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
     );
 
     return (
-        <HubLayout header={renderHeader()} scrollable>
-            <View style={styles.container}>
+        <>
+            <HubLayout header={renderHeader()} scrollable>
+                <View style={styles.container}>
 
-                {/* Visual Status Area */}
-                <View style={styles.heroSection}>
-                    <Animated.View style={[
-                        styles.pulseRing,
-                        {
-                            borderColor: colors.primary + '10',
-                            transform: [{ scale: pulseAnim }]
-                        }
-                    ]} />
-                    <View style={[styles.pulseRingInner, { borderColor: colors.primary + '15' }]} />
+                    {/* Visual Status Area */}
+                    <View style={styles.heroSection}>
+                        <Animated.View style={[
+                            styles.pulseRing,
+                            {
+                                borderColor: colors.primary + '10',
+                                transform: [{ scale: pulseAnim }]
+                            }
+                        ]} />
+                        <View style={[styles.pulseRingInner, { borderColor: colors.primary + '15' }]} />
 
-                    <Animated.View style={[
-                        styles.orbContainer,
-                        {
-                            backgroundColor: colors.white,
-                            transform: [{ scale: breatheAnim }],
-                            shadowColor: colors.primary,
-                        }
-                    ]}>
-                        <ShieldCheck size={48} color={colors.primary} strokeWidth={1.5} />
-                        <View style={styles.onlineStatus} />
-                    </Animated.View>
+                        <Animated.View style={[
+                            styles.orbContainer,
+                            {
+                                backgroundColor: colors.white,
+                                transform: [{ scale: breatheAnim }],
+                                shadowColor: colors.primary,
+                            }
+                        ]}>
+                            <ShieldCheck size={48} color={colors.primary} strokeWidth={1.5} />
+                            <View style={styles.onlineStatus} />
+                        </Animated.View>
 
-                    <View style={styles.statusTextContainer}>
-                        <Text style={[styles.statusTitle, { color: colors.primary }]}>시스템 상태: 안전</Text>
-                        <Text style={[styles.statusDesc, { color: colors.gray[500] }]}>당신의 기록이 소중하게 보호되고 있습니다.</Text>
-                        <Text style={[styles.lastSync, { color: colors.primary + '80' }]}>마지막 동기화: 2분 전</Text>
+                        <View style={styles.statusTextContainer}>
+                            <Text style={[styles.statusTitle, { color: colors.primary }]}>시스템 상태: 안전</Text>
+                            <Text style={[styles.statusDesc, { color: colors.gray[500] }]}>당신의 기록이 소중하게 보호되고 있습니다.</Text>
+                            <Text style={[styles.lastSync, { color: colors.primary + '80' }]}>마지막 동기화: 2분 전</Text>
+                        </View>
                     </View>
+
+                    {/* Stats Grid */}
+                    <View style={styles.statsGrid}>
+                        <StatCard
+                            icon={Database}
+                            label="저장 공간"
+                            value={`${estimatedSize} MB`}
+                            subLabel="*기록 기반 추정치"
+                        />
+                        <StatCard icon={Heart} label="인맥 수" value={relationships.length.toLocaleString()} />
+                    </View>
+
+                    {/* Primary Actions */}
+                    <View style={styles.actionSection}>
+                        <TouchableOpacity style={[styles.syncButton, { backgroundColor: colors.primary }]}>
+                            <RefreshCw size={20} color={colors.white} />
+                            <Text style={styles.syncButtonText}>지금 클라우드에 백업</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[styles.pdfButton, { borderColor: colors.accent + '30', backgroundColor: colors.white }]}>
+                            <View style={[styles.pdfIconCircle, { backgroundColor: colors.accent + '15' }]}>
+                                <FileText size={18} color={colors.accent} />
+                            </View>
+                            <Text style={[styles.pdfButtonText, { color: colors.accent }]}>리포트 PDF 파일로 저장</Text>
+                            <View style={[styles.premiumBadge, { backgroundColor: colors.accent }]}>
+                                <Text style={styles.premiumText}>프리미엄 전용</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Settings Menu */}
+                    <View style={[styles.menuSection, { backgroundColor: colors.white }]}>
+                        <MenuButton
+                            icon={HardDrive}
+                            title="저장 데이터 최적화"
+                            subtitle="캐시 및 오래된 로그 정리"
+                        />
+                        <View style={styles.divider} />
+                        <MenuButton
+                            icon={LockIcon}
+                            title="보안 및 암호화 설정"
+                            subtitle="생체 인증 및 보안키 관리"
+                        />
+                        <View style={styles.divider} />
+                        <MenuButton
+                            icon={History}
+                            title="백업 기록/복원"
+                            subtitle="이전 복원 지점 확인 및 데이터 불러오기"
+                        />
+                    </View>
+
+
+                    <View style={{ height: 100 }} />
                 </View>
+            </HubLayout>
 
-                {/* Stats Grid */}
-                <View style={styles.statsGrid}>
-                    <StatCard
-                        icon={Database}
-                        label="저장 공간"
-                        value={`${estimatedSize} MB`}
-                        subLabel="*기록 기반 추정치"
-                    />
-                    <StatCard icon={Heart} label="인맥 수" value={relationships.length.toLocaleString()} />
-                </View>
-
-                {/* Primary Actions */}
-                <View style={styles.actionSection}>
-                    <TouchableOpacity style={[styles.syncButton, { backgroundColor: colors.primary }]}>
-                        <RefreshCw size={20} color={colors.white} />
-                        <Text style={styles.syncButtonText}>지금 클라우드에 백업</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.pdfButton, { borderColor: colors.accent + '30', backgroundColor: colors.white }]}>
-                        <View style={[styles.pdfIconCircle, { backgroundColor: colors.accent + '15' }]}>
-                            <FileText size={18} color={colors.accent} />
-                        </View>
-                        <Text style={[styles.pdfButtonText, { color: colors.accent }]}>리포트 PDF 파일로 저장</Text>
-                        <View style={[styles.premiumBadge, { backgroundColor: colors.accent }]}>
-                            <Text style={styles.premiumText}>프리미엄 전용</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Settings Menu */}
-                <View style={[styles.menuSection, { backgroundColor: colors.white }]}>
-                    <MenuButton
-                        icon={HardDrive}
-                        title="저장 데이터 최적화"
-                        subtitle="캐시 및 오래된 로그 정리"
-                    />
-                    <View style={styles.divider} />
-                    <MenuButton
-                        icon={LockIcon}
-                        title="보안 및 암호화 설정"
-                        subtitle="생체 인증 및 보안키 관리"
-                    />
-                    <View style={styles.divider} />
-                    <MenuButton
-                        icon={History}
-                        title="백업 기록/복원"
-                        subtitle="이전 복원 지점 확인 및 데이터 불러오기"
-                    />
-                </View>
-
-                <View style={{ height: 60 }} />
-            </View>
-        </HubLayout>
+            {/* 하단 시스템 바 가독성 가드 */}
+            <LinearGradient
+                colors={['transparent', colors.background]}
+                style={styles.navBottomGuard}
+                pointerEvents="none"
+            />
+        </>
     );
 };
 
@@ -421,5 +432,13 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: 'rgba(0,0,0,0.03)',
         marginHorizontal: 20,
+    },
+    navBottomGuard: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        zIndex: 10,
     },
 });

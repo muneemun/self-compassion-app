@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated, Dimensions } from 'react-native';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
 import { Plus, Search, Radio, Heart, Users, Target, Briefcase, Menu, ChevronDown, ChevronUp, Star, Trash2, Zap, Calendar, Activity, Flame, Snowflake } from 'lucide-react-native';
@@ -68,15 +69,15 @@ const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect
                         style={[
                             styles.tempBarFill,
                             {
-                                height: `${node.temperature}%`,
-                                backgroundColor: node.temperature > 70 ? colors.accent : colors.primary,
-                                opacity: node.temperature / 100
+                                height: `${Math.max(0, Math.min(100, node.temperature || 0))}%`,
+                                backgroundColor: (node.temperature || 0) > 70 ? colors.accent : colors.primary,
+                                opacity: Math.max(0.1, (node.temperature || 0) / 100)
                             }
                         ]}
                     />
                 </View>
-                <Text style={[styles.tempText, { color: node.temperature > 70 ? colors.accent : colors.primary }]}>
-                    {node.temperature}°
+                <Text style={[styles.tempText, { color: (node.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
+                    {(node.temperature || 0)}°
                 </Text>
             </View>
         </TouchableOpacity>
@@ -158,21 +159,25 @@ export const RelationshipList = ({
             { id: 'z5', label: '배경 소음(외부 환경)', zone: 5 },
         ];
 
-        const uniqueTypes = Array.from(new Set(relationships.map(r => RELATIONSHIP_TYPE_LABELS[r.type] || r.type)));
+        const uniqueTypes = Array.from(new Set(relationships.map(r => (r.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r.type))).filter(Boolean) as string[];
         const dynamicTabs = passedTabs || ['전체', ...zoneFilters.map(z => z.label), ...uniqueTypes];
 
-        const filteredRelationships = selectedFilters.includes('전체')
-            ? relationships
-            : relationships.filter(r => {
-                const rType = RELATIONSHIP_TYPE_LABELS[r.type] || r.type;
-                const rZoneLabel = zoneFilters.find(zf => zf.zone === r.zone)?.label;
-                return selectedFilters.includes(rType) || (rZoneLabel && selectedFilters.includes(rZoneLabel));
-            });
+        const filteredRelationships = (relationships || []).filter(r => {
+            if (!r) return false;
+            if (selectedFilters.includes('전체')) return true;
+
+            const rType = (r.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r.type;
+            const zoneMatch = zoneFilters.find(zf => zf.zone === r.zone);
+            const rZoneLabel = zoneMatch ? zoneMatch.label : (r.zone ? `Zone ${r.zone}` : '');
+
+            return (rType && selectedFilters.includes(rType)) || (rZoneLabel && selectedFilters.includes(rZoneLabel));
+        });
 
         const sortedFilteredRelationships = [...filteredRelationships].sort((a, b) => {
-            if (sortMode === 'hot') return b.temperature - a.temperature;
-            if (sortMode === 'cold') return a.temperature - b.temperature;
-            return a.name.localeCompare(b.name);
+            if (!a || !b) return 0;
+            if (sortMode === 'hot') return (b.temperature || 0) - (a.temperature || 0);
+            if (sortMode === 'cold') return (a.temperature || 0) - (b.temperature || 0);
+            return (a.name || '').localeCompare(b.name || '');
         });
 
         return (
@@ -295,9 +300,18 @@ export const RelationshipList = ({
 
     if (hideHeader) {
         return (
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {renderInnerContent()}
-            </ScrollView>
+            <>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    {renderInnerContent()}
+                    <View style={{ height: 100 }} />
+                </ScrollView>
+                {/* 하단 시스템 바 가독성 가드 */}
+                <ExpoLinearGradient
+                    colors={['transparent', colors.background]}
+                    style={styles.navBottomGuard}
+                    pointerEvents="none"
+                />
+            </>
         );
     }
 
@@ -311,6 +325,14 @@ export const RelationshipList = ({
 const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
+    },
+    navBottomGuard: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        zIndex: 10,
     },
     container: {
         paddingHorizontal: 20,

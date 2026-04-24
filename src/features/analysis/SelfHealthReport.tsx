@@ -40,11 +40,7 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
     const renderHeader = () => (
         <AppHeader
             title="건강 리포트"
-            leftAction={
-                <TouchableOpacity onPress={handleBack} style={styles.iconBtn}>
-                    <ChevronLeft size={24} color={colors.primary} />
-                </TouchableOpacity>
-            }
+            leftAction={null}
             rightAction={
                 <TouchableOpacity style={styles.iconBtn}>
                     <MoreHorizontal size={24} color={colors.primary} />
@@ -570,7 +566,7 @@ const styles = StyleSheet.create({
     adSourceText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
     adTitle: { fontSize: 16, fontWeight: '800', color: THEME.primary, lineHeight: 22, marginBottom: 4 },
     adSubtitle: { fontSize: 13, color: THEME.textMuted },
-    fab: { position: 'absolute', bottom: 30, right: 24, backgroundColor: THEME.primary, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 30, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+    fab: { position: 'absolute', bottom: 160, right: 24, backgroundColor: THEME.primary, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 30, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
     fabText: { color: 'white', fontWeight: '700', marginLeft: 8, fontSize: 14 },
     popupBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     floatingPopupCard: { width: '100%', maxHeight: '80%', borderRadius: 28, padding: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.15, shadowRadius: 30, elevation: 10 },
