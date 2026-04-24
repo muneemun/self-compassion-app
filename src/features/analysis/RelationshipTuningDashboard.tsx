@@ -19,6 +19,7 @@ import { useColors } from '../../theme/ColorLockContext';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { AppHeader } from '../../components/AppHeader';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { useAppStore } from '../../store/useAppStore';
 import { RelationshipNode } from '../../types/relationship';
 import { FocusTournament } from './FocusTournament';
 import { RelationshipDetail } from '../relationships/RelationshipDetail';
@@ -43,6 +44,7 @@ interface RelationshipTuningDashboardProps {
 export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardProps> = ({ onBack, onSelectNode, onGoToReport }) => {
     const colors = useColors();
     const { relationships, updateDiagnosisResult } = useRelationshipStore();
+    const setSelfTimeModalOpen = useAppStore(state => state.setSelfTimeModalOpen);
 
     // 🕹️ Selection State for Manual Tuning
     const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -709,8 +711,8 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         })}
 
                         {/* 🎯 Stable Center Core (Self) */}
-                        <Circle cx="150" cy="150" r="18" fill={colors.primary} />
-                        <Circle cx="150" cy="150" r="8" fill="white" opacity="0.9" />
+                        <Circle cx="150" cy="150" r="18" fill={colors.primary} onPress={() => setSelfTimeModalOpen(true)} />
+                        <Circle cx="150" cy="150" r="8" fill="white" opacity="0.9" onPress={() => setSelfTimeModalOpen(true)} />
                     </Svg>
                 </View>
 

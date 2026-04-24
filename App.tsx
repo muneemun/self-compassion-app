@@ -25,6 +25,7 @@ import { DataManagementScreen } from './src/features/settings/DataManagementScre
 import { ProfileEditScreen } from './src/features/settings/ProfileEditScreen';
 import { ReminderSettingsScreen } from './src/features/settings/ReminderSettingsScreen';
 import { NotificationSettingsScreen } from './src/features/settings/NotificationSettingsScreen';
+import { SelfTimeCheckInModal } from './src/features/selfcare/SelfTimeCheckInModal';
 import { Orbit, SlidersHorizontal, Activity, Rocket } from 'lucide-react-native';
 import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
 
@@ -297,6 +298,7 @@ function App() {
                 )}
             </View>
           )}
+          <SelfTimeCheckInModal />
         </View>
       </ColorLockProvider>
     </SafeAreaProvider>

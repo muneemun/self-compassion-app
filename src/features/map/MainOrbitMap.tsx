@@ -1263,7 +1263,13 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
             return matchesQuery && (rTypeLabel === activeSearchTag || rZoneLabel === activeSearchTag);
         });
 
-        const handleSelectPerson = (person: RelationshipNode) => {
+        const handleSelectPerson = (person: RelationshipNode | 'self') => {
+            if (person === 'self') {
+                setIsSearchModalVisible(false);
+                useAppStore.getState().setSelfTimeModalOpen(true);
+                return;
+            }
+
             if (searchMode === 'navigation') {
                 setIsSearchModalVisible(false);
                 onSelectNode(person.id);
@@ -1342,8 +1348,27 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
                             <ScrollView style={styles.selectionList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                    <Text style={styles.listSectionLabel}>검색 결과 • {filteredPeople.length}명</Text>
+                                    <Text style={styles.listSectionLabel}>검색 결과 • {filteredPeople.length + (searchMode === 'action' ? 1 : 0)}명</Text>
                                 </View>
+
+                                {searchMode === 'action' && searchQuery === '' && activeSearchTag === '전체' && (
+                                    <TouchableOpacity
+                                        style={[styles.selectionItem, { backgroundColor: colors.white + '80', borderStyle: 'dashed', borderWidth: 1, borderColor: colors.accent }]}
+                                        onPress={() => handleSelectPerson('self')}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent + '20', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Heart size={20} color={colors.accent} />
+                                            </View>
+                                            <View>
+                                                <Text style={{ fontSize: 15, fontWeight: '800', color: colors.primary }}>나와의 시간 (Self-Time)</Text>
+                                                <Text style={{ fontSize: 12, color: colors.accent, fontWeight: '600' }}>오늘 나를 위한 돌봄 기록하기</Text>
+                                            </View>
+                                        </View>
+                                        <ChevronRight size={18} color={colors.accent} />
+                                    </TouchableOpacity>
+                                )}
+
                                 {filteredPeople.map((person) => {
                                     // Zone & Dynamics Logic
                                     const zoneColor = {
@@ -1557,7 +1582,11 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                 const centerSize = 60 + zoomLevel * 12;
                                 const profileImg = userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
                                 return (
-                                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                    <TouchableOpacity 
+                                        style={{ alignItems: 'center', justifyContent: 'center' }}
+                                        activeOpacity={0.8}
+                                        onPress={() => useAppStore.getState().setSelfTimeModalOpen(true)}
+                                    >
                                         {/* Solar Amber Heartbeat Glow (Soft & Filled) */}
                                         <ReAnimated.View style={[
                                             {
@@ -1608,7 +1637,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                 ]}
                                             />
                                         </ReAnimated.View>
-                                    </View>
+                                    </TouchableOpacity>
                                 );
                             })()}
                         </ReAnimated.View>

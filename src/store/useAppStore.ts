@@ -9,6 +9,10 @@ interface AppState {
     setUserProfile: (profile: any) => void;
     activeZone: number;
     setActiveZone: (zone: number) => void;
+    
+    // 글로벌 '나와의 시간' 체크인 모달 제어
+    isSelfTimeModalOpen: boolean;
+    setSelfTimeModalOpen: (isOpen: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -20,4 +24,7 @@ export const useAppStore = create<AppState>((set) => ({
     setUserProfile: (profile) => set({ userProfile: profile }),
     activeZone: 1,
     setActiveZone: (zone) => set({ activeZone: zone }),
+    
+    isSelfTimeModalOpen: false,
+    setSelfTimeModalOpen: (isOpen) => set({ isSelfTimeModalOpen: isOpen }),
 }));

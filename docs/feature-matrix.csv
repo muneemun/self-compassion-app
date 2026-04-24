@@ -1,0 +1,13 @@
+기능명,상세 설명,도입 버전,사용자 레벨,접근 권한,기술적 의존성
+Onboarding,초기 설정 및 기본 진단,v1.0,Level 1,Basic (Free),None
+Zone Diagnosis,관계 거리 진단 기본형,v1.0,Level 1,Basic (Free),types/relationship
+RQS Diagnosis,질적 심층 진단,v1.1,Level 2,Silver (Paid),types/relationship
+Orbit Map,관계 궤도 조회 및 탐색,v1.1,Level 1,Basic (Free),store/useRelationshipStore
+Node Capacity,인맥 등록 제한 해제,v1.1,Level 2,Silver / Gold,None
+Energy Radar,밸런스 및 레이더 차트 시각화,v1.1,Level 1,Basic (Free),features/selfcare & relationships
+Trend Analysis,주간/월간 감정 변화 추이,v1.2,Level 2,Silver (Paid),features/analysis
+AI Sentiment,서버 AI 기반 심화 통찰,v2.0,Level 3,Gold (SaaS),Cloud API (Phase 3)
+Relationship Log,타인과의 상호작용 기록,v1.1,Level 1,Basic (5/Day) / Unlimited,store/useRelationshipStore
+Self-Time Log,나와의 시간 (자가 회복) 기록,v1.1,Level 1,Basic (1/Day) / Unlimited,store/useSelfTimeStore
+SOS Rx Center,동적 템플릿 기반 처방전 발급,v2.0,Level 2,Silver / Gold,None
+Cloud Sync,멀티 디바이스 실시간 데이터 동기화,v2.0,Level 3,Gold (SaaS),Data Migration Pipeline
