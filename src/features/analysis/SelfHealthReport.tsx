@@ -405,7 +405,7 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
 
     const renderCheckInHistory = () => {
         // Aggregate all history across all relationships
-        const allHistory = relationships.flatMap(node => 
+        const allHistory = relationships.flatMap(node =>
             (node.history || []).map(h => ({
                 ...h,
                 nodeName: node.name,
@@ -422,50 +422,47 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
                 <View style={styles.cardHeader}>
                     <View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={styles.cardTitle}>전체 체크인 히스토�                            <TouchableOpacity 
-                                key={`${h.nodeId}-${i}`} 
-                                style={styles.historyItem}
-                                onPress={() => Alert.alert('기록 상세', `${h.nodeName}님과의 기록: ${h.topic || '일상적인 교류'}`)}
-                            >
-                                <View style={styles.historyDateBox}>
-                                    <Text style={styles.historyDateText}>{dateStr}</Text>
-                                </View>
-                                <View style={styles.historyContent}>
-                                    <View style={styles.historyMainRow}>
-                                        <Text style={styles.historyNodeName}>{h.nodeName}</Text>
-                                        <View style={[styles.statusBadge, { backgroundColor: (h.temperature || 50) >= 60 ? colors.accent + '15' : '#8C968D15' }]}>
-                                            <Text style={[styles.statusBadgeText, { color: (h.temperature || 50) >= 60 ? colors.accent : '#8C968D' }]}>
-                                                {(h.temperature || 50) >= 60 ? '긍정' : '소모'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    <Text style={styles.historyTopic} numberOfLines={1}>{h.topic || '일상적인 교류'}</Text>
-                                </View>
-                                <View style={styles.historyMetrics}>
-                                    <View style={styles.miniMetric}>
-                                        <Heart size={10} color={colors.accent} fill={colors.accent} />
-                                        <Text style={styles.miniMetricValue}>{h.satisfaction || h.temperature || 50}</Text>
-                                    </View>
-                                    <View style={styles.miniMetric}>
-                                        <Zap size={10} color="#D98B73" />
-                                        <Text style={styles.miniMetricValue}>{h.energyDrain || 20}</Text>
+                            <Text style={styles.cardTitle}>전체 체크인 히스토리</Text>
+                        </View>
+                        <Text style={styles.cardSubtitle}>최근 교류 기록</Text>
+                    </View>
+                </View>
+                {allHistory.map((h, i) => {
+                    const dateStr = new Date(h.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                    return (
+                        <TouchableOpacity
+                            key={`${h.nodeId}-${i}`}
+                            style={styles.historyItem}
+                            onPress={() => Alert.alert('기록 상세', `${h.nodeName}님과의 기록: ${h.topic || '일상적인 교류'}`)}
+                        >
+                            <View style={styles.historyDateBox}>
+                                <Text style={styles.historyDateText}>{dateStr}</Text>
+                            </View>
+                            <View style={styles.historyContent}>
+                                <View style={styles.historyMainRow}>
+                                    <Text style={styles.historyNodeName}>{h.nodeName}</Text>
+                                    <View style={[styles.statusBadge, { backgroundColor: (h.temperature || 50) >= 60 ? colors.accent + '15' : '#8C968D15' }]}>
+                                        <Text style={[styles.statusBadgeText, { color: (h.temperature || 50) >= 60 ? colors.accent : '#8C968D' }]}>
+                                            {(h.temperature || 50) >= 60 ? '긍정' : '소모'}
+                                        </Text>
                                     </View>
                                 </View>
-                            </TouchableOpacity>
-t size={10} color={colors.accent} fill={colors.accent} />
-                                        <Text style={styles.miniMetricValue}>{h.satisfaction || h.temperature || 50}</Text>
-                                    </View>
-                                    <View style={styles.miniMetric}>
-                                        <Zap size={10} color="#D98B73" />
-                                        <Text style={styles.miniMetricValue}>{h.energyDrain || 20}</Text>
-                                    </View>
+                                <Text style={styles.historyTopic} numberOfLines={1}>{h.topic || '일상적인 교류'}</Text>
+                            </View>
+                            <View style={styles.historyMetrics}>
+                                <View style={styles.miniMetric}>
+                                    <Heart size={10} color={colors.accent} fill={colors.accent} />
+                                    <Text style={styles.miniMetricValue}>{h.satisfaction || h.temperature || 50}</Text>
+                                </View>
+                                <View style={styles.miniMetric}>
+                                    <Zap size={10} color="#D98B73" />
+                                    <Text style={styles.miniMetricValue}>{h.energyDrain || 20}</Text>
                                 </View>
                             </View>
-                        );
-                    })}
-                </View>
-
-                <TouchableOpacity 
+                        </TouchableOpacity>
+                    );
+                })}
+                <TouchableOpacity
                     style={{ marginTop: 24, alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)' }}
                     onPress={() => Alert.alert('히스토리 상세', '준비 중인 기능입니다.')}
                 >
