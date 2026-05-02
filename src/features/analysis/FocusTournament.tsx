@@ -308,7 +308,10 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
             return;
         }
 
-        const maxZone = Object.keys(zoneCounts).reduce((a, b) => zoneCounts[Number(a)] > zoneCounts[Number(b)] ? a : b);
+        let maxZone = '1';
+        if (Object.keys(zoneCounts).length > 0) {
+            maxZone = Object.keys(zoneCounts).reduce((a, b) => zoneCounts[Number(a)] > zoneCounts[Number(b)] ? a : b);
+        }
         const maxCount = zoneCounts[Number(maxZone)];
 
         if (maxCount >= finalWinners.length * 0.7) {
@@ -547,7 +550,7 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
                                             이 조율을 반영하면 <Text style={{ fontWeight: "900" }}>관계망의 안정성</Text>이 향상됩니다.
                                         </Text>
                                         <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.6, marginTop: 4 }}>
-                                            * 상위 1~3위 인맥에게 정서 온도 보너스가 차등 부여됩니다.
+                                            * 상위 1~3위 인맥에게 정서 긴밀도 보너스가 차등 부여됩니다.
                                         </Text>
                                         <Text style={{ fontSize: 11, color: "#D98B73", fontWeight: "800", marginTop: 2 }}>
                                             (하단 버튼을 클릭해야 실제 데이터에 최종 반영됩니다)
@@ -560,7 +563,7 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
                                         style={[styles.applyBtn, { backgroundColor: colors.primary }]}
                                         onPress={() => onComplete(winners.map(w => w.id))}
                                     >
-                                        <Text style={styles.applyBtnText}>정서 온도에 반영하기</Text>
+                                        <Text style={styles.applyBtnText}>정서 긴밀도에 반영하기</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.cancelBtn}
@@ -592,7 +595,7 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
                                         조율 정보를 반영하고 나가시겠습니까?
                                     </Text>
                                     <Text style={{ fontSize: 14, color: colors.primary, opacity: 0.6, textAlign: 'center', lineHeight: 20 }}>
-                                        '반영하고 나가기'를 선택하시면 현재 순위가{'\n'}정서 온도 데이터에 저장됩니다.
+                                        '반영하고 나가기'를 선택하시면 현재 순위가{'\n'}정서 긴밀도 데이터에 저장됩니다.
                                     </Text>
                                 </View>
 

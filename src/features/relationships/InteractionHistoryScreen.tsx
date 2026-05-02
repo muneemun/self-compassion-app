@@ -48,7 +48,7 @@ export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBa
                         <Text style={styles.logType}>상호작용</Text>
                     </View>
                     <Text style={[styles.tempText, { color: item.temperature >= 60 ? colors.accent : '#999' }]}>
-                        {item.temperature}°C
+                        {item.temperature}%
                     </Text>
                 </View>
 

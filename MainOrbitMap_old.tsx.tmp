@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo, memo } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -25,9 +25,6 @@ import { RELATIONSHIP_TYPE_LABELS, RelationshipNode } from '../../types/relation
 import { BlurView } from 'expo-blur';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { useAppStore } from '../../store/useAppStore';
-import { RelationshipLogModal } from '../relationships/RelationshipLogModal';
-import { SystemStabilizationModal } from './SystemStabilizationModal';
-import Svg, { G, Circle, Path, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import ReAnimated, {
     useAnimatedStyle,
     withSpring,
@@ -549,25 +546,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 10,
     },
-    feedbackMessageOverlay: {
-        position: 'absolute',
-        bottom: 120,
-        left: 20,
-        right: 20,
-        padding: 24,
-        borderRadius: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 500,
-        overflow: 'hidden',
-    },
-    feedbackMessageText: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#4A5D4E',
-        textAlign: 'center',
-        lineHeight: 24,
-    },
 });
 
 // 💍 OrbitRing Component for high-performance scaling
@@ -618,17 +596,16 @@ interface UserNodeProps {
     zoomSharedValue: SharedValue<number>;
     totalNodes: number;
     onSelectNode?: (id: string) => void;
-    isNew?: boolean;
 }
-const UserNode = memo(({
+
+const UserNode = React.memo(({
     node,
     orbitRadius,
     initialAngle,
     zoomLevel,
     zoomSharedValue,
     totalNodes,
-    onSelectNode,
-    isNew
+    onSelectNode
 }: UserNodeProps) => {
     const twinkleAnim = useSharedValue(0);
 
@@ -643,8 +620,7 @@ const UserNode = memo(({
         );
     }, []);
     // Re-introduce SharedValues to ensure visibility updates
-    // If it's new, start from outside the orbit for the fly-in effect
-    const radius = useSharedValue(isNew ? BASE_ORBIT_SIZE * 2 : orbitRadius);
+    const radius = useSharedValue(orbitRadius);
     const angle = useSharedValue(initialAngle);
 
     useEffect(() => {
@@ -849,73 +825,8 @@ interface MainOrbitMapProps {
 export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog }: MainOrbitMapProps) => {
     const colors = useColors();
     const { relationships, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
-    const { userProfile, interactionFeedback, setInteractionFeedback, cognitiveFeedback, setCognitiveFeedback } = useAppStore();
-    
-    // Feedback animations
-    const feedbackOpacity = useSharedValue(0);
-    const rippleScale = useSharedValue(0);
-    const turbulenceValue = useSharedValue(0);
-    const rippleOpacity = useSharedValue(0);
-    
-    // Listen for store feedback triggers
-    useEffect(() => {
-        if (interactionFeedback.isActive || cognitiveFeedback.message) {
-            feedbackOpacity.value = withTiming(1, { duration: 500 });
-            
-            // If it's self-care (Case 6)
-            if (cognitiveFeedback.type === 'SELF_CARE') {
-                rippleScale.value = 0;
-                rippleOpacity.value = 0.8;
-                rippleScale.value = withTiming(3, { duration: 2500, easing: Easing.out(Easing.quad) });
-                rippleOpacity.value = withTiming(0, { duration: 2500 });
-            }
-            
-            // Auto-hide after some time
-            const timer = setTimeout(() => {
-                feedbackOpacity.value = withTiming(0, { duration: 500 });
-                if (interactionFeedback.isActive) {
-                    setInteractionFeedback({ ...interactionFeedback, isActive: false });
-                }
-                if (cognitiveFeedback.message) {
-                    setCognitiveFeedback({ message: null, type: null });
-                }
-            }, 4000);
-            
-            return () => clearTimeout(timer);
-        }
-    }, [interactionFeedback.isActive, cognitiveFeedback.message]);
-
-    useEffect(() => {
-        if (interactionFeedback.isActive && interactionFeedback.closenessDelta < 0) {
-            // Turbulence (Jitter) for negative interaction
-            turbulenceValue.value = withRepeat(
-                withSequence(
-                    withTiming(1.5, { duration: 40 }),
-                    withTiming(-1.5, { duration: 40 })
-                ),
-                -1,
-                true
-            );
-        } else {
-            turbulenceValue.value = withTiming(0);
-        }
-    }, [interactionFeedback.isActive, interactionFeedback.closenessDelta]);
-
-    const dimmingStyle = useAnimatedStyle(() => ({
-        opacity: feedbackOpacity.value * 0.6,
-    }));
-
-    const rippleStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: rippleScale.value }],
-        opacity: rippleOpacity.value,
-    }));
+    const { userProfile } = useAppStore();
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-    
-    // Tracking new nodes for entry animation
-    const prevNodeIds = useRef(new Set(relationships.map(r => r.id)));
-    useEffect(() => {
-        prevNodeIds.current = new Set(relationships.map(r => r.id));
-    }, [relationships]);
 
     // View State from Store
     const {
@@ -1134,32 +1045,6 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         });
     };
 
-    // 🧬 Hoisted Animated Styles for Center Node (Self) to prevent white screen
-    const selfHaloSizeStyle = useAnimatedStyle(() => {
-        const centerSize = 60 + zoomSharedValue.value * 12;
-        return {
-            width: centerSize + 20,
-            height: centerSize + 20,
-            borderRadius: (centerSize + 20) / 2,
-        };
-    });
-
-    const centerNodeSizeStyle = useAnimatedStyle(() => {
-        const centerSize = 60 + zoomSharedValue.value * 12;
-        return {
-            width: centerSize,
-            height: centerSize,
-            borderRadius: centerSize / 2
-        };
-    });
-
-    const centerAvatarSizeStyle = useAnimatedStyle(() => {
-        const centerSize = 60 + zoomSharedValue.value * 12;
-        return {
-            borderRadius: (centerSize - 8) / 2
-        };
-    });
-
     const renderFilterBar = () => (
         <View style={[styles.filterBar, isFilterExpanded && styles.filterBarExpanded]}>
             {isFilterExpanded ? (
@@ -1244,8 +1129,8 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
     const canvasAnimatedStyle = useAnimatedStyle(() => ({
         transform: [
-            { translateX: panX.value + turbulenceValue.value },
-            { translateY: panY.value + turbulenceValue.value },
+            { translateX: panX.value },
+            { translateY: panY.value },
             { rotate: `${universeRotation.value}deg` }
         ]
     }));
@@ -1254,7 +1139,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
     const panResponder = useRef(
         PanResponder.create({
-            onStartShouldSetPanResponder: () => false,
+            onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: (_, gestureState) => {
                 return (
                     gestureState.numberActiveTouches > 1 ||
@@ -1378,25 +1263,10 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
             return matchesQuery && (rTypeLabel === activeSearchTag || rZoneLabel === activeSearchTag);
         });
 
-        const handleSelectPerson = (person: RelationshipNode | 'self') => {
-            if (person === 'self') {
-                setIsSearchModalVisible(false);
-                // Ensure search modal is closed before opening self-time modal
-                setTimeout(() => {
-                    useAppStore.getState().setSelfTimeModalOpen(true);
-                }, 100);
-                return;
-            }
-
+        const handleSelectPerson = (person: RelationshipNode) => {
             if (searchMode === 'navigation') {
                 setIsSearchModalVisible(false);
                 onSelectNode(person.id);
-            } else if (searchMode === 'action') {
-                setIsSearchModalVisible(false);
-                // Directly open the check-in modal for the selected person
-                setTimeout(() => {
-                    useAppStore.getState().setRelationshipLogModalOpen(true, person.id);
-                }, 100);
             } else {
                 setSelectedTarget(person);
                 setIsActionVisible(true);
@@ -1472,27 +1342,8 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
                             <ScrollView style={styles.selectionList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                    <Text style={styles.listSectionLabel}>검색 결과 • {filteredPeople.length + (searchMode === 'action' ? 1 : 0)}명</Text>
+                                    <Text style={styles.listSectionLabel}>검색 결과 • {filteredPeople.length}명</Text>
                                 </View>
-
-                                {searchMode === 'action' && searchQuery === '' && activeSearchTag === '전체' && (
-                                    <TouchableOpacity
-                                        style={[styles.selectionItem, { backgroundColor: colors.white + '80', borderStyle: 'dashed', borderWidth: 1, borderColor: colors.accent }]}
-                                        onPress={() => handleSelectPerson('self')}
-                                    >
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
-                                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent + '20', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Heart size={20} color={colors.accent} />
-                                            </View>
-                                            <View>
-                                                <Text style={{ fontSize: 15, fontWeight: '800', color: colors.primary }}>나와의 시간 (Self-Time)</Text>
-                                                <Text style={{ fontSize: 12, color: colors.accent, fontWeight: '600' }}>오늘 나를 위한 돌봄 기록하기</Text>
-                                            </View>
-                                        </View>
-                                        <ChevronRight size={18} color={colors.accent} />
-                                    </TouchableOpacity>
-                                )}
-
                                 {filteredPeople.map((person) => {
                                     // Zone & Dynamics Logic
                                     const zoneColor = {
@@ -1689,32 +1540,24 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                 />
                             ))}
 
-                            {distributedNodes.map(({ node, radius, angle }) => {
-                                const isNew = useRelationshipStore.getState().lastAddedId === node.id;
-                                return (
-                                    <UserNode
-                                        key={node.id}
-                                        node={node}
-                                        orbitRadius={radius}
-                                        initialAngle={angle}
-                                        zoomLevel={zoomLevel}
-                                        zoomSharedValue={zoomSharedValue}
-                                        totalNodes={relationships.length}
-                                        onSelectNode={onSelectNode}
-                                        isNew={isNew}
-                                    />
-                                );
-                            })}
+                            {distributedNodes.map(({ node, radius, angle }) => (
+                                <UserNode
+                                    key={node.id}
+                                    node={node}
+                                    orbitRadius={radius}
+                                    initialAngle={angle}
+                                    zoomLevel={zoomLevel}
+                                    zoomSharedValue={zoomSharedValue}
+                                    totalNodes={relationships.length}
+                                    onSelectNode={onSelectNode}
+                                />
+                            ))}
 
                             {(() => {
                                 const centerSize = 60 + zoomLevel * 12;
                                 const profileImg = userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
                                 return (
-                                    <TouchableOpacity 
-                                        style={{ alignItems: 'center', justifyContent: 'center' }}
-                                        activeOpacity={0.8}
-                                        onPress={() => useAppStore.getState().setSelfTimeModalOpen(true)}
-                                    >
+                                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                                         {/* Solar Amber Heartbeat Glow (Soft & Filled) */}
                                         <ReAnimated.View style={[
                                             {
@@ -1725,9 +1568,16 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                 shadowOpacity: 0.6,
                                                 shadowRadius: 20,
                                                 elevation: 10,
-                                                zIndex: 200 // Higher than dimming layer
+                                                zIndex: 4
                                             },
-                                            selfHaloSizeStyle,
+                                            useAnimatedStyle(() => {
+                                                const centerSize = 60 + zoomSharedValue.value * 12;
+                                                return {
+                                                    width: centerSize + 20,
+                                                    height: centerSize + 20,
+                                                    borderRadius: (centerSize + 20) / 2,
+                                                };
+                                            }),
                                             selfHaloStyle
                                         ]} />
 
@@ -1735,104 +1585,34 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                             styles.centerNode,
                                             {
                                                 borderColor: '#FF9800', // Solar Amber (Self)
-                                                zIndex: 201 // Higher than dimming layer
                                             },
-                                            centerNodeSizeStyle
+                                            useAnimatedStyle(() => {
+                                                const centerSize = 60 + zoomSharedValue.value * 12;
+                                                return {
+                                                    width: centerSize,
+                                                    height: centerSize,
+                                                    borderRadius: centerSize / 2
+                                                };
+                                            })
                                         ]}>
                                             <ReAnimated.Image
                                                 source={{ uri: profileImg }}
                                                 style={[
                                                     styles.centerAvatar,
-                                                    centerAvatarSizeStyle
+                                                    useAnimatedStyle(() => {
+                                                        const centerSize = 60 + zoomSharedValue.value * 12;
+                                                        return {
+                                                            borderRadius: (centerSize - 8) / 2
+                                                        };
+                                                    })
                                                 ]}
                                             />
                                         </ReAnimated.View>
-                                    </TouchableOpacity>
-                                );
-                            })()}
-
-                            {/* [Feedback Layer] Focus Dimming for Meta-Cognitive effect */}
-                            <ReAnimated.View 
-                                pointerEvents="none"
-                                style={[
-                                    StyleSheet.absoluteFill,
-                                    { backgroundColor: '#000', zIndex: 100 },
-                                    dimmingStyle
-                                ]} 
-                            />
-
-                            {/* [Feedback Layer] Ripple Effect for Self-Care */}
-                            <ReAnimated.View 
-                                pointerEvents="none"
-                                style={[
-                                    {
-                                        position: 'absolute',
-                                        width: 200,
-                                        height: 200,
-                                        borderRadius: 100,
-                                        borderWidth: 2,
-                                        borderColor: '#FF9800',
-                                        zIndex: 101
-                                    },
-                                    rippleStyle
-                                ]} 
-                            />
-
-                            {/* [Feedback Layer] Gravity Lines for Interaction */}
-                            {interactionFeedback.isActive && interactionFeedback.targetId && (() => {
-                                const targetNode = distributedNodes.find(n => n.node.id === interactionFeedback.targetId);
-                                if (!targetNode) return null;
-                                
-                                const rad = (targetNode.angle * Math.PI) / 180;
-                                const scaleFactor = 0.55 + (zoomSharedValue.value - 1) * 0.3375;
-                                const x2 = Math.cos(rad) * targetNode.radius * scaleFactor;
-                                const y2 = Math.sin(rad) * targetNode.radius * scaleFactor;
-                                
-                                const isNegative = interactionFeedback.closenessDelta < 0;
-                                
-                                return (
-                                    <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 150 }]} pointerEvents="none">
-                                        <Svg width="100%" height="100%" viewBox={`${-width} ${-width} ${width*2} ${width*2}`}>
-                                            <Path
-                                                d={`M 0 0 L ${x2} ${y2}`}
-                                                stroke={isNegative ? '#D98B73' : '#FF9800'}
-                                                strokeWidth={isNegative ? 3 : 2}
-                                                strokeDasharray={isNegative ? "4 6" : undefined}
-                                                opacity={0.9}
-                                            />
-                                        </Svg>
                                     </View>
                                 );
                             })()}
                         </ReAnimated.View>
                     </View>
-
-                    {/* System Feedback Message Overlay */}
-                    {cognitiveFeedback.type === 'SELF_CARE' ? (
-                        <ReAnimated.View 
-                            style={[
-                                styles.feedbackMessageOverlay,
-                                { opacity: feedbackOpacity.value }
-                            ]}
-                            pointerEvents="none"
-                        >
-                            <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-                            <Text style={styles.feedbackMessageText}>{cognitiveFeedback.message}</Text>
-                        </ReAnimated.View>
-                    ) : (
-                        <SystemStabilizationModal 
-                            visible={!!cognitiveFeedback.message || interactionFeedback.isActive}
-                            message={cognitiveFeedback.message || (interactionFeedback.isActive ? `관측 데이터가 궤도에 동기화되었습니다. 태양(자아)의 에너지가 ${interactionFeedback.closenessDelta > 0 ? '+' : ''}${interactionFeedback.closenessDelta || 0}% 변동했습니다.` : '')}
-                            onClose={() => {
-                                setCognitiveFeedback({ message: null, type: null });
-                                setInteractionFeedback({ ...interactionFeedback, isActive: false });
-                            }}
-                            onComplete={() => {
-                                setCognitiveFeedback({ message: null, type: null });
-                                setInteractionFeedback({ ...interactionFeedback, isActive: false });
-                            }}
-                        />
-                    )}
 
                     {/* Floating Map Controls (Only visible in Map Mode) */}
                     <View style={[styles.mapOverlayControls, viewMode === 'map' ? { display: 'flex' } : { display: 'none' }]} pointerEvents="box-none">

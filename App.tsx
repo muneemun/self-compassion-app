@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +19,7 @@ import { RelationshipProfile } from './src/features/relationships/RelationshipPr
 import { EgoReflectionDashboard } from './src/features/analysis/EgoReflectionDashboard';
 import { RelationshipTuningDashboard } from './src/features/analysis/RelationshipTuningDashboard';
 import { SelfHealthReport } from './src/features/analysis/SelfHealthReport';
+import { RelationshipLogModal } from './src/features/relationships/RelationshipLogModal';
 import { useAppStore } from './src/store/useAppStore';
 import { useRelationshipStore } from './src/store/useRelationshipStore';
 import { SettingsScreen } from './src/features/settings/SettingsScreen';
@@ -26,7 +28,8 @@ import { ProfileEditScreen } from './src/features/settings/ProfileEditScreen';
 import { ReminderSettingsScreen } from './src/features/settings/ReminderSettingsScreen';
 import { NotificationSettingsScreen } from './src/features/settings/NotificationSettingsScreen';
 import { SelfTimeCheckInModal } from './src/features/selfcare/SelfTimeCheckInModal';
-import { Orbit, SlidersHorizontal, Activity, Rocket } from 'lucide-react-native';
+import { LabMapScreen } from './src/features/map/LabMapScreen';
+import { Orbit, SlidersHorizontal, Activity, Rocket, FlaskConical } from 'lucide-react-native';
 import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
 
 const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
@@ -51,13 +54,13 @@ const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
 );
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health' | 'lab'>('map');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnosisMode, setDiagnosisMode] = useState<"ZONE" | "RQS">("ZONE");
   const [isManagingProfile, setIsManagingProfile] = useState(false);
   const [isViewingReport, setIsViewingReport] = useState(false);
-  const [isViewingSelfReport, setIsViewingSelfReport] = useState(false); // Removed temporary flag logic
+  const [isViewingSelfReport, setIsViewingSelfReport] = useState(false);
   const [isViewingDataManagement, setIsViewingDataManagement] = useState(false);
   const [isViewingProfileEdit, setIsViewingProfileEdit] = useState(false);
   const [isViewingReminders, setIsViewingReminders] = useState(false);
@@ -71,14 +74,26 @@ function App() {
     image?: string;
   } | null>(null);
   const [autoOpenLog, setAutoOpenLog] = useState(false);
+  // 온보딩 직후 최초 인맥 추가 유도 (1회만)
+  const [initialSetupDone, setInitialSetupDone] = useState(false);
   const hasCompletedOnboarding = useAppStore(state => state.hasCompletedOnboarding);
   const setHasCompletedOnboarding = useAppStore(state => state.setHasCompletedOnboarding);
+  // ✅ Reactive subscription — NOT getState() snapshot
+  const relationships = useRelationshipStore(state => state.relationships);
   const { addRelationship, updateDiagnosisResult } = useRelationshipStore();
 
   // [DEV] 강제 데이터 초기화
   useEffect(() => {
-    setHasCompletedOnboarding(false);
+    // setHasCompletedOnboarding(false); // 개발 시 주석 해제하여 매번 온보딩을 테스트할 수 있습니다.
   }, []);
+
+  // 온보딩 완료 직후 relationships가 0명이면 1회만 자동으로 인맥 추가 화면 표시
+  useEffect(() => {
+    if (hasCompletedOnboarding && relationships.length === 0 && !initialSetupDone) {
+      setIsAddingRelationship(true);
+      setInitialSetupDone(true);
+    }
+  }, [hasCompletedOnboarding]);
 
   return (
     <SafeAreaProvider>
@@ -110,7 +125,7 @@ function App() {
                       }}
                       onViewReport={() => setIsViewingReport(true)}
                       onComplete={(result) => {
-                        // 진단 완료 시 실제 프로필 추가
+                        // 진단 완료 시 실제 프로필 추가 후 → 맵으로 복귀
                         if (pendingRelationship) {
                           const newId = addRelationship(
                             pendingRelationship.name,
@@ -120,7 +135,6 @@ function App() {
                             pendingRelationship.image
                           );
 
-                          // 진단 결과가 있으면 업데이트
                           if (result) {
                             updateDiagnosisResult(newId, {
                               ...result,
@@ -128,8 +142,11 @@ function App() {
                             });
                           }
 
-                          setSelectedNodeId(newId);
+                          // ✅ 흰 화면 방지: 모든 임시 상태를 초기화하고 맵으로 복귀
                           setPendingRelationship(null);
+                          setSelectedNodeId(null);
+                          setIsDiagnosing(false);
+                          setIsAddingRelationship(false);
                         }
                       }}
                     />
@@ -165,13 +182,17 @@ function App() {
                   )
                 ) : isAddingRelationship ? (
                   <RelationshipEntry
-                    onBack={() => setIsAddingRelationship(false)}
+                    onBack={() => {
+                        setIsAddingRelationship(false);
+                        setInitialSetupDone(true); // 취소해도 맵으로 이동 허용
+                    }}
                     onComplete={(data) => {
                       setPendingRelationship(data);
                       // 임시 ID로 진단 시작
                       setSelectedNodeId('temp-' + Date.now());
                       setDiagnosisMode('ZONE'); // Force ZONE diagnosis for new relationships
                       setIsAddingRelationship(false);
+                      setInitialSetupDone(true);
                       setIsDiagnosing(true);
                     }}
                   />
@@ -235,7 +256,13 @@ function App() {
                       <View style={activeTab === 'health' ? styles.tabActive : styles.tabHidden}>
                         <SelfHealthReport
                           onBack={() => setActiveTab('map')}
+                          onSelectRelationship={(id) => {
+                            setSelectedNodeId(id);
+                          }}
                         />
+                      </View>
+                      <View style={activeTab === 'lab' ? styles.tabActive : styles.tabHidden}>
+                        {/* <LabMapScreen /> */}
                       </View>
                     </View>
 
@@ -277,6 +304,17 @@ function App() {
 
                         <TouchableOpacity
                           style={styles.navItem}
+                          onPress={() => setActiveTab('lab')}
+                        >
+                          <View style={styles.iconWrapper}>
+                            {activeTab === 'lab' && <View style={styles.activeIconBg} />}
+                            <FlaskConical size={22} color={activeTab === 'lab' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'lab' ? 2.5 : 2} />
+                          </View>
+                          <Text style={[styles.navText, activeTab === 'lab' && styles.activeNavText]}>Lab</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.navItem}
                           onPress={() => setActiveTab('space')}
                         >
                           <View style={styles.iconWrapper}>
@@ -299,6 +337,7 @@ function App() {
             </View>
           )}
           <SelfTimeCheckInModal />
+          <RelationshipLogModal />
         </View>
       </ColorLockProvider>
     </SafeAreaProvider>

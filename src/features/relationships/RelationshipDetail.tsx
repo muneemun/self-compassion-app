@@ -7,6 +7,8 @@ import { useColors } from '../../theme/ColorLockContext';
 import { UI_CONSTANTS, COMMON_STYLES } from '../../theme/LayoutStyles';
 import { ArrowLeft, ArrowRight, MoreHorizontal, Activity, Heart, Calendar, Zap, HeartPulse, CheckCircle2, Plus, Info, X, RefreshCw, Edit3, Shield, TrendingUp, HelpCircle, ChevronRight, Sparkles, Star, Trash2, Flame, Snowflake } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { useAppStore } from '../../store/useAppStore';
+import { getDynamicCharacter, DYNAMIC_CHARACTERS } from '../../types/relationship';
 
 const { width } = Dimensions.get('window');
 
@@ -23,13 +25,15 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     const colors = useColors();
     const node = useRelationshipStore(state => state.relationships.find(r => r.id === relationshipId));
     const addInteraction = useRelationshipStore(state => state.addInteraction);
+    
+    // 🧬 Dynamic Character Calculation
+    const dynamicCharacter = useMemo(() => node ? getDynamicCharacter(node.history || []) : null, [node?.history]);
 
     if (!node) return null;
 
     // Log Modal State
-    const [showLogModal, setShowLogModal] = useState(false);
+    const setRelationshipLogModalOpen = useAppStore(state => state.setRelationshipLogModalOpen);
     const [showHealthCheckModal, setShowHealthCheckModal] = useState(false);
-    const [newLog, setNewLog] = useState({ title: '', description: '', temperature: node.temperature, oxytocin: 85, cortisol: 30 });
     const [graphPeriod, setGraphPeriod] = useState<'Weekly' | 'Monthly' | 'Yearly'>('Weekly');
 
     useEffect(() => {
@@ -80,7 +84,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
         const points = historyData.map((d, i) => ({
             x: i * (300 / (historyData.length - 1)),
-            y: 100 - d.temperature
+            y: 100 - (d.closeness ?? d.temperature ?? 0)
         }));
 
         let path = `M ${points[0].x} ${points[0].y}`;
@@ -96,54 +100,39 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     const trendText = useMemo(() => {
         if (!historyData || historyData.length < 2) return 'Start';
-        const last = historyData[historyData.length - 1].temperature;
-        const prev = historyData[historyData.length - 2].temperature;
-        const diff = last - prev;
-        return diff > 0 ? `+${diff}°` : diff < 0 ? `${diff}°` : '0°';
+        const last = (historyData[historyData.length - 1] as any).closeness ?? historyData[historyData.length - 1].temperature;
+        const prev = (historyData[historyData.length - 2] as any).closeness ?? historyData[historyData.length - 2].temperature;
+        const diff = Math.round(last - prev);
+        return diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : '0%';
     }, [historyData]);
 
-    const handleSaveLog = () => {
-        if (!newLog.title.trim()) {
-            Alert.alert('내용 입력', '어떤 활동을 했는지 주제를 적어주세요.');
-            return;
-        }
-
-        // 1. Close Modal first for UI stability
-        setShowLogModal(false);
-
-        // 2. Wrap store update in setTimeout to allow modal transition to complete smoothly
-        setTimeout(() => {
-            const today = new Date().toISOString().split('T')[0];
-            addInteraction(relationshipId, today, newLog.temperature, newLog.title, newLog.description);
-            setNewLog(prev => ({ ...prev, title: '', description: '', temperature: node.temperature }));
-        }, 100);
-    };
+    // handleSaveLog removed in favor of global RelationshipLogModal
 
     // AI Analysis Logic
-    const analysis = useMemo(() => {
+    const climateTrend = useMemo(() => {
         if (!node || !node.history || node.history.length < 2) return null;
 
         const sorted = [...node.history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        const recent = sorted.slice(-3); // Last 3 interactions
+        const recent = sorted.slice(-3); 
+        const previous = sorted.length > 3 ? sorted.slice(-6, -3) : sorted.slice(0, 1);
 
-        // Calculate Average
-        const recentAvg = recent.reduce((sum, h) => sum + h.temperature, 0) / recent.length;
-        // Compare with previous (if exists) or all (if < 6)
-        const prev = sorted.length > 3 ? sorted.slice(0, sorted.length - 3) : [];
-        const prevAvg = prev.length > 0
-            ? prev.reduce((sum, h) => sum + h.temperature, 0) / prev.length
-            : recentAvg; // Fallback for initial data
+        const calcAvg = (list: any[], key: string) => list.reduce((sum, h) => sum + (h[key] || 0), 0) / list.length;
 
-        const diff = recentAvg - prevAvg;
-        let trend: 'up' | 'down' | 'stable' = 'stable';
-        if (diff >= 3) trend = 'up';
-        else if (diff <= -3) trend = 'down';
+        const recentSat = calcAvg(recent, 'satisfaction');
+        const prevSat = calcAvg(previous, 'satisfaction');
+        const satDiff = recentSat - prevSat;
 
-        // Find best activity (Highest Temp)
-        const best = sorted.reduce((max, curr) => curr.temperature > max.temperature ? curr : max, sorted[0]);
+        const recentDrain = calcAvg(recent, 'energyDrain');
+        const prevDrain = calcAvg(previous, 'energyDrain');
+        const drainDiff = recentDrain - prevDrain;
 
-        return { trend, diff: Math.round(Math.abs(diff)), best: best.title || best.event, recentAvg: Math.round(recentAvg) };
-    }, [node]);
+        return {
+            satTrend: satDiff > 5 ? 'up' : satDiff < -5 ? 'down' : 'stable',
+            drainTrend: drainDiff > 5 ? 'up' : drainDiff < -5 ? 'down' : 'stable',
+            satDiff: Math.round(Math.abs(satDiff)),
+            drainDiff: Math.round(Math.abs(drainDiff))
+        };
+    }, [node?.history]);
 
     if (!node) return null;
 
@@ -209,8 +198,8 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     const METRIC_GUIDE = {
         stability: { title: '안정성 (Stability)', info: '관계 내 심리적 안전감과 신뢰의 두께를 의미합니다. 70% 이상일 때 안정적입니다.' },
         intimacy: {
-            title: '정서 온도 (Emotional Temp)',
-            info: '정서적 공명과 자발적 연결의 강도입니다.\n\n[온도별 의미]\n🔥 81~100°: 깊은 유대감/치유 (소울메이트)\n☀️ 61~80°: 따뜻함/즐거움 (좋은 관계)\n☁️ 41~60°: 보통/일상적 (특별한 감정 없음)\n❄️ 0~40°: 냉랭함/스트레스 (관계 점검 필요)'
+            title: '정서 긴밀도 (Emotional Temp)',
+            info: '정서적 공명과 자발적 연결의 강도입니다.\n\n[긴밀도별 의미]\n🔥 81~100%: 깊은 유대감/치유 (소울메이트)\n☀️ 61~80%: 따뜻함/즐거움 (좋은 관계)\n☁️ 41~60%: 보통/일상적 (특별한 감정 없음)\n❄️ 0~40%: 냉랭함/스트레스 (관계 점검 필요)'
         },
         oxytocin: {
             title: '옥시토신 (Oxytocin)',
@@ -267,7 +256,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
         const getPath = (key: 'temperature' | 'oxytocin' | 'cortisol') => {
             const points = data.map((item, i) => {
-                const val = item[key] || 0;
+                const val = (item as any)[key === 'temperature' ? 'closeness' : key] ?? (item as any)[key] ?? 0;
                 return {
                     x: i * stepX,
                     y: chartHeight - (val / maxVal) * chartHeight
@@ -293,7 +282,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                     <TrendingUp size={18} color={colors.primary} />
                     <Text style={[styles.historyTitle, { color: colors.primary }]}>관계 지표 변화 추이</Text>
                     <View style={styles.historyLegend}>
-                        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.accent }]} /><Text style={styles.legendText}>온도</Text></View>
+                        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.accent }]} /><Text style={styles.legendText}>긴밀도</Text></View>
                         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} /><Text style={styles.legendText}>옥시</Text></View>
                         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#F44336' }]} /><Text style={styles.legendText}>코르</Text></View>
                     </View>
@@ -374,7 +363,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             style={styles.actionCardLarge}
                             onPress={() => {
                                 setShowHealthCheckModal(false);
-                                setTimeout(() => setShowLogModal(true), 300);
+                                setRelationshipLogModalOpen(true, relationshipId);
                             }}
                         >
                             <View style={[styles.actionIconBgLarge, { backgroundColor: '#F0F4F0' }]}>
@@ -499,6 +488,11 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                         <Text style={[styles.tagText, { color: colors.accent }]}>{node.role}</Text>
                                     </View>
                                 )}
+                                {dynamicCharacter && (
+                                    <View style={[styles.tag, { backgroundColor: dynamicCharacter.color + '1A' }]}>
+                                        <Text style={[styles.tagText, { color: dynamicCharacter.color }]}>{dynamicCharacter.icon} {dynamicCharacter.label}</Text>
+                                    </View>
+                                )}
                                 <TouchableOpacity
                                     style={[styles.tag, { backgroundColor: colors.primary + '0D', flexDirection: 'row', alignItems: 'center', gap: 6 }]}
                                     onPress={() => setActivePopup('zone')}
@@ -548,11 +542,11 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         >
                             <View style={styles.statHeaderRow}>
                                 <View style={styles.statHeaderRow}>
-                                    <Text style={[styles.statLabel, { color: colors.primary, opacity: 0.4 }]}>정서 온도</Text>
+                                    <Text style={[styles.statLabel, { color: colors.primary, opacity: 0.4 }]}>정서 긴밀도</Text>
                                 </View>
                             </View>
                             <View style={styles.statContentRow}>
-                                <Text style={[styles.statValue, { color: colors.primary }]}>{node.temperature}°</Text>
+                                <Text style={[styles.statValue, { color: colors.primary }]}>{node.temperature}%</Text>
                                 <Heart size={14} color={node.temperature > 80 ? "#FF5252" : "#999"} fill={node.temperature > 80 ? "#FF5252" : "transparent"} />
                             </View>
                             <View style={[styles.miniStatusBadge, { backgroundColor: getMetricStatus('intimacy', node.temperature).color + '1A' }]}>
@@ -568,7 +562,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Text style={[styles.sectionTitle, { color: colors.primary }]}>정서 온도 그래프</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.primary }]}>정서 긴밀도 그래프</Text>
                                 <TouchableOpacity onPress={() => setActivePopup('intimacy')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                                     <HelpCircle size={16} color={colors.primary} opacity={0.6} />
                                 </TouchableOpacity>
@@ -583,9 +577,9 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         <View style={[styles.graphCard, { backgroundColor: colors.white }]}>
                             <View style={styles.graphInfo}>
                                 <View>
-                                    <Text style={[styles.graphLabel, { color: colors.primary, opacity: 0.6 }]}>현재 온도</Text>
+                                    <Text style={[styles.graphLabel, { color: colors.primary, opacity: 0.6 }]}>현재 긴밀도</Text>
                                     <View style={styles.graphValueRow}>
-                                        <Text style={[styles.graphMainValue, { color: colors.primary }]}>{node.temperature}°C</Text>
+                                        <Text style={[styles.graphMainValue, { color: colors.primary }]}>{node.temperature}%</Text>
                                         <View style={styles.trendBadge}>
                                             <Text style={styles.trendText}>{trendText}</Text>
                                         </View>
@@ -658,21 +652,71 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         </View>
                     </View>
 
-                    {/* AI Pattern Analysis */}
-                    {analysis && (
+                    {/* 🧬 Emotional Topography Section (v1.1) */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={[styles.sectionTitle, { color: colors.primary }]}>정서 지형도 (Climate Map)</Text>
+                                <TouchableOpacity onPress={() => Alert.alert('정서 지형도', '교류의 만족도와 에너지 소모량을 기준으로 분석한 관계의 기후입니다.')}>
+                                    <Info size={16} color={colors.primary} opacity={0.6} />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={{ fontSize: 12, color: colors.textMuted }}>최근 30일 기준</Text>
+                        </View>
+                        
+                        <View style={[styles.topographyCard, { backgroundColor: colors.white }]}>
+                            <View style={styles.topographyPlot}>
+                                <View style={styles.topographyGrid}>
+                                    <View style={[styles.gridCell, { backgroundColor: colors.primary + '05' }]}><Text style={styles.gridLabel}>고출력</Text></View>
+                                    <View style={[styles.gridCell, { backgroundColor: colors.accent + '05' }]}><Text style={styles.gridLabel}>충전</Text></View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#8C968D10' }]}><Text style={styles.gridLabel}>소모</Text></View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#90A4AE10' }]}><Text style={styles.gridLabel}>안정</Text></View>
+                                </View>
+                                
+                                <Svg height="160" width={width - 88} viewBox="0 0 200 160">
+                                    {/* Axes */}
+                                    <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                                    <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                                    
+                                    {/* Data Points */}
+                                    {(node.history || []).slice(-10).map((h, i) => (
+                                        <Circle 
+                                            key={i}
+                                            cx={20 + ((h.satisfaction || 0) / 100) * 160}
+                                            cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
+                                            r={i === (node.history?.length || 0) - 1 ? 5 : 3}
+                                            fill={i === (node.history?.length || 0) - 1 ? colors.accent : colors.primary}
+                                            opacity={0.6}
+                                        />
+                                    ))}
+                                </Svg>
+                            </View>
+                            <Text style={styles.topographyDesc}>
+                                {dynamicCharacter ? `현재 이 관계는 '${dynamicCharacter.label}' 기후에 머물러 있습니다. ${dynamicCharacter.desc}.` : '교류 데이터가 쌓이면 정밀한 기후 분석이 제공됩니다.'}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* 🕵️ Climate Trend Observation (v1.1) */}
+                    {climateTrend && (
                         <View style={styles.section}>
                             <View style={[styles.graphCard, { backgroundColor: colors.white, paddingVertical: 20 }]}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                                    <Sparkles size={18} color={colors.accent} fill={colors.accent} />
-                                    <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.primary }]}>AI 관계 패턴 분석</Text>
+                                    <Activity size={18} color={colors.accent} />
+                                    <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.primary }]}>기후 변화 목격 (Observation)</Text>
                                 </View>
                                 <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 22, opacity: 0.8 }}>
-                                    {analysis.trend === 'up'
-                                        ? `최근 관계가 긍정적으로 깊어지고 있어요! (평균 +${analysis.diff}°) 꾸준한 교류가 서로에게 좋은 영향을 주고 있습니다.`
-                                        : analysis.trend === 'down'
-                                            ? `최근 정서적 거리가 조금 멀어진 것 같아요. (평균 -${analysis.diff}°) 따뜻한 안부 인사로 다가가 보는 건 어떨까요?`
-                                            : `안정적인 관계 흐름을 유지하고 있습니다. 지금처럼 편안한 소통을 이어가세요.`}
-                                    {analysis.best ? `\n특히 '${analysis.best}' 활동에서 긍정적인 반응이 감지됩니다.` : ''}
+                                    {climateTrend.satTrend === 'up' 
+                                        ? `최근 교류의 만족도가 이전보다 ${climateTrend.satDiff}% 상승했습니다. 정서적으로 더 깊게 충전되고 있는 기류가 보입니다.`
+                                        : climateTrend.satTrend === 'down'
+                                            ? `최근 만족도가 ${climateTrend.satDiff}% 하락하는 추세입니다. 관계 기후가 조금씩 건조해지고 있음을 목격합니다.`
+                                            : `관계의 만족도가 일정한 수준을 유지하며 안정적인 기류를 형성하고 있습니다.`}
+                                    {'\n'}
+                                    {climateTrend.drainTrend === 'up'
+                                        ? `주의: 정서적 소모량이 ${climateTrend.drainDiff}% 증가했습니다. 현재 시스템이 과부하 상태로 이동하고 있을 가능성이 있습니다.`
+                                        : climateTrend.drainTrend === 'down'
+                                            ? `긍정적 변화: 소모량이 ${climateTrend.drainDiff}% 감소했습니다. 상호작용의 효율이 개선되고 있는 지점입니다.`
+                                            : `에너지 소모 패턴에 큰 변화 없이 일정한 궤도를 유지 중입니다.`}
                                 </Text>
                             </View>
                         </View>
@@ -684,7 +728,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             <Text style={[styles.sectionTitle, { color: colors.primary }]}>정서적 개입 타임라인</Text>
                             <TouchableOpacity
                                 style={[styles.addTimelineBtn, { backgroundColor: colors.primary + '1A' }]}
-                                onPress={() => setShowLogModal(true)}
+                                onPress={() => setRelationshipLogModalOpen(true, relationshipId)}
                             >
                                 <Plus size={16} color={colors.primary} />
                                 <Text style={[styles.addBtnText, { color: colors.primary }]}>기록</Text>
@@ -698,16 +742,27 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                     .slice(0, 5)
                                     .map((item, idx) => (
-                                        <View key={idx} style={[styles.timelineItem, { marginBottom: 16 }]}>
-                                            <View style={[styles.timelineDot, { backgroundColor: item.temperature >= 60 ? colors.accent : colors.primary, borderColor: colors.white }]} />
-                                            <Text style={[styles.timelineTime, { color: colors.primary, opacity: 0.5 }]}>
-                                                {item.date}   <Text style={{ color: colors.accent, fontWeight: '800', opacity: 1 }}>{item.temperature >= 80 ? '🔥' : item.temperature >= 60 ? '☀️' : item.temperature >= 40 ? '☁️' : '❄️'} {item.temperature ?? 0}°</Text>
-                                            </Text>
+                                        <TouchableOpacity 
+                                            key={idx} 
+                                            style={[styles.timelineItem, { marginBottom: 16 }]}
+                                            onPress={() => setRelationshipLogModalOpen(true, relationshipId, item.id)}
+                                        >
+                                            {(() => {
+                                                const closeness = (item as any).closeness ?? item.temperature ?? 0;
+                                                return (
+                                                    <>
+                                                        <View style={[styles.timelineDot, { backgroundColor: closeness >= 60 ? colors.accent : colors.primary, borderColor: colors.white }]} />
+                                                        <Text style={[styles.timelineTime, { color: colors.primary, opacity: 0.5 }]}>
+                                                            {item.date}   <Text style={{ color: colors.accent, fontWeight: '800', opacity: 1 }}>{closeness >= 80 ? '🔥' : closeness >= 60 ? '☀️' : closeness >= 40 ? '☁️' : '❄️'} {Math.round(closeness)}%</Text>
+                                                        </Text>
+                                                    </>
+                                                );
+                                            })()}
                                             <Text style={[styles.timelineTitle, { color: colors.primary }]}>{item.title || item.event}</Text>
                                             <Text style={[styles.timelineDesc, { color: colors.primary, opacity: 0.7 }]}>
                                                 {item.description || '상세 내용 없음'}
                                             </Text>
-                                        </View>
+                                        </TouchableOpacity>
                                     ))
                             ) : (
                                 <View style={{ padding: 20, alignItems: 'center' }}>
@@ -849,76 +904,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                     <HeartPulse color={colors.white} size={30} />
                 </TouchableOpacity>
             </View>
-            {/* Log Input Modal */}
-            <Modal
-                transparent
-                visible={showLogModal}
-                animationType="fade"
-                onRequestClose={() => setShowLogModal(false)}
-            >
-                <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setShowLogModal(false)} />
-                    <View style={[styles.floatingPopupCard, { backgroundColor: colors.white, padding: 24 }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.primary }]}>정서적 개입 기록</Text>
-                            <TouchableOpacity onPress={() => setShowLogModal(false)}>
-                                <X size={24} color={colors.primary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <Text style={[styles.inputLabel, { color: colors.primary }]}>활동 주제</Text>
-                            <TextInput
-                                style={[styles.inputField, { color: colors.primary, borderColor: colors.primary + '30' }]}
-                                placeholder="예: 저녁 식사, 전화 통화"
-                                placeholderTextColor="#999"
-                                value={newLog.title}
-                                onChangeText={text => setNewLog(prev => ({ ...prev, title: text }))}
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <Text style={[styles.inputLabel, { color: colors.primary }]}>상세 내용</Text>
-                            <TextInput
-                                style={[styles.inputField, { color: colors.primary, borderColor: colors.primary + '30', height: 80, textAlignVertical: 'top' }]}
-                                placeholder="어떤 대화를 나누었나요? 기분은 어땠나요?"
-                                placeholderTextColor="#999"
-                                multiline
-                                value={newLog.description}
-                                onChangeText={text => setNewLog(prev => ({ ...prev, description: text }))}
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                <Text style={[styles.inputLabel, { color: colors.primary, marginBottom: 0 }]}>정서 온도 (0~100)</Text>
-                                <Text style={[styles.tempValue, { color: colors.accent, fontSize: 18, fontWeight: 'bold' }]}>
-                                    {newLog.temperature}°
-                                </Text>
-                            </View>
-
-                            <TemperatureSlider
-                                value={newLog.temperature}
-                                onChange={(val) => setNewLog(prev => ({ ...prev, temperature: val }))}
-                                activeColor={colors.accent}
-                                trackColor={colors.primary + '15'}
-                                thumbColor={colors.white}
-                            />
-
-                            <Text style={{ fontSize: 11, color: colors.primary + '80', marginTop: 12, textAlign: 'center' }}>
-                                {newLog.temperature >= 80 ? '🔥 깊은 유대감 (소울메이트)' : newLog.temperature >= 60 ? '☀️ 따뜻함 (좋은 관계)' : newLog.temperature >= 40 ? '☁️ 보통 (일상적)' : '❄️ 냉랭함 (스트레스)'}
-                            </Text>
-                        </View>
-
-                        <TouchableOpacity
-                            style={[styles.saveBtn, { backgroundColor: colors.primary }]}
-                            onPress={handleSaveLog}
-                        >
-                            <Text style={styles.saveBtnText}>저장하기</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+            {/* Log Input Modal Removed - Using Global Modal */}
             {renderHealthCheckModal()}
             {/* 하단 시스템 바 가독성 가드 */}
             <ExpoLinearGradient
@@ -1708,54 +1694,49 @@ const styles = StyleSheet.create({
         height: 100,
         zIndex: 10,
     },
+    topographyCard: {
+        borderRadius: 24,
+        padding: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    topographyPlot: {
+        height: 160,
+        width: '100%',
+        position: 'relative',
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(74, 93, 78, 0.05)',
+    },
+    topographyGrid: {
+        ...StyleSheet.absoluteFillObject,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    gridCell: {
+        width: '50%',
+        height: '50%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    gridLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: 'rgba(74, 93, 78, 0.2)',
+        letterSpacing: 1,
+    },
+    topographyDesc: {
+        fontSize: 13,
+        color: '#8C968D',
+        lineHeight: 18,
+        marginTop: 16,
+        textAlign: 'center',
+        fontWeight: '500',
+    }
 });
 
-// 🎨 Optimized Emotional Temperature Slider Component
-// Separated to prevent whole-page re-renders during dragging
-const TemperatureSlider = React.memo(({
-    value,
-    onChange,
-    activeColor,
-    trackColor,
-    thumbColor
-}: {
-    value: number;
-    onChange: (val: number) => void;
-    activeColor: string;
-    trackColor: string;
-    thumbColor: string;
-}) => {
-    const [sliderWidth, setSliderWidth] = React.useState(0);
-
-    const handleTouch = (e: any) => {
-        if (sliderWidth <= 0) return;
-        const px = e.nativeEvent.locationX;
-        const pct = Math.min(100, Math.max(0, Math.round((px / sliderWidth) * 100)));
-        if (!isNaN(pct)) {
-            onChange(pct);
-        }
-    };
-
-    return (
-        <View
-            style={{ height: 44, justifyContent: 'center' }}
-            onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
-            onStartShouldSetResponder={() => true}
-            onMoveShouldSetResponder={() => true}
-            onResponderGrant={handleTouch}
-            onResponderMove={handleTouch}
-        >
-            {/* Track Background */}
-            <View style={{ height: 8, borderRadius: 4, backgroundColor: trackColor, width: '100%', position: 'absolute' }} />
-            {/* Active Track */}
-            <View style={{ height: 8, borderRadius: 4, backgroundColor: activeColor, width: `${value}%`, position: 'absolute' }} />
-            {/* Thumb */}
-            <View style={{
-                width: 28, height: 28, borderRadius: 14, backgroundColor: thumbColor,
-                position: 'absolute', left: `${value}%`, marginLeft: -14,
-                borderWidth: 3, borderColor: activeColor,
-                shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4
-            }} />
-        </View>
-    );
-});
+// TemperatureSlider removed as it's now handled by the global RelationshipLogModal

@@ -112,20 +112,20 @@ export const useSelfHealthData = (period: PeriodType) => {
 
             if (slotIdx >= 0 && slotIdx < numSlots) {
                 slots[slotIdx].count += 1;
-                slots[slotIdx].totalTemp += (h.temperature || 50);
+                slots[slotIdx].totalTemp += (h.closeness || h.temperature || 50);
                 slots[slotIdx].totalOxytocin += (h.oxytocin || 50);
                 slots[slotIdx].totalCortisol += (h.cortisol || 20);
 
                 totalOxytocinSum += (h.oxytocin || 50);
                 totalCortisolSum += (h.cortisol || 20);
 
-                if ((h.temperature || 0) >= 60) positiveCount++;
-                if ((h.temperature || 0) <= 40 || (h.cortisol || 0) >= 60) challengingCount++;
+                if ((h.closeness || h.temperature || 0) >= 60) positiveCount++;
+                if ((h.closeness || h.temperature || 0) <= 40 || (h.cortisol || 0) >= 60) challengingCount++;
             }
         });
 
         const interactionCounts = slots.map(s => s.count);
-        const avgTemps = slots.map(s => s.count > 0 ? Math.round(s.totalTemp / s.count) : 50);
+        const avgTemps = slots.map(s => s.count > 0 ? Math.round(s.totalTemp / s.count) : null);
         const labels = slots.map(s => s.label);
 
         const maxCount = Math.max(...interactionCounts, 1);
@@ -137,8 +137,8 @@ export const useSelfHealthData = (period: PeriodType) => {
             .slice(-20);
 
         const pulsePoints = pulseHistory.length > 0
-            ? pulseHistory.map(h => h.temperature || 50)
-            : [50, 52, 48, 50, 51, 49, 50];
+            ? pulseHistory.map(h => h.closeness || h.temperature || null)
+            : Array(15).fill(null);
 
         return {
             pulseStats: {

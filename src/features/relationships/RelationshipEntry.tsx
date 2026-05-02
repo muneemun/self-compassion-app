@@ -23,6 +23,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
     onComplete: (data: { name: string; type: string; role: string; phoneNumber?: string; image?: string }) => void
 }) => {
     const colors = useColors();
+    const relationships = useRelationshipStore(state => state.relationships);
 
     const [mode, setMode] = useState<EntryMode>('choice');
     const [contacts, setContacts] = useState<ContactItem[]>([]);
@@ -60,7 +61,17 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
                 '입력 중인 정보가 저장되지 않습니다. 정말 나갈까요?',
                 [
                     { text: '계속 입력', style: 'cancel' },
-                    { text: '나가기', style: 'destructive', onPress: () => onBack() }
+                    { 
+                        text: '나가기', 
+                        style: 'destructive', 
+                        onPress: () => {
+                            if (relationships.length === 0) {
+                                Alert.alert('필수 입력', '첫 번째 인맥 등록은 필수입니다. 추가 없이 시작할 수 없습니다.');
+                            } else {
+                                onBack();
+                            }
+                        } 
+                    }
                 ]
             );
             return true;
@@ -68,6 +79,11 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
 
         if (mode !== 'choice') {
             setMode('choice');
+            return true;
+        }
+
+        if (relationships.length === 0) {
+            Alert.alert('필수 입력', '첫 번째 인맥 등록은 필수입니다. 추가 없이 시작할 수 없습니다.');
             return true;
         }
 

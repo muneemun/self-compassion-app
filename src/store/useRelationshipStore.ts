@@ -19,11 +19,15 @@ interface RelationshipState {
         rqsResult?: RelationshipNode['rqsResult'];
         event?: string;
     }) => void;
-    addInteraction: (id: string, date: string, temperature: number, title: string, description: string) => void;
+    addInteraction: (id: string, date: string, satisfaction: number, energyDrain: number, title: string, description: string) => void;
+    updateInteraction: (personId: string, logId: string, updates: Partial<RelationshipNode['history'][0]>) => void;
+    deleteInteraction: (personId: string, logId: string) => void;
 
     // View State Persistence
     orbitMapViewState: OrbitMapViewState;
     setOrbitMapViewState: (newState: Partial<OrbitMapViewState>) => void;
+    lastAddedId: string | null;
+    setLastAddedId: (id: string | null) => void;
 }
 
 export interface OrbitMapViewState {
@@ -43,80 +47,108 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
 
     const nodes: RelationshipNode[] = [];
 
+    // Utility to generate random history
+    const generateHistory = (count: number, baseCloseness: number) => {
+        const history = [];
+        for (let i = 0; i < count; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - (count - i) * 3);
+            const sat = 40 + Math.random() * 50;
+            const drain = 20 + Math.random() * 40;
+            history.push({
+                id: Math.random().toString(36).substr(2, 9),
+                date: date.toISOString().split('T')[0],
+                closeness: Math.max(10, Math.min(100, baseCloseness - (count - i) * 2 + Math.random() * 10)),
+                satisfaction: Math.round(sat),
+                energyDrain: Math.round(drain),
+                title: '정기적 교류',
+                description: '일상적인 대화와 안부 확인',
+                oxytocin: sat > 70 ? 80 : 40,
+                cortisol: drain > 60 ? 70 : 20
+            });
+        }
+        return history;
+    };
+
     // Safety Base (Zone 1) - 약 5명
     for (let i = 0; i < 5; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        const closeness = 90 + Math.floor(Math.random() * 10);
         nodes.push({
             id: `mock-1-${i}`,
             name,
             role: '가장 소중한 인연',
             type: types[Math.floor(Math.random() * types.length)],
             zone: 1,
-            temperature: 90 + Math.floor(Math.random() * 10),
+            temperature: closeness,
             lastInteraction: '오늘',
             metrics: { trust: 90 + Math.random() * 10, communication: 80 + Math.random() * 20, frequency: 90 + Math.random() * 10, satisfaction: 90 + Math.random() * 10 },
-            history: [],
+            history: generateHistory(5, closeness),
         });
     }
 
     // Support (Zone 2) - 약 25명
     for (let i = 0; i < 25; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        const closeness = 70 + Math.floor(Math.random() * 20);
         nodes.push({
             id: `mock-2-${i}`,
             name,
             role: roles[Math.floor(Math.random() * roles.length)],
             type: types[Math.floor(Math.random() * types.length)],
             zone: 2,
-            temperature: 70 + Math.floor(Math.random() * 20),
+            temperature: closeness,
             lastInteraction: '며칠 전',
             metrics: { trust: 70 + Math.random() * 20, communication: 60 + Math.random() * 30, frequency: 50 + Math.random() * 40, satisfaction: 70 + Math.random() * 20 },
-            history: [],
+            history: generateHistory(3, closeness),
         });
     }
 
     // Strategic (Zone 3) - 약 40명
     for (let i = 0; i < 40; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        const closeness = 50 + Math.floor(Math.random() * 20);
         nodes.push({
             id: `mock-3-${i}`,
             name,
             role: roles[Math.floor(Math.random() * roles.length)],
             type: 'work',
             zone: 3,
-            temperature: 50 + Math.floor(Math.random() * 20),
+            temperature: closeness,
             lastInteraction: '이번 주',
             metrics: { trust: 50 + Math.random() * 40, communication: 70 + Math.random() * 30, frequency: 60 + Math.random() * 30, satisfaction: 50 + Math.random() * 30 },
-            history: [],
+            history: generateHistory(2, closeness),
         });
     }
 
     // Social (Zone 4) - 약 50명
     for (let i = 0; i < 50; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        const closeness = 30 + Math.floor(Math.random() * 25);
         nodes.push({
             id: `mock-4-${i}`,
             name,
             role: '지인',
             type: 'other',
             zone: 4,
-            temperature: 30 + Math.floor(Math.random() * 25),
+            temperature: closeness,
             lastInteraction: '한 달 전',
             metrics: { trust: 30 + Math.random() * 50, communication: 30 + Math.random() * 40, frequency: 20 + Math.random() * 40, satisfaction: 30 + Math.random() * 40 },
-            history: [],
+            history: generateHistory(1, closeness),
         });
     }
 
     // Background (Zone 5) - 나머지 (약 30명)
     for (let i = 0; i < count - nodes.length; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+        const closeness = 10 + Math.floor(Math.random() * 20);
         nodes.push({
             id: `mock-5-${i}`,
             name,
             role: '배경 소음',
             type: 'other',
             zone: 5,
-            temperature: 10 + Math.floor(Math.random() * 20),
+            temperature: closeness,
             lastInteraction: '기억 안남',
             metrics: { trust: 20 + Math.random() * 30, communication: 10 + Math.random() * 30, frequency: 5 + Math.random() * 20, satisfaction: 20 + Math.random() * 30 },
             history: [],
@@ -126,7 +158,7 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
     return nodes;
 };
 
-const INITIAL_DATA: RelationshipNode[] = generateMockRelationships(150);
+const INITIAL_DATA: RelationshipNode[] = [];
 
 export const useRelationshipStore = create<RelationshipState>((set, get) => ({
     relationships: INITIAL_DATA,
@@ -145,7 +177,10 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
             metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
             history: [],
         };
-        set((state) => ({ relationships: [...state.relationships, newNode] }));
+        set((state) => ({ 
+            relationships: [...state.relationships, newNode],
+            lastAddedId: newNode.id
+        }));
         get().calculateHealth(newNode.id);
         return newNode.id;
     },
@@ -179,11 +214,11 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
             relationships: state.relationships.map((r) => {
                 if (r.id !== id) return r;
 
-                // 진단 로직: 지표들의 평균으로 온도 산출
+                // 진단 로직: 지표들의 평균으로 긴밀도 산출
                 const { trust, communication, frequency, satisfaction } = r.metrics;
                 const avgTemp = Math.round((trust + communication + satisfaction) / 3);
 
-                // 존(Zone) 결정 로직: 온도가 높고 자주 소통하면 1존, 아니면 밀려남
+                // 존(Zone) 결정 로직: 긴밀도가 높고 자주 소통하면 1존, 아니면 밀려남
                 let newZone = 4;
                 if (avgTemp > 85 && frequency > 70) newZone = 1;
                 else if (avgTemp > 60 && frequency > 40) newZone = 2;
@@ -206,10 +241,15 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
 
                 const lastHistory = r.history[r.history.length - 1];
                 const newHistoryEntry = {
+                    id: Math.random().toString(36).substr(2, 9),
                     date: today,
-                    temperature: data.temperature ?? (lastHistory?.temperature ?? r.temperature),
+                    closeness: data.temperature ?? (lastHistory?.closeness ?? r.temperature),
+                    satisfaction: 50, // Default for non-interaction updates
+                    energyDrain: 30,
                     oxytocin: data.oxytocin ?? (lastHistory?.oxytocin ?? 50),
                     cortisol: data.cortisol ?? (lastHistory?.cortisol ?? 50),
+                    title: data.event || '정기 진단',
+                    description: '진단을 통한 관계 상태 업데이트',
                     event: data.event,
                 };
 
@@ -239,27 +279,70 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
         }));
     },
 
-    addInteraction: (id, date, temperature, title, description) => {
-        const safeTemp = isNaN(temperature) ? 50 : temperature;
+    addInteraction: (id, date, satisfaction, energyDrain, title, description) => {
+        const ALPHA = 0.15; // 반응성 계수 (조정 가능)
+        const resonanceDelta = ALPHA * (satisfaction - energyDrain);
+
         set((state) => ({
             relationships: state.relationships.map((r) => {
                 if (r.id !== id) return r;
+                
+                // 기존 temperature를 긴밀도 베이스로 사용
+                const currentCloseness = r.temperature || 50;
+                const newCloseness = Math.max(0, Math.min(100, currentCloseness + resonanceDelta));
+                
+                // 긴밀도 기반 궤도(Zone) 자동 조정 규칙 적용
+                let newZone = r.zone;
+                if (newCloseness > 80) newZone = 1;
+                else if (newCloseness > 60) newZone = 2;
+                else if (newCloseness > 40) newZone = 3;
+                else if (newCloseness > 20) newZone = 4;
+                else newZone = 5;
+
                 return {
                     ...r,
                     lastInteraction: '방금',
-                    temperature: safeTemp,
+                    temperature: newCloseness,
+                    zone: newZone,
                     history: [
                         ...r.history,
                         {
+                            id: Math.random().toString(36).substr(2, 9),
                             date,
-                            temperature: safeTemp,
+                            closeness: newCloseness,
+                            satisfaction,
+                            energyDrain,
                             title,
                             description,
-                            event: title, // 레거시 호환
-                            oxytocin: safeTemp > 80 ? 85 : 40,
-                            cortisol: safeTemp < 40 ? 75 : 20,
+                            event: title,
+                            oxytocin: satisfaction > 70 ? 80 : 30,
+                            cortisol: energyDrain > 70 ? 70 : 20,
                         }
                     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                };
+            })
+        }));
+    },
+
+    updateInteraction: (personId, logId, updates) => {
+        set((state) => ({
+            relationships: state.relationships.map((r) => {
+                if (r.id !== personId) return r;
+                return {
+                    ...r,
+                    history: r.history.map((h) => (h.id === logId ? { ...h, ...updates } : h))
+                };
+            })
+        }));
+    },
+
+    deleteInteraction: (personId, logId) => {
+        set((state) => ({
+            relationships: state.relationships.map((r) => {
+                if (r.id !== personId) return r;
+                return {
+                    ...r,
+                    history: r.history.filter((h) => h.id !== logId)
                 };
             })
         }));
@@ -278,4 +361,6 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
             orbitMapViewState: { ...state.orbitMapViewState, ...newState }
         }));
     },
+    lastAddedId: null,
+    setLastAddedId: (id) => set({ lastAddedId: id }),
 }));

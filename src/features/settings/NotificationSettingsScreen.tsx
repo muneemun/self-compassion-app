@@ -73,7 +73,7 @@ export const NotificationSettingsScreen = ({ onBack }: NotificationSettingsScree
                     icon={Heart}
                     isEnabled={isSelfReportEnabled}
                     onToggle={setIsSelfReportEnabled}
-                    tags={['감정온도', '안정지수', 'AI처방']}
+                    tags={['정서긴밀도', '안정지수', 'AI처방']}
                 />
 
                 <View style={{ height: 16 }} />

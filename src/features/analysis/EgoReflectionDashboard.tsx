@@ -127,8 +127,8 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         }
 
         const sortedByTemp = [...relationships].sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
-        const recovery = sortedByTemp[0];
-        const drain = sortedByTemp[sortedByTemp.length - 1];
+        const recovery = sortedByTemp.length > 0 ? sortedByTemp[0] : null;
+        const drain = sortedByTemp.length > 0 ? sortedByTemp[sortedByTemp.length - 1] : null;
 
         const getInteractionWeight = (str: string = '') => {
             if (str.includes('방금') || str.includes('분 전')) return 100;
@@ -136,7 +136,8 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             if (str.includes('어제')) return 60;
             return 10;
         };
-        const frequency = [...relationships].sort((a, b) => getInteractionWeight(b.lastInteraction) - getInteractionWeight(a.lastInteraction))[0];
+        const frequencySorted = [...relationships].sort((a, b) => getInteractionWeight(b.lastInteraction) - getInteractionWeight(a.lastInteraction));
+        const frequency = frequencySorted.length > 0 ? frequencySorted[0] : null;
 
         // Current Trend (Default)
         // 10월 등 최신 데이터는 앞부분만 실제 데이터인 것처럼 처리
@@ -165,9 +166,9 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             ]
         },
         trend: {
-            title: '감성 트렌드 도표',
+            title: '정서 에너지 흐름도',
             sub: '마음의 일기예보',
-            info: '최근 30일간의 모든 상호작용(온도, 옥시토신, 코르티솔)을 종합 분석한 정서의 흐름입니다.',
+            info: '최근 30일간의 모든 상호작용(긴밀도, 옥시토신, 코르티솔)을 종합 분석한 정서의 흐름입니다.',
             details: [
                 { label: '상승 곡선', desc: '자아 회복력(Resilience)이 높아진 상태이며, 긍정적인 정서가 축적되고 있음을 의미합니다.' },
                 { label: '곡선의 굴곡', desc: '굴곡이 심할수록 외부 자극에 민감한 상태임을, 완만할수록 정서가 단단하고 평온한 상태임을 뜻합니다.' }
@@ -178,7 +179,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             sub: '인맥 궤도의 다면적 통찰',
             info: '단순한 선호도를 넘어, 관계가 당신의 심리에 미치는 실제적인 영향(회복/소모/점유)을 분석합니다.',
             details: [
-                { label: '영혼의 배터리', desc: '당신의 정서적 온도를 높여주는 가장 핵심적인 지지자들입니다.' },
+                { label: '영혼의 배터리', desc: '당신의 정서 에너지를 채워주는 가장 핵심적인 지지자들입니다.' },
                 { label: '에너지 포식자', desc: '가장 많은 정적 에너지를 요구하거나 당신을 지치게 하는 주의 대상입니다.' },
                 { label: '일상의 중력', desc: '감정적 깊이와 상관없이 당신의 일상을 실제적으로 가장 많이 차지하는 점유층입니다.' }
             ]
@@ -509,7 +510,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>감성 트렌드</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>정서 에너지 흐름도</Text>
                         <TouchableOpacity onPress={() => setActivePopup('trend')}>
                             <Info size={16} color={colors.primary} opacity={0.4} />
                         </TouchableOpacity>

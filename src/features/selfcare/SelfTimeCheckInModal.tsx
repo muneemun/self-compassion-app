@@ -10,11 +10,12 @@ import {
     Platform,
     ScrollView,
     Animated,
-    Dimensions
+    Dimensions,
+    Alert
 } from 'react-native';
 import { X, Sparkles } from 'lucide-react-native';
 import { useAppStore } from '../../store/useAppStore';
-// import { useSelfTimeStore } from '../../store/useSelfTimeStore';
+import { useSelfTimeStore } from '../../store/useSelfTimeStore';
 import { SelfCareCategory, SELF_CARE_CATEGORY_LABELS } from '../../types/selfTime';
 
 const { height } = Dimensions.get('window');
@@ -79,43 +80,76 @@ const CustomSlider = React.memo(({ value, onChange, activeColor, trackColor, thu
 });
 
 export const SelfTimeCheckInModal = () => {
-    const { isSelfTimeModalOpen, setSelfTimeModalOpen } = useAppStore();
-    // const addEntry = useSelfTimeStore(state => state.addEntry);
-    const addEntry = (...args: any[]) => console.log('Mock Add Entry:', args);
+    const { isSelfTimeModalOpen, setSelfTimeModalOpen, editingLogId, setRelationshipLogModalOpen } = useAppStore();
+    const entries = useSelfTimeStore(state => state.entries);
+    const addEntry = useSelfTimeStore(state => state.addEntry);
+    const updateEntry = useSelfTimeStore(state => state.updateEntry);
 
     const [category, setCategory] = useState<SelfCareCategory | null>(null);
     const [activityName, setActivityName] = useState('');
     const [durationMinutes, setDurationMinutes] = useState(15);
-    const [moodBefore, setMoodBefore] = useState(50);
-    const [moodAfter, setMoodAfter] = useState(80);
-    const [intentionScore, setIntentionScore] = useState(100);
+    const [physicalEnergy, setPhysicalEnergy] = useState(30); 
+    const [emotionalSatisfaction, setEmotionalSatisfaction] = useState(70);
 
-    // Reset state when opened
+    // Reset or Load state when opened
     useEffect(() => {
         if (isSelfTimeModalOpen) {
-            setCategory(null);
-            setActivityName('');
-            setDurationMinutes(15);
-            setMoodBefore(50);
-            setMoodAfter(80);
-            setIntentionScore(100);
+            if (editingLogId) {
+                const entry = entries.find(e => e.id === editingLogId);
+                if (entry) {
+                    setCategory(entry.category);
+                    setActivityName(entry.activityName);
+                    setDurationMinutes(entry.durationMinutes);
+                    setPhysicalEnergy(entry.physicalEnergy);
+                    setEmotionalSatisfaction(entry.emotionalSatisfaction);
+                }
+            } else {
+                setCategory(null);
+                setActivityName('');
+                setDurationMinutes(15);
+                setPhysicalEnergy(30);
+                setEmotionalSatisfaction(70);
+            }
         }
-    }, [isSelfTimeModalOpen]);
+    }, [isSelfTimeModalOpen, editingLogId, entries]);
 
     const handleClose = () => {
         setSelfTimeModalOpen(false);
+        // Clear editing state by closing through the app store helper if needed
+        // but here we just need to ensure editingLogId doesn't interfere next time
+        // The AppStore's setRelationshipLogModalOpen handles this for relationships, 
+        // but for SelfTime we should also manage it.
+        useAppStore.setState({ editingLogId: null });
     };
 
     const handleSave = () => {
         if (!category) return;
-        addEntry(
-            category,
-            activityName || SELF_CARE_CATEGORY_LABELS[category],
-            durationMinutes,
-            intentionScore,
-            moodBefore,
-            moodAfter
-        );
+
+        if (editingLogId) {
+            updateEntry(editingLogId, {
+                category,
+                activityName: activityName || SELF_CARE_CATEGORY_LABELS[category],
+                durationMinutes,
+                physicalEnergy,
+                emotionalSatisfaction
+            });
+        } else {
+            addEntry(
+                category,
+                activityName || SELF_CARE_CATEGORY_LABELS[category],
+                durationMinutes,
+                physicalEnergy,
+                emotionalSatisfaction
+            );
+            
+            // 🚀 메타 인지 피드백 시각화 트리거 (새 기록일 때만)
+            const { setCognitiveFeedback } = useAppStore.getState();
+            setCognitiveFeedback({
+                message: "외부 중력장의 간섭을 차단했습니다. 시스템이 자아 회복 모드로 전환됩니다.",
+                type: 'SELF_CARE'
+            });
+        }
+
         handleClose();
     };
 
@@ -136,11 +170,7 @@ export const SelfTimeCheckInModal = () => {
                             }}
                         >
                             <View style={[styles.iconWrapper, isSelected && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                {typeof Icon === 'string' ? (
-                                    <Text style={{ fontSize: 24 }}>{Icon}</Text>
-                                ) : (
-                                    <Icon size={24} color={isSelected ? 'white' : THEME.primary} />
-                                )}
+                                <Text style={{ fontSize: 24 }}>{Icon}</Text>
                             </View>
                             <Text style={[styles.categoryText, isSelected && styles.categoryTextActive]}>
                                 {SELF_CARE_CATEGORY_LABELS[cat]}
@@ -155,7 +185,7 @@ export const SelfTimeCheckInModal = () => {
     const renderSmartSuggestions = () => {
         if (!category) return null;
         const suggestions = SMART_SUGGESTIONS[category];
-        
+
         return (
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>무엇을 했나요?</Text>
@@ -206,45 +236,47 @@ export const SelfTimeCheckInModal = () => {
         <View style={styles.section}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
                 <Sparkles size={18} color={THEME.secondary} />
-                <Text style={styles.sectionTitle}>에너지 회복량 측정</Text>
+                <Text style={styles.sectionTitle}>활동 결과 평가</Text>
             </View>
 
             <View style={styles.sliderContainer}>
                 <View style={styles.sliderRow}>
-                    <Text style={styles.sliderLabel}>하기 전 기분</Text>
-                    <Text style={styles.sliderValue}>{moodBefore}°</Text>
+                    <Text style={styles.sliderLabel}>신체적 에너지 소모량</Text>
+                    <Text style={[styles.sliderValue, { color: THEME.primary }]}>
+                        {physicalEnergy < 30 ? '가벼움' : physicalEnergy < 70 ? '적당함' : '방전됨'} ({physicalEnergy}%)
+                    </Text>
                 </View>
                 <CustomSlider
-                    value={moodBefore}
-                    onChange={setMoodBefore}
-                    activeColor={THEME.textMuted}
+                    value={physicalEnergy}
+                    onChange={setPhysicalEnergy}
+                    activeColor={THEME.primary}
                     trackColor="rgba(74, 93, 78, 0.1)"
                     thumbColor="#FFF"
                 />
+                <View style={styles.sliderGuideRow}>
+                    <Text style={styles.sliderGuideText}>매우 가벼움</Text>
+                    <Text style={styles.sliderGuideText}>완전 연소</Text>
+                </View>
             </View>
 
             <View style={styles.sliderContainer}>
                 <View style={styles.sliderRow}>
-                    <Text style={styles.sliderLabel}>하고 난 후 기분</Text>
-                    <Text style={[styles.sliderValue, { color: THEME.secondary }]}>{moodAfter}°</Text>
+                    <Text style={styles.sliderLabel}>정서적 충족감 (만족도)</Text>
+                    <Text style={[styles.sliderValue, { color: THEME.secondary }]}>
+                        {emotionalSatisfaction < 30 ? '아쉬움' : emotionalSatisfaction < 70 ? '무난함' : '완벽함'} ({emotionalSatisfaction}%)
+                    </Text>
                 </View>
                 <CustomSlider
-                    value={moodAfter}
-                    onChange={setMoodAfter}
+                    value={emotionalSatisfaction}
+                    onChange={setEmotionalSatisfaction}
                     activeColor={THEME.secondary}
-                    trackColor="rgba(74, 93, 78, 0.1)"
+                    trackColor="rgba(217, 139, 115, 0.1)"
                     thumbColor="#FFF"
                 />
-            </View>
-            
-            <View style={styles.intentionContainer}>
-                <Text style={styles.intentionLabel}>온전히 나만을 위해 의도한 시간이었나요?</Text>
-                <TouchableOpacity 
-                    style={[styles.intentionToggle, intentionScore === 100 && styles.intentionToggleActive]}
-                    onPress={() => setIntentionScore(intentionScore === 100 ? 50 : 100)}
-                >
-                    <View style={[styles.intentionDot, intentionScore === 100 && styles.intentionDotActive]} />
-                </TouchableOpacity>
+                <View style={styles.sliderGuideRow}>
+                    <Text style={styles.sliderGuideText}>의무감/도피성</Text>
+                    <Text style={styles.sliderGuideText}>충전/성취감</Text>
+                </View>
             </View>
         </View>
     );
@@ -258,16 +290,16 @@ export const SelfTimeCheckInModal = () => {
         >
             <View style={styles.overlay}>
                 <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
-                
-                <KeyboardAvoidingView 
+
+                <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.bottomSheet}
                 >
                     <View style={styles.dragHandle} />
-                    
+
                     <View style={styles.header}>
                         <View>
-                            <Text style={styles.title}>🌿 나와의 시간 기록</Text>
+                            <Text style={styles.title}>🌿 {editingLogId ? '기록 수정' : '나와의 시간 기록'}</Text>
                             <Text style={styles.subtitle}>온전히 나를 위해 쓴 에너지를 채워주세요</Text>
                         </View>
                         <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
@@ -277,18 +309,18 @@ export const SelfTimeCheckInModal = () => {
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                         {renderCategories()}
-                        
+
                         {category && (
                             <View>
                                 {renderSmartSuggestions()}
                                 {renderDuration()}
                                 {renderDeltaSliders()}
-                                
-                                <TouchableOpacity 
+
+                                <TouchableOpacity
                                     style={styles.saveBtn}
                                     onPress={handleSave}
                                 >
-                                    <Text style={styles.saveBtnText}>기록 완료하고 에너지 채우기</Text>
+                                        <Text style={styles.saveBtnText}>{editingLogId ? '수정 사항 저장' : '기록 완료하고 에너지 채우기'}</Text>
                                 </TouchableOpacity>
                                 <View style={{ height: 40 }} />
                             </View>
@@ -519,46 +551,15 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 4,
     },
-    intentionContainer: {
+    sliderGuideRow: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: 'rgba(74, 93, 78, 0.03)',
-        padding: 16,
-        borderRadius: 16,
-        marginTop: 8,
+        marginTop: 4,
     },
-    intentionLabel: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: THEME.textMain,
-        flex: 1,
-        marginRight: 16,
-    },
-    intentionToggle: {
-        width: 52,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(74, 93, 78, 0.2)',
-        padding: 4,
-        justifyContent: 'center',
-    },
-    intentionToggleActive: {
-        backgroundColor: THEME.secondary,
-    },
-    intentionDot: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: 'white',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    intentionDotActive: {
-        transform: [{ translateX: 20 }],
+    sliderGuideText: {
+        fontSize: 11,
+        color: THEME.textMuted,
+        fontWeight: '600',
     },
     saveBtn: {
         backgroundColor: THEME.primary,

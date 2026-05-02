@@ -77,7 +77,7 @@ const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect
                     />
                 </View>
                 <Text style={[styles.tempText, { color: (node.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
-                    {(node.temperature || 0)}°
+                    {(node.temperature || 0)}%
                 </Text>
             </View>
         </TouchableOpacity>
@@ -182,7 +182,40 @@ export const RelationshipList = ({
 
         return (
             <View style={styles.container}>
-                {/* Filter Bar - Only show if not hidden in Map view */}
+                {relationships.length === 0 ? (
+                    <View style={{
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: 100,
+                        padding: 24,
+                    }}>
+                        <View style={{
+                            width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(74,93,78,0.1)', 
+                            alignItems: 'center', justifyContent: 'center', marginBottom: 16
+                        }}>
+                            <Users size={32} color={colors.primary} />
+                        </View>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: colors.primary, marginBottom: 8, textAlign: 'center' }}>
+                            아직 등록된 관계가 없습니다
+                        </Text>
+                        <Text style={{ fontSize: 14, color: colors.primary, opacity: 0.6, marginBottom: 24, textAlign: 'center', lineHeight: 20 }}>
+                            새로운 사람을 추가하여{'\n'}관계 지표를 분석하고 관리해보세요.
+                        </Text>
+                        <TouchableOpacity
+                            style={{ 
+                                backgroundColor: colors.accent, paddingHorizontal: 24, paddingVertical: 14, 
+                                borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 8 
+                            }}
+                            onPress={onPressAdd}
+                        >
+                            <Plus size={18} color="white" />
+                            <Text style={{ fontSize: 15, fontWeight: '800', color: 'white' }}>관계 추가하기</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <>
+                        {/* Filter Bar - Only show if not hidden in Map view */}
                 {!hideHeader && (
                     <View style={[styles.filterBar, isFilterExpanded && styles.filterBarExpanded, { marginBottom: 20 }]}>
                         {isFilterExpanded ? (
@@ -294,6 +327,8 @@ export const RelationshipList = ({
                         );
                     })()}
                 </View>
+                </>
+                )}
             </View>
         );
     };

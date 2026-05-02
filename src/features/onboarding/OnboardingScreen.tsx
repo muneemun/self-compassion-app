@@ -126,15 +126,16 @@ export const OnboardingScreen = () => {
     };
 
     useEffect(() => {
-        Animated.loop(
+        const anim1 = Animated.loop(
             Animated.timing(orbitRotate, {
                 toValue: 1,
                 duration: 20000,
                 useNativeDriver: true,
             })
-        ).start();
+        );
+        anim1.start();
 
-        Animated.loop(
+        const anim2 = Animated.loop(
             Animated.sequence([
                 Animated.timing(floatAnim, {
                     toValue: -10,
@@ -147,9 +148,10 @@ export const OnboardingScreen = () => {
                     useNativeDriver: true,
                 })
             ])
-        ).start();
+        );
+        anim2.start();
 
-        Animated.loop(
+        const anim3 = Animated.loop(
             Animated.sequence([
                 Animated.timing(pulseAnim, {
                     toValue: 0.6,
@@ -162,7 +164,14 @@ export const OnboardingScreen = () => {
                     useNativeDriver: true,
                 })
             ])
-        ).start();
+        );
+        anim3.start();
+
+        return () => {
+            anim1.stop();
+            anim2.stop();
+            anim3.stop();
+        };
     }, []);
 
 

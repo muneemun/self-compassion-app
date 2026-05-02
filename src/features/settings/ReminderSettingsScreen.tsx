@@ -145,7 +145,7 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
                     <Text style={[styles.sectionTitle, { color: colors.gray[500] }]}>개인 관리</Text>
                     <SettingsCard
                         title="오늘 기록 리마인더"
-                        description="오늘 당신의 감정 온도는 몇 도였나요? 잠시 궤도를 멈추고 기록하도록 조용히 노크합니다."
+                        description="오늘 당신의 정서 에너지는 얼마나 채워졌나요? 잠시 궤도를 멈추고 기록하도록 조용히 노크합니다."
                         icon={CheckCircle}
                         isEnabled={isDailyEnabled}
                         onToggle={setIsDailyEnabled}

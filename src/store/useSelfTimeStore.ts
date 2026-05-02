@@ -10,9 +10,8 @@ interface SelfTimeState {
         category: SelfCareCategory,
         activityName: string,
         durationMinutes: number,
-        intentionScore: number,
-        moodBefore: number,
-        moodAfter: number
+        physicalEnergy: number,
+        emotionalSatisfaction: number
     ) => void;
     deleteEntry: (id: string) => void;
     getRecentEntries: (days?: number) => SelfTimeEntry[];
@@ -25,16 +24,15 @@ export const useSelfTimeStore = create<SelfTimeState>()(
         (set, get) => ({
             entries: [],
 
-            addEntry: (category, activityName, durationMinutes, intentionScore, moodBefore, moodAfter) => {
+            addEntry: (category, activityName, durationMinutes, physicalEnergy, emotionalSatisfaction) => {
                 const now = new Date().toISOString();
                 const newEntry: SelfTimeEntry = {
                     id: Math.random().toString(36).substr(2, 9),
                     category,
                     activityName,
                     durationMinutes,
-                    intentionScore,
-                    moodBefore,
-                    moodAfter,
+                    physicalEnergy,
+                    emotionalSatisfaction,
                     isDeleted: false,
                     appVersion: CURRENT_APP_VERSION,
                     createdAt: now,

@@ -529,6 +529,10 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                     };
                     onComplete?.(completeResult);
                     onBack();
+                    Alert.alert(
+                        "진단 완료",
+                        "관계의 물리적 속성 분석이 완료되었습니다. 해당 인물과의 정서 긴밀도가 맵에 반영됩니다."
+                    );
                 }}
             />
         );

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, SafeAreaView, Image, StatusBar, Platform } from 'react-native';
-import Svg, { Polygon, Line, Circle, Rect, G, Defs, LinearGradient as SvgLinearGradient, Stop, Path } from 'react-native-svg';
-import { ChevronLeft, MoreHorizontal, Calendar, Info, TrendingUp, BatteryWarning, CheckCircle, Download, Edit3, Shield, Zap, Leaf, Activity, X, Heart } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, SafeAreaView, Image, StatusBar, Platform, Alert } from 'react-native';
+import Svg, { Polygon, Line, Circle, Rect, G, Defs, LinearGradient as SvgLinearGradient, Stop, Path, Text as SvgText } from 'react-native-svg';
+import { ChevronLeft, MoreHorizontal, Calendar, Info, TrendingUp, BatteryFull, CheckCircle2, Download, Edit3, Shield, Zap, Leaf, Activity, X, Heart, History } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelfHealthData } from './useSelfHealthData';
 import { useColors } from '../../theme/ColorLockContext';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { AppHeader } from '../../components/AppHeader';
+import { useRelationshipStore } from '../../store/useRelationshipStore';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,7 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
     const [period, setPeriod] = useState<'주간' | '월간' | '연간'>('주간');
     const [infoModal, setInfoModal] = useState<{ visible: boolean; type: 'balance' | 'energy' | 'pulse' | 'oxytocin' | 'cortisol' | null }>({ visible: false, type: null });
     const { balanceData, pulseStats, pulsePoints, energyTotal, stats, dateRange } = useSelfHealthData(period);
+    const relationships = useRelationshipStore(state => state.relationships);
 
     // 🔙 Navigation Handler
     const handleBack = () => {
@@ -161,11 +163,11 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
                         <Text style={styles.metricText}>소통 +12%</Text>
                     </View>
                     <View style={[styles.metricChip, { borderColor: THEME.secondary }]}>
-                        <BatteryWarning size={16} color={THEME.secondary} />
+                        <BatteryFull size={16} color={THEME.secondary} />
                         <Text style={[styles.metricText, { color: THEME.secondary }]}>활동 지수 안정</Text>
                     </View>
                     <View style={styles.metricChip}>
-                        <CheckCircle size={16} color={colors.primary} />
+                        <CheckCircle2 size={16} color={colors.primary} />
                         <Text style={styles.metricText}>신뢰 안정적</Text>
                     </View>
                 </ScrollView>
@@ -177,15 +179,20 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
         const { interactionCounts, avgTemps, labels } = stats;
         const CHART_HEIGHT = 160;
 
-        // Path calculation for Temperature Line
-        const linePoints = avgTemps.map((temp: number, i: number) => {
-            const chartAreaWidth = width - 48 - 40; // width - total h-padding - inner offset
-            const x = (i * chartAreaWidth / (labels.length > 1 ? labels.length - 1 : 1)) + 20;
-            const y = CHART_HEIGHT - (temp * CHART_HEIGHT / 100);
-            return { x, y };
-        });
+        // Path calculation for Temperature Line - filter out nulls to prevent invalid paths
+        const linePoints = avgTemps
+            .map((temp: number | null, i: number) => {
+                if (temp === null) return null;
+                const chartAreaWidth = width - 48 - 40;
+                const x = (i * chartAreaWidth / (labels.length > 1 ? labels.length - 1 : 1)) + 20;
+                const y = CHART_HEIGHT - (temp * CHART_HEIGHT / 100);
+                return { x, y };
+            })
+            .filter((p: any) => p !== null) as { x: number, y: number }[];
 
-        const linePath = `M ${linePoints.map((p: any) => `${p.x},${p.y}`).join(' L ')}`;
+        const linePath = linePoints.length > 0 
+            ? `M ${linePoints.map((p: any) => `${p.x},${p.y}`).join(' L ')}`
+            : '';
 
         return (
             <View style={styles.card}>
@@ -313,6 +320,157 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
                         <Text style={styles.impactBrief}>정서적 자극으로 인한 긴장 피로도</Text>
                     </TouchableOpacity>
                 </View>
+            </View>
+        );
+    };
+
+    const renderGlobalSocialTopography = () => {
+        const matrixWidth = width - 48; // padding account
+        const svgWidth = 200;
+        const svgHeight = 160;
+
+        return (
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.cardTitle}>전체 관계 지형도</Text>
+                            <TouchableOpacity onPress={() => Alert.alert('관계 지형도', '모든 관계의 만족도와 에너지 소모량을 한눈에 조망합니다.')}>
+                                <Info size={16} color={colors.primary} opacity={0.5} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.cardSubtitle}>전체 인맥의 정서 분포 조감</Text>
+                    </View>
+                </View>
+
+                <View style={styles.topographyPlot}>
+                    <View style={styles.topographyGrid}>
+                        <View style={[styles.gridCell, { backgroundColor: colors.primary + '05' }]}><Text style={styles.gridLabel}>고출력</Text></View>
+                        <View style={[styles.gridCell, { backgroundColor: colors.accent + '05' }]}><Text style={styles.gridLabel}>충전</Text></View>
+                        <View style={[styles.gridCell, { backgroundColor: '#8C968D10' }]}><Text style={styles.gridLabel}>소모</Text></View>
+                        <View style={[styles.gridCell, { backgroundColor: '#90A4AE10' }]}><Text style={styles.gridLabel}>안정</Text></View>
+                    </View>
+
+                    <Svg height="160" width={matrixWidth - 48} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
+                        {/* Axes */}
+                        <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                        <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+
+                        {/* Data Points for each relationship */}
+                        {relationships.map((node) => {
+                            const lastHistory = (node.history || []).slice(-1)[0];
+                            if (!lastHistory) return null;
+
+                            const sat = lastHistory.satisfaction || 50;
+                            const drain = lastHistory.energyDrain || 50;
+                            
+                            return (
+                                <G key={node.id}>
+                                    <Circle
+                                        cx={20 + (sat / 100) * 160}
+                                        cy={svgHeight - (20 + (drain / 100) * 120)}
+                                        r="5"
+                                        fill={colors.accent}
+                                        stroke="white"
+                                        strokeWidth="1.5"
+                                        opacity={0.8}
+                                    />
+                                    <SvgText
+                                        x={20 + (sat / 100) * 160}
+                                        y={svgHeight - (20 + (drain / 100) * 120) + 12}
+                                        fontSize="8"
+                                        fontWeight="700"
+                                        fill={colors.primary}
+                                        textAnchor="middle"
+                                        opacity="0.6"
+                                    >
+                                        {node.name}
+                                    </SvgText>
+                                </G>
+                            );
+                        })}
+                    </Svg>
+                </View>
+                
+                <View style={styles.chartLegendRow}>
+                    <View style={styles.legendGroup}>
+                        <View style={[styles.legendBarIndicator, { backgroundColor: colors.accent }]} />
+                        <Text style={styles.legendLabel}>인맥 분포</Text>
+                    </View>
+                    <Text style={styles.legendLabel}>X: 만족도 | Y: 에너지 소모</Text>
+                </View>
+            </View>
+        );
+    };
+
+    const renderCheckInHistory = () => {
+        // Aggregate all history across all relationships
+        const allHistory = relationships.flatMap(node => 
+            (node.history || []).map(h => ({
+                ...h,
+                nodeName: node.name,
+                nodeImage: node.image,
+                nodeId: node.id
+            }))
+        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 15);
+
+        if (allHistory.length === 0) return null;
+
+        return (
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.cardTitle}>전체 체크인 히스토�                            <TouchableOpacity 
+                                key={`${h.nodeId}-${i}`} 
+                                style={styles.historyItem}
+                                onPress={() => Alert.alert('기록 상세', `${h.nodeName}님과의 기록: ${h.topic || '일상적인 교류'}`)}
+                            >
+                                <View style={styles.historyDateBox}>
+                                    <Text style={styles.historyDateText}>{dateStr}</Text>
+                                </View>
+                                <View style={styles.historyContent}>
+                                    <View style={styles.historyMainRow}>
+                                        <Text style={styles.historyNodeName}>{h.nodeName}</Text>
+                                        <View style={[styles.statusBadge, { backgroundColor: (h.temperature || 50) >= 60 ? colors.accent + '15' : '#8C968D15' }]}>
+                                            <Text style={[styles.statusBadgeText, { color: (h.temperature || 50) >= 60 ? colors.accent : '#8C968D' }]}>
+                                                {(h.temperature || 50) >= 60 ? '긍정' : '소모'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.historyTopic} numberOfLines={1}>{h.topic || '일상적인 교류'}</Text>
+                                </View>
+                                <View style={styles.historyMetrics}>
+                                    <View style={styles.miniMetric}>
+                                        <Heart size={10} color={colors.accent} fill={colors.accent} />
+                                        <Text style={styles.miniMetricValue}>{h.satisfaction || h.temperature || 50}</Text>
+                                    </View>
+                                    <View style={styles.miniMetric}>
+                                        <Zap size={10} color="#D98B73" />
+                                        <Text style={styles.miniMetricValue}>{h.energyDrain || 20}</Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+t size={10} color={colors.accent} fill={colors.accent} />
+                                        <Text style={styles.miniMetricValue}>{h.satisfaction || h.temperature || 50}</Text>
+                                    </View>
+                                    <View style={styles.miniMetric}>
+                                        <Zap size={10} color="#D98B73" />
+                                        <Text style={styles.miniMetricValue}>{h.energyDrain || 20}</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        );
+                    })}
+                </View>
+
+                <TouchableOpacity 
+                    style={{ marginTop: 24, alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)' }}
+                    onPress={() => Alert.alert('히스토리 상세', '준비 중인 기능입니다.')}
+                >
+                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', opacity: 0.6 }}>전체 기록 보기</Text>
+                </TouchableOpacity>
             </View>
         );
     };
@@ -487,6 +645,8 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
                     {renderRadarChart()}
                     {renderBiomarkerStats()}
                     {renderEnergyChart()}
+                    {renderGlobalSocialTopography()}
+                    {renderCheckInHistory()}
                     {renderCheckInPulse()}
                     {renderAdCard()}
                     <View style={{ height: 100 }} />
@@ -580,4 +740,22 @@ const styles = StyleSheet.create({
     guideStatusDesc: { fontSize: 13, lineHeight: 18 },
     popupConfirmBtn: { height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     popupConfirmText: { color: 'white', fontSize: 16, fontWeight: '700' },
+    
+    // New Matrix & History Styles
+    topographyPlot: { position: 'relative', height: 160, width: '100%', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
+    topographyGrid: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', flexWrap: 'wrap' },
+    gridCell: { width: '50%', height: '50%', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.02)' },
+    gridLabel: { fontSize: 10, fontWeight: '800', color: THEME.primary, opacity: 0.2, textTransform: 'uppercase' },
+    historyItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    historyDateBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F5F7F6', alignItems: 'center', justifyContent: 'center' },
+    historyDateText: { fontSize: 11, fontWeight: '800', color: THEME.primary, opacity: 0.5 },
+    historyContent: { flex: 1, gap: 2 },
+    historyMainRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    historyNodeName: { fontSize: 14, fontWeight: '800', color: THEME.primary },
+    statusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    statusBadgeText: { fontSize: 9, fontWeight: '800' },
+    historyTopic: { fontSize: 12, color: THEME.textMuted, fontWeight: '600' },
+    historyMetrics: { alignItems: 'flex-end', gap: 4 },
+    miniMetric: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    miniMetricValue: { fontSize: 10, fontWeight: '800', color: THEME.primary, opacity: 0.6 },
 });

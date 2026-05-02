@@ -124,7 +124,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
             ],
             COLD: [
                 `최근 정서적 개입이 줄어들며 관계가 다소 건조해진 상태로 감지됩니다.`,
-                `익숙함 속에 가려져 서로의 온도를 살피는 데 소홀해진 시기가 아닌지 점검이 필요합니다.`,
+                `익숙함 속에 가려져 서로의 마음을 살피는 데 소홀해진 시기가 아닌지 점검이 필요합니다.`,
                 `구조적 안정감은 있으나 감정적 연결고리가 느슨해져 정서적 가뭄에 대비해야 합니다.`
             ],
             DANGER: [
@@ -138,7 +138,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
             ZONE12: [
                 `가장 소중한 관계일수록 익숙함에 속지 않는 노력이 필요합니다. 이번 주에는 [당연하다고 여겼던 진심]을 꺼내 전해 보세요.`,
                 `상대방의 안정감이 당신에게 큰 힘이 되고 있음을 [구체적인 행동]으로 보답해볼 시간입니다.`,
-                `깊은 신뢰를 바탕으로 한 [질적 대화]를 통해 정서적 온도를 한 층 더 높여 보시길 추천합니다.`
+                `깊은 신뢰를 바탕으로 한 [질적 대화]를 통해 정서 긴밀도를 한 층 더 높여 보시길 추천합니다.`
             ],
             ZONE34: [
                 `지나친 에너지 몰입보다는 [건강한 거리감]을 유지하며 자신의 내면에 집중할 시기입니다.`,
@@ -442,7 +442,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                     </View>
                 </View>
                 <Text style={styles.trendDescription}>
-                    * 관계 건강 점수는 사용자가 직접 진단한 기초 신뢰 안정성과 심리적 위치, 그리고 타임라인에 기록해온 상호작용의 빈도와 온도를 분석하여 산출됩니다.
+                    * 관계 건강 점수는 사용자가 직접 진단한 기초 신뢰 안정성과 심리적 위치, 그리고 타임라인에 기록해온 상호작용의 빈도와 정서 긴밀도를 분석하여 산출됩니다.
                 </Text>
             </View>
         );
@@ -463,7 +463,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                             </View>
                         </View>
                         <Text style={[styles.heroSummary, { color: colors.primary }]}>
-                            {totalScore >= 80 ? "관계 건강 상태가 매우 양호합니다.\n서로에게 큰 힘이 되고 있어요." : "적절한 온도를 유지하고 있습니다.\n조금 더 세심한 관심이 필요합니다."}
+                            {totalScore >= 80 ? "관계 건강 상태가 매우 양호합니다.\n서로에게 큰 힘이 되고 있어요." : "적절한 긴밀도를 유지하고 있습니다.\n조금 더 세심한 관심이 필요합니다."}
                         </Text>
                     </View>
 
@@ -559,7 +559,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
 
                             <View style={[styles.evidenceItem, { backgroundColor: colors.white + '66' }]}>
                                 <Activity size={16} color={colors.primary} opacity={0.4} style={{ marginBottom: 6 }} />
-                                <Text style={[styles.evidenceVal, { color: colors.primary }]}>{Math.round(synthesis.avgTemp)}°C</Text>
+                                <Text style={[styles.evidenceVal, { color: colors.primary }]}>{Math.round(synthesis.avgTemp)}%</Text>
                                 <Text style={styles.evidenceKey}>정서 주파수</Text>
                                 <Text style={styles.evidenceSub}>최근 교감 농도</Text>
                             </View>
@@ -584,7 +584,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                                             <Text style={[styles.logEventText, { color: colors.primary }]}>{item.event || "일반 상호작용"}</Text>
                                             <View style={styles.logIndicatorRow}>
                                                 <View style={[styles.miniIndicator, { backgroundColor: colors.accent + '10' }]}>
-                                                    <Text style={[styles.miniIndicatorText, { color: colors.accent }]}>{item.temperature}°</Text>
+                                                    <Text style={[styles.miniIndicatorText, { color: colors.accent }]}>{item.temperature}%</Text>
                                                 </View>
                                                 {item.oxytocin && (
                                                     <Heart size={10} color="#4CAF50" fill="#4CAF50" />
@@ -655,7 +655,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                                     2. 기록된 상호작용 지표
                                 </Text>
                                 <Text style={[styles.guideStatusDesc, { color: colors.primary, opacity: 0.6 }]}>
-                                    타임라인에 기록해온 실제 대화의 온도와 빈도를 통계적으로 환산하여 반영합니다.
+                                    타임라인에 기록해온 실제 대화의 정서 긴밀도와 빈도를 통계적으로 환산하여 반영합니다.
                                 </Text>
                             </View>
                         </View>
@@ -802,7 +802,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                             onChangeText={(text) => setNewLog({ ...newLog, event: text })}
                         />
 
-                        <Text style={[styles.inputLabel, { color: colors.primary, marginTop: 20 }]}>정서 온도 ({newLog.temperature}°C)</Text>
+                        <Text style={[styles.inputLabel, { color: colors.primary, marginTop: 20 }]}>정서 긴밀도 ({newLog.temperature}%)</Text>
                         <View style={styles.tempSelector}>
                             {[20, 40, 60, 80, 100].map(temp => (
                                 <TouchableOpacity
@@ -816,7 +816,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                                     ]}
                                     onPress={() => setNewLog({ ...newLog, temperature: temp })}
                                 >
-                                    <Text style={[styles.tempChipText, { color: newLog.temperature === temp ? 'white' : '#888' }]}>{temp}°</Text>
+                                    <Text style={[styles.tempChipText, { color: newLog.temperature === temp ? 'white' : '#888' }]}>{temp}%</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>

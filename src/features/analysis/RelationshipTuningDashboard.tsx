@@ -116,7 +116,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const lensTuningInfo = getLensTuningInfo();
 
     // 🎨 실제 데이터를 기반으로 로직 정교화
-    // 1. Zone별 에너지 비중 계산 (온도 기반 가중치)
+    // 1. Zone별 에너지 비중 계산 (긴밀도 기반 가중치)
     const zoneEnergyMap = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
     const totalEnergySum = relationships.reduce((sum: number, r: RelationshipNode) => sum + (r.temperature || 50), 0);
 
@@ -142,6 +142,15 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     }, 0));
 
     const getStabilityStatus = (score: number) => {
+        if (relationships.length < 5) {
+            return {
+                label: '데이터 수집 중',
+                desc: `현재 ${relationships.length}명의 인맥만 등록되어 있어 균형 분석을 진행하기 어렵습니다. 5명 이상의 인맥을 추가하여 궤도 균형을 확인해보세요.`,
+                color: '#8C968D',
+                imbalancedZones: []
+            };
+        }
+
         // Zone별 불균형 감지
         const imbalancedZones: Array<{ zone: number; name: string; actual: number; target: string; status: 'over' | 'under' }> = [];
 
@@ -515,7 +524,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 </View>
                                 <View style={{ alignItems: 'flex-end', minWidth: 24 }}>
                                     <Text style={{ fontSize: 12, fontWeight: '800', color: (r.temperature || 0) > 70 ? colors.accent : colors.primary, marginBottom: 2 }}>
-                                        {r.temperature || 0}°
+                                        {r.temperature || 0}%
                                     </Text>
                                 </View>
                                 <View style={[
@@ -921,7 +930,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                         <Text style={[styles.anchorBadgeText, { color: themeColor }]}>NO. 1</Text>
                                     </View>
                                     <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
-                                        {selectedLens === 'Frequency' ? `${anchor.lastInteraction} • ${anchor.temperature}°C` : `${anchor.temperature}°C`}
+                                        {selectedLens === 'Frequency' ? `${anchor.lastInteraction} • ${anchor.temperature}%` : `${anchor.temperature}%`}
                                     </Text>
                                 </View>
                                 <View style={styles.anchorMain}>
@@ -983,7 +992,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                                 <View style={styles.squadNameRow}>
                                                     <Text style={[styles.squadName, { color: colors.primary }]}>{r.name}</Text>
                                                     <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
-                                                        {selectedLens === 'Frequency' ? `${r.lastInteraction} • ${r.temperature}°C` : `${r.temperature}°C`}
+                                                        {selectedLens === 'Frequency' ? `${r.lastInteraction} • ${r.temperature}%` : `${r.temperature}%`}
                                                     </Text>
                                                 </View>
                                                 <View style={styles.squadPersonaRow}>
@@ -1022,7 +1031,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     <FocusTournament
                         participants={tournamentParticipants}
                         onComplete={(winners) => {
-                            // 📈 우선순위에 따른 정서 온도 가중치 반영
+                            // 📈 우선순위에 따른 정서 긴밀도 가중치 반영
                             const isNegative = selectedLens === 'Negative';
 
                             winners.forEach((id, index) => {
@@ -1275,7 +1284,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                             <Text style={{ fontSize: 20, fontWeight: '900', color: colors.primary, marginBottom: 12, textAlign: 'center' }}>
                                 {selectedLens === 'Negative'
                                     ? "마음의 방어선이\n설정되었습니다!"
-                                    : "무의식의 우선순위가\n정서 온도에 반영되었습니다!"}
+                                    : "무의식의 우선순위가\n정서 긴밀도에 반영되었습니다!"}
                             </Text>
                             <Text style={{ fontSize: 15, color: colors.primary, opacity: 0.6, textAlign: 'center', lineHeight: 22 }}>
                                 {selectedLens === 'Negative'
@@ -1293,7 +1302,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.primary + '03', padding: 16, borderRadius: 16 }}>
                                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedLens === 'Negative' ? '#D98B73' : '#FFD700' }} />
                                     <Text style={{ fontSize: 14, color: colors.primary, fontWeight: '700' }}>
-                                        {selectedLens === 'Negative' ? "지목된 포식자 온도 하향 및 거리두기" : "상위 1~3위 인맥 정서 온도 보너스 반영"}
+                                        {selectedLens === 'Negative' ? "지목된 포식자 긴밀도 하향 및 거리두기" : "상위 1~3위 인맥 정서 긴밀도 보너스 반영"}
                                     </Text>
                                 </View>
                             </View>
