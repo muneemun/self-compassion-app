@@ -262,7 +262,7 @@ function App() {
                         />
                       </View>
                       <View style={activeTab === 'lab' ? styles.tabActive : styles.tabHidden}>
-                        {/* <LabMapScreen /> */}
+                        <LabMapScreen />
                       </View>
                     </View>
 

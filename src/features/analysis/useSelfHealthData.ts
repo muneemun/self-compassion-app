@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { useSelfTimeStore } from '../../store/useSelfTimeStore';
 
 export type PeriodType = '주간' | '월간' | '연간';
 
 export const useSelfHealthData = (period: PeriodType) => {
     const relationships = useRelationshipStore((state) => state.relationships);
+    const selfTimeEntries = useSelfTimeStore((state) => state.entries);
 
     // 1. Relationship Balance (Radar Chart)
     const balanceData = useMemo(() => {
@@ -71,7 +73,8 @@ export const useSelfHealthData = (period: PeriodType) => {
         }
 
         const slots = Array.from({ length: numSlots }, () => ({
-            count: 0,
+            interactionCount: 0,
+            selfTimeCount: 0,
             totalTemp: 0,
             totalOxytocin: 0,
             totalCortisol: 0,
@@ -92,15 +95,33 @@ export const useSelfHealthData = (period: PeriodType) => {
             }
         }
 
-        const allHistory = relationships.flatMap(r => r.history || [])
+        const interactionHistory = relationships.flatMap(r => r.history || []).map(h => ({ ...h, isSelfTime: false }));
+        const mappedSelfTime = selfTimeEntries.filter(e => !e.isDeleted).map(e => ({
+            id: e.id,
+            date: e.createdAt.split('T')[0],
+            isSelfTime: true,
+            temperature: e.emotionalSatisfaction,
+            oxytocin: 60,
+            cortisol: e.physicalEnergy,
+            duration: e.durationMinutes,
+            category: e.category,
+            satisfaction: e.emotionalSatisfaction
+        }));
+
+        const allHistory = [...interactionHistory, ...mappedSelfTime]
             .filter(h => h.date)
             .map(h => ({ ...h, dateObj: new Date(h.date) }))
-            .filter(h => h.dateObj >= startDate);
+            .filter(h => h.dateObj >= startDate && !isNaN(h.dateObj.getTime()));
 
         let totalOxytocinSum = 0;
         let totalCortisolSum = 0;
         let positiveCount = 0;
         let challengingCount = 0;
+
+        let totalRestoreMinutes = 0;
+        let totalRestoreSatisfaction = 0;
+        let selfTimeCount = 0;
+        const categoryCounts: Record<string, number> = {};
 
         allHistory.forEach(h => {
             let slotIdx = -1;
@@ -111,7 +132,12 @@ export const useSelfHealthData = (period: PeriodType) => {
             }
 
             if (slotIdx >= 0 && slotIdx < numSlots) {
-                slots[slotIdx].count += 1;
+                if (h.isSelfTime) {
+                    slots[slotIdx].selfTimeCount += 1;
+                } else {
+                    slots[slotIdx].interactionCount += 1;
+                }
+                const totalCount = slots[slotIdx].interactionCount + slots[slotIdx].selfTimeCount;
                 slots[slotIdx].totalTemp += (h.closeness || h.temperature || 50);
                 slots[slotIdx].totalOxytocin += (h.oxytocin || 50);
                 slots[slotIdx].totalCortisol += (h.cortisol || 20);
@@ -122,14 +148,29 @@ export const useSelfHealthData = (period: PeriodType) => {
                 if ((h.closeness || h.temperature || 0) >= 60) positiveCount++;
                 if ((h.closeness || h.temperature || 0) <= 40 || (h.cortisol || 0) >= 60) challengingCount++;
             }
+
+            if (h.isSelfTime) {
+                totalRestoreMinutes += h.duration || 0;
+                totalRestoreSatisfaction += h.satisfaction || 0;
+                selfTimeCount++;
+                if (h.category) {
+                    categoryCounts[h.category] = (categoryCounts[h.category] || 0) + 1;
+                }
+            }
         });
 
-        const interactionCounts = slots.map(s => s.count);
-        const avgTemps = slots.map(s => s.count > 0 ? Math.round(s.totalTemp / s.count) : null);
+        const bestCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '없음';
+        const avgRestorationDelta = selfTimeCount > 0 ? Math.round(totalRestoreSatisfaction / selfTimeCount) : 0;
+
+        const interactionCounts = slots.map(s => s.interactionCount);
+        const selfTimeCounts = slots.map(s => s.selfTimeCount);
+        const totalCounts = slots.map(s => s.interactionCount + s.selfTimeCount);
+        const avgTemps = slots.map((s, i) => totalCounts[i] > 0 ? Math.round(s.totalTemp / totalCounts[i]) : null);
         const labels = slots.map(s => s.label);
 
-        const maxCount = Math.max(...interactionCounts, 1);
-        const normalizedCounts = interactionCounts.map(c => Math.round((c / maxCount) * 100));
+        const maxCount = Math.max(...interactionCounts, ...selfTimeCounts, 1);
+        const normalizedInteractionCounts = interactionCounts.map(c => Math.round((c / maxCount) * 100));
+        const normalizedSelfTimeCounts = selfTimeCounts.map(c => Math.round((c / maxCount) * 100));
 
         // Pulse points (use last 15 interactions in this period)
         const pulseHistory = [...allHistory]
@@ -137,8 +178,11 @@ export const useSelfHealthData = (period: PeriodType) => {
             .slice(-20);
 
         const pulsePoints = pulseHistory.length > 0
-            ? pulseHistory.map(h => h.closeness || h.temperature || null)
-            : Array(15).fill(null);
+            ? pulseHistory.map(h => ({
+                value: h.closeness || h.temperature || null,
+                isSelfTime: h.isSelfTime || false
+            }))
+            : Array(15).fill({ value: null, isSelfTime: false });
 
         return {
             pulseStats: {
@@ -151,8 +195,15 @@ export const useSelfHealthData = (period: PeriodType) => {
                 avgOxytocin: allHistory.length > 0 ? Math.round(totalOxytocinSum / allHistory.length) : 50,
                 avgCortisol: allHistory.length > 0 ? Math.round(totalCortisolSum / allHistory.length) : 20,
             },
+            selfTimeStats: {
+                totalRestoreMinutes,
+                avgRestorationDelta,
+                bestCategory,
+                selfTimeCount
+            },
             stats: {
-                interactionCounts: normalizedCounts,
+                interactionCounts: normalizedInteractionCounts,
+                selfTimeCounts: normalizedSelfTimeCounts,
                 rawCounts: interactionCounts,
                 avgTemps,
                 labels
@@ -162,7 +213,7 @@ export const useSelfHealthData = (period: PeriodType) => {
                 end: now
             }
         };
-    }, [relationships, period]);
+    }, [relationships, selfTimeEntries, period]);
 
     return {
         balanceData,

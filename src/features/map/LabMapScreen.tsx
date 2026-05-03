@@ -11,7 +11,6 @@ const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.55;
 
 type LabViewMode = 'FOCUS' | 'BALANCE' | 'DYNAMICS';
-type SimEffect = 'NONE' | 'DRAIN' | 'BOOST' | 'RESTRUCTURE' | 'PURIFY';
 
 const ZONE_COLORS: Record<number, string> = {
     1: '#FFB74D',
@@ -26,34 +25,6 @@ const ZONE_CAPACITY = { 1: 5, 2: 15, 3: 50, 4: 100, 5: 150 };
 export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
     const [viewMode, setViewMode] = useState<LabViewMode>('FOCUS');
     const relationships = useRelationshipStore(state => state.relationships);
-    
-    // 🧪 Simulation State
-    const [simEffect, setSimEffect] = useState<SimEffect>('NONE');
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
-    const toastAnim = useRef(new Animated.Value(-100)).current;
-
-    const triggerSimulation = (effect: SimEffect, message: string) => {
-        setSimEffect(effect);
-        setToastMessage(message);
-        
-        Animated.spring(toastAnim, {
-            toValue: 60,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 7
-        }).start();
-
-        setTimeout(() => {
-            Animated.timing(toastAnim, {
-                toValue: -150,
-                duration: 400,
-                useNativeDriver: true
-            }).start(() => {
-                setToastMessage(null);
-                setSimEffect('NONE');
-            });
-        }, 4000);
-    };
 
     const labAnalysis = useMemo(() => {
         const zoneCounts = [0, 0, 0, 0, 0, 0];
@@ -76,12 +47,6 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
             }
         });
 
-        // 🧪 Override for Restructure Simulation
-        if (simEffect === 'RESTRUCTURE') {
-            overloadedZones = [];
-            primaryIssueZone = null;
-        }
-
         const vampires = relationships.filter(r => (r.rqsResult?.grade === 'C'));
         const antidotes = relationships.filter(r => (r.rqsResult?.grade === 'S'));
 
@@ -90,10 +55,6 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
         energy -= vampires.length * 10;
         energy += antidotes.length * 5;
         
-        // 🧪 Override for Energy Simulations
-        if (simEffect === 'DRAIN') energy = Math.max(5, energy - 30);
-        if (simEffect === 'BOOST') energy = Math.min(100, energy + 20);
-
         return {
             condition: Math.max(5, Math.min(100, energy)),
             overloadedZones,
@@ -101,7 +62,7 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
             topVampire: vampires.length > 0 ? vampires[0] : null,
             zoneCounts
         };
-    }, [relationships, simEffect]);
+    }, [relationships]);
 
     const focusNodes = useMemo(() => {
         return [...relationships]
@@ -114,36 +75,6 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
     }, [relationships]);
 
     // ==========================================
-    // SIMULATION PANEL (TEST UI)
-    // ==========================================
-    const renderSimulationPanel = () => (
-        <View style={styles.simPanel}>
-            <Text style={styles.simTitle}>🧪 메타인지 피드백 테스트</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
-                <TouchableOpacity style={styles.simBtn} onPress={() => triggerSimulation('DRAIN', '관측 데이터가 궤도에 동기화되었습니다. 태양(자아)의 에너지가 18% 감소한 상태로 맵에 반영되었습니다.')}>
-                    <Text style={styles.simBtnText}>상호작용(감소) ⬇️</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.simBtn} onPress={() => triggerSimulation('RESTRUCTURE', '궤도 재배치가 완료되었습니다. Zone 2의 과밀 상태가 해소되어 구조적 여유가 확보되었습니다.')}>
-                    <Text style={styles.simBtnText}>물리적 궤도 이동 💫</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.simBtn} onPress={() => triggerSimulation('PURIFY', '외부 중력장의 간섭을 차단했습니다. 시스템이 자아(Self)에 온전히 집중하는 정화 모드로 전환됩니다.')}>
-                    <Text style={styles.simBtnText}>자아 돌봄(휴식) 🧘</Text>
-                </TouchableOpacity>
-            </ScrollView>
-        </View>
-    );
-
-    const renderToast = () => {
-        if (!toastMessage) return null;
-        return (
-            <Animated.View style={[styles.toastContainer, { transform: [{ translateY: toastAnim }] }]}>
-                <Info size={16} color="#4A5D4E" />
-                <Text style={styles.toastText}>{toastMessage}</Text>
-            </Animated.View>
-        );
-    };
-
-    // ==========================================
     // VIEW 1: FOCUS (Gravity Lines)
     // ==========================================
     const renderFocusView = () => {
@@ -151,10 +82,10 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
         const centerY = MAP_HEIGHT / 2;
 
         return (
-            <View style={[styles.mapArea, simEffect === 'PURIFY' && { backgroundColor: 'rgba(250,248,244, 0.8)' }]}>
+            <View style={styles.mapArea}>
                 {/* SVG lines drawn explicitly behind nodes */}
                 <Svg 
-                    style={[StyleSheet.absoluteFill, { opacity: simEffect === 'PURIFY' ? 0.1 : 1 }]}
+                    style={StyleSheet.absoluteFill}
                     width={width}
                     height={MAP_HEIGHT}
                 >
@@ -181,11 +112,9 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
                         const endX = centerX + radius * Math.cos(angle);
                         const endY = centerY + radius * Math.sin(angle);
                         
-                        // 🧪 Simulation Effects on Lines
-                        const isDraining = simEffect === 'DRAIN' && node.rqsResult?.grade === 'C';
-                        const strokeColor = isDraining ? 'rgba(217, 139, 115, 0.8)' : 'rgba(74, 93, 78, 0.3)';
-                        const strokeWidth = isDraining ? "3" : "2";
-                        const dash = isDraining ? "none" : "4 4";
+                        const strokeColor = 'rgba(74, 93, 78, 0.3)';
+                        const strokeWidth = "2";
+                        const dash = "4 4";
 
                         return (
                             <Line 
@@ -207,9 +136,7 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
                 {focusNodes.map((node, idx) => {
                     const angle = (idx * 360 / focusNodes.length) * Math.PI / 180;
                     
-                    // 🧪 Simulation Turbulence
-                    const turbulence = simEffect === 'DRAIN' ? (Math.sin(idx * 5) * 6) : 0;
-                    const radius = (node.zone || 3) * 45 + 30 + turbulence;
+                    const radius = (node.zone || 3) * 45 + 30;
                     
                     const x = centerX + radius * Math.cos(angle) - 22;
                     const y = centerY + radius * Math.sin(angle) - 22;
@@ -219,7 +146,7 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
                     const isAnchor = node.rqsResult?.grade === 'S';
 
                     return (
-                        <View key={node.id} style={[styles.nodeContainer, { left: x, top: y, opacity: simEffect === 'PURIFY' ? 0.2 : 1 }]}>
+                        <View key={node.id} style={[styles.nodeContainer, { left: x, top: y }]}>
                             <View style={[styles.avatarFrame, { borderColor: zoneColor, borderWidth: 2.5 }]}>
                                 <Image source={{ uri: node.image || 'https://via.placeholder.com/100' }} style={styles.nodeImg} />
                                 {isVampire && <View style={styles.vampireOverlay} />}
@@ -239,9 +166,109 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
         );
     };
 
+    // ==========================================
+    // VIEW 2: BALANCE (Matrix View)
+    // ==========================================
+    const renderBalanceView = () => {
+        return (
+            <View style={styles.mapArea}>
+               <View style={{ padding: 20, paddingBottom: 0 }}>
+                   <Text style={{ fontSize: 16, fontWeight: '800', color: '#4A5D4E' }}>정서 밸런스 매트릭스</Text>
+                   <Text style={{ fontSize: 12, color: '#8C968D', marginTop: 4 }}>X축: 만족도 | Y축: 안정감(소모도 역순)</Text>
+               </View>
+               <View style={{ flex: 1, margin: 20, borderWidth: 1, borderColor: '#EBE5D9', borderRadius: 16, backgroundColor: 'white', overflow: 'hidden' }}>
+                   {/* 십자선 배경 */}
+                   <View style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: '#EBE5D9' }} />
+                   <View style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, backgroundColor: '#EBE5D9' }} />
+                   
+                   {relationships.map(node => {
+                       const lastHistory = (node.history || []).slice(-1)[0];
+                       const sat = lastHistory?.satisfaction || node.temperature || 50;
+                       const drain = lastHistory?.energyDrain || 50;
+                       
+                       const x = (sat / 100) * (width - 80);
+                       const y = ((100 - drain) / 100) * (MAP_HEIGHT - 120);
+                       
+                       const isVampire = node.rqsResult?.grade === 'C';
+                       const zoneColor = ZONE_COLORS[node.zone || 3] || '#4A5D4E';
+
+                       return (
+                           <View key={`bal-${node.id}`} style={[styles.nodeContainer, { left: x - 16, top: y - 16, position: 'absolute' }]}>
+                               <View style={[styles.avatarFrame, { borderColor: zoneColor, borderWidth: 2, width: 32, height: 32, padding: 1 }]}>
+                                   <Image source={{ uri: node.image || 'https://via.placeholder.com/100' }} style={{ width: 26, height: 26, borderRadius: 13 }} />
+                                   {isVampire && <View style={[styles.vampireOverlay, { width: 32, height: 32, borderRadius: 16 }]} />}
+                               </View>
+                               <Text style={{ fontSize: 8, fontWeight: '700', color: '#4A5D4E', marginTop: 2, backgroundColor: 'rgba(255,255,255,0.8)', paddingHorizontal: 4, borderRadius: 4 }}>{node.name}</Text>
+                           </View>
+                       );
+                   })}
+               </View>
+            </View>
+        );
+    };
+
+    const renderDynamicsView = () => {
+        return (
+            <View style={styles.mapArea}>
+                <View style={{ padding: 20, paddingBottom: 0 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#4A5D4E' }}>궤도 역학 분석 (용량 점검)</Text>
+                    <Text style={{ fontSize: 12, color: '#8C968D', marginTop: 4 }}>점선(권장 인원)을 기준으로 현재 인맥 밀도를 관망합니다.</Text>
+                </View>
+
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-evenly', paddingHorizontal: 10, paddingBottom: 40 }}>
+                    {[1, 2, 3, 4, 5].map(z => {
+                        const count = labAnalysis.zoneCounts[z];
+                        const cap = ZONE_CAPACITY[z as keyof typeof ZONE_CAPACITY];
+                        const isOver = count > cap;
+                        
+                        // 권장 인원을 100px 높이로 기준 잡기
+                        const normalHeight = Math.min(100, (count / cap) * 100);
+                        // 초과분은 최대 60px까지만 렌더링 (총 160px)
+                        const overHeight = isOver ? Math.min(60, ((count - cap) / cap) * 100) : 0;
+
+                        return (
+                            <View key={`dyn-${z}`} style={{ alignItems: 'center', width: 50 }}>
+                                {/* 1. 현재 수치 표시 */}
+                                <View style={{ marginBottom: 12, alignItems: 'center' }}>
+                                    {isOver && <AlertCircle size={14} color="#D98B73" style={{ marginBottom: 2 }} />}
+                                    <Text style={{ fontSize: 14, fontWeight: '900', color: isOver ? '#D98B73' : '#4A5D4E' }}>
+                                        {count}<Text style={{ fontSize: 10, fontWeight: '600' }}> 명</Text>
+                                    </Text>
+                                </View>
+
+                                {/* 2. 세로 막대 및 점선 기준선 */}
+                                <View style={{ height: 160, width: 32, justifyContent: 'flex-end', alignItems: 'center' }}>
+                                    
+                                    {/* 점선(권장선) 가이드 */}
+                                    <View style={{ position: 'absolute', bottom: 100, width: 50, borderBottomWidth: 1, borderBottomColor: '#A0AAB2', borderStyle: 'dashed', zIndex: 10 }} />
+                                    <Text style={{ position: 'absolute', bottom: 104, fontSize: 9, color: '#A0AAB2', fontWeight: '700', backgroundColor: '#FAF8F4', paddingHorizontal: 4, zIndex: 11 }}>
+                                        권장 {cap}
+                                    </Text>
+
+                                    {/* 초과분 막대 (붉은색 계열) */}
+                                    {isOver && (
+                                        <View style={{ height: overHeight, width: '100%', backgroundColor: '#D98B73', borderTopLeftRadius: 6, borderTopRightRadius: 6, zIndex: 6 }} />
+                                    )}
+                                    
+                                    {/* 정상 범위 막대 (Zone 고유 컬러) */}
+                                    <View style={{ height: normalHeight, width: '100%', backgroundColor: ZONE_COLORS[z], borderBottomLeftRadius: 6, borderBottomRightRadius: 6, borderTopLeftRadius: isOver ? 0 : 6, borderTopRightRadius: isOver ? 0 : 6, zIndex: 5 }} />
+                                </View>
+
+                                {/* 3. 하단 라벨 */}
+                                <View style={{ marginTop: 16, alignItems: 'center' }}>
+                                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: ZONE_COLORS[z], marginBottom: 6, borderWidth: 2, borderColor: 'white', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 }} />
+                                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#4A5D4E' }}>Zone {z}</Text>
+                                </View>
+                            </View>
+                        );
+                    })}
+                </View>
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
-            {renderToast()}
             
             <View style={styles.header}>
                 <View style={styles.tabIndicator}>
@@ -255,11 +282,10 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
             
             <View style={{ height: MAP_HEIGHT }}>
                 {viewMode === 'FOCUS' && renderFocusView()}
-                {/* Fallback for others in this test demo */}
-                {viewMode !== 'FOCUS' && <View style={{flex:1, justifyContent:'center', alignItems:'center'}}><Text>테스트를 위해 FOCUS 뷰로 전환하세요.</Text></View>}
+                {viewMode === 'BALANCE' && renderBalanceView()}
+                {viewMode === 'DYNAMICS' && renderDynamicsView()}
             </View>
 
-            {renderSimulationPanel()}
         </View>
     );
 };
@@ -282,14 +308,4 @@ const styles = StyleSheet.create({
     badgeContainer: { position: 'absolute', bottom: -2, right: -2, zIndex: 5 },
     iconBadge: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'white' },
     nodeLabel: { fontSize: 9, fontWeight: '900', marginTop: 4, backgroundColor: 'rgba(255,255,255,0.85)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
-    
-    // Toast
-    toastContainer: { position: 'absolute', top: 0, left: 20, right: 20, backgroundColor: 'rgba(255,255,255,0.95)', padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 12, shadowColor: '#000', shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10, zIndex: 999 },
-    toastText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#4A5D4E', lineHeight: 18 },
-
-    // Simulation Panel
-    simPanel: { position: 'absolute', bottom: 110, left: 0, right: 0, backgroundColor: 'white', paddingVertical: 16, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOffset: {width: 0, height: -10}, shadowOpacity: 0.05, shadowRadius: 20, elevation: 20 },
-    simTitle: { fontSize: 12, fontWeight: '900', color: '#D98B73', marginBottom: 12, paddingHorizontal: 20 },
-    simBtn: { backgroundColor: '#F5F5F5', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
-    simBtnText: { fontSize: 12, fontWeight: '700', color: '#4A5D4E' },
 });

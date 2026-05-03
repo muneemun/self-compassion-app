@@ -32,7 +32,7 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
     const textMuted = colors.gray[500];
     const [period, setPeriod] = useState<'주간' | '월간' | '연간'>('주간');
     const [infoModal, setInfoModal] = useState<{ visible: boolean; type: 'balance' | 'energy' | 'pulse' | 'oxytocin' | 'cortisol' | null }>({ visible: false, type: null });
-    const { balanceData, pulseStats, pulsePoints, energyTotal, stats, dateRange } = useSelfHealthData(period);
+    const { balanceData, pulseStats, pulsePoints, energyTotal, stats, dateRange, selfTimeStats } = useSelfHealthData(period);
     const relationships = useRelationshipStore(state => state.relationships);
     const selfTimeEntries = useSelfTimeStore(state => state.entries);
     const { setRelationshipLogModalOpen, setSelfTimeModalOpen } = useAppStore();
@@ -179,8 +179,41 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
         );
     };
 
+    const renderSelfTimeCard = () => {
+        if (!selfTimeStats || selfTimeStats.selfTimeCount === 0) return null;
+
+        return (
+            <View style={[styles.card, { backgroundColor: 'rgba(74,140,140,0.05)', borderColor: 'rgba(74,140,140,0.2)', borderWidth: 1 }]}>
+                <View style={[styles.cardHeader, { marginBottom: 12 }]}>
+                    <View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={[styles.cardTitle, { color: '#4A8C8C' }]}>나와의 시간 요약</Text>
+                            <Leaf size={16} color="#4A8C8C" opacity={0.7} />
+                        </View>
+                        <Text style={styles.cardSubtitle}>이번 {period} 충전 리포트</Text>
+                    </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+                    <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.6, marginBottom: 4 }}>총 충전 시간</Text>
+                        <Text style={{ fontSize: 20, fontWeight: '700', color: '#4A8C8C' }}>{selfTimeStats.totalRestoreMinutes}<Text style={{ fontSize: 12 }}>분</Text></Text>
+                    </View>
+                    <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.6, marginBottom: 4 }}>베스트 휴식</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary, marginTop: 4 }}>{selfTimeStats.bestCategory}</Text>
+                    </View>
+                    <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.6, marginBottom: 4 }}>회복 델타</Text>
+                        <Text style={{ fontSize: 20, fontWeight: '700', color: '#7BA67E' }}>+{selfTimeStats.avgRestorationDelta}</Text>
+                    </View>
+                </View>
+            </View>
+        );
+    };
+
     const renderEnergyChart = () => {
-        const { interactionCounts, avgTemps, labels } = stats;
+        const { interactionCounts, selfTimeCounts, avgTemps, labels } = stats;
         const CHART_HEIGHT = 160;
 
         // Path calculation for Temperature Line - filter out nulls to prevent invalid paths
@@ -213,7 +246,11 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                 <View style={styles.chartLegendRow}>
                     <View style={styles.legendGroup}>
                         <View style={[styles.legendBarIndicator, { backgroundColor: THEME.secondary + '40' }]} />
-                        <Text style={styles.legendLabel}>관계 활동량 (교류 횟수)</Text>
+                        <Text style={styles.legendLabel}>교류 소모량</Text>
+                    </View>
+                    <View style={styles.legendGroup}>
+                        <View style={[styles.legendBarIndicator, { backgroundColor: '#4A8C8C' + '50' }]} />
+                        <Text style={styles.legendLabel}>자기 회복량</Text>
                     </View>
                     <View style={styles.legendGroup}>
                         <View style={[styles.legendLineIndicator, { borderColor: THEME.accent }]} />
@@ -231,7 +268,10 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                     <View style={styles.barsLayer}>
                         {interactionCounts.map((val: number, i: number) => (
                             <View key={i} style={styles.barColumnWrapper}>
-                                <View style={[styles.interactionBar, { height: `${val}%`, backgroundColor: THEME.secondary + '30' }]} />
+                                <View style={[styles.interactionBar, { height: `${val}%`, backgroundColor: THEME.secondary + '30', position: 'absolute', bottom: 0 }]} />
+                                {selfTimeCounts && selfTimeCounts[i] > 0 && (
+                                    <View style={[styles.interactionBar, { height: `${selfTimeCounts[i]}%`, backgroundColor: '#4A8C8C' + '80', position: 'absolute', bottom: 0 }]} />
+                                )}
                             </View>
                         ))}
                     </View>
@@ -521,16 +561,18 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
         const CHART_WIDTH = 300;
         const CHART_HEIGHT = 120;
 
-        const points = pulsePoints.map((temp, i) => {
+        const points = pulsePoints.map((pt, i) => {
+            const temp = pt.value;
             const denominator = pulsePoints.length > 1 ? pulsePoints.length - 1 : 1;
             const x = (i / denominator) * CHART_WIDTH;
-            const safeTemp = isNaN(temp) ? 50 : temp;
+            const safeTemp = (temp === null || isNaN(temp)) ? 50 : temp;
             const y = 100 - (safeTemp * 0.8);
-            return `${x},${y}`;
+            return { x, y, isSelfTime: pt.isSelfTime };
         });
 
-        const linePath = `M ${points.join(' L ')}`;
-        const fillPath = `M 0,${CHART_HEIGHT} L ${points.join(' L ')} L ${CHART_WIDTH},${CHART_HEIGHT} Z`;
+        const linePoints = points.map(p => `${p.x},${p.y}`);
+        const linePath = `M ${linePoints.join(' L ')}`;
+        const fillPath = `M 0,${CHART_HEIGHT} L ${linePoints.join(' L ')} L ${CHART_WIDTH},${CHART_HEIGHT} Z`;
 
         return (
             <View style={styles.card}>
@@ -559,6 +601,12 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                         </Defs>
                         <Path d={fillPath} fill="url(#gradPulse)" />
                         <Path d={linePath} stroke={THEME.primary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                        
+                        {/* 🌿 나와의 시간 마커 (Self-Time Overlays) */}
+                        {points.filter(p => p.isSelfTime).map((p, idx) => (
+                            <Circle key={idx} cx={p.x} cy={p.y} r="5" fill="#4A8C8C" stroke="white" strokeWidth="2" />
+                        ))}
+                        
                         <Line x1="0" y1="60" x2={CHART_WIDTH} y2="60" stroke={colors.primary} strokeWidth="1" strokeOpacity="0.1" strokeDasharray="4 4" />
                     </Svg>
                 </View>
@@ -572,6 +620,10 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                         <View style={styles.legendItem}>
                             <View style={[styles.legendDot, { backgroundColor: THEME.secondary }]} />
                             <Text style={styles.legendText}>소모적 ({pulseStats.challenging})</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendDot, { backgroundColor: '#4A8C8C' }]} />
+                            <Text style={styles.legendText}>나의시간</Text>
                         </View>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -684,6 +736,7 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
             <HubLayout header={renderHeader()} scrollable>
                 <View style={styles.scrollContent}>
                     {renderPeriodToggle()}
+                    {renderSelfTimeCard()}
                     {renderRadarChart()}
                     {renderBiomarkerStats()}
                     {renderEnergyChart()}
