@@ -36,7 +36,8 @@ import ReAnimated, {
     withRepeat,
     Easing,
     SharedValue,
-    withSequence
+    withSequence,
+    withDelay
 } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
@@ -853,7 +854,9 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
     
     // Feedback animations
     const feedbackOpacity = useSharedValue(0);
-    const rippleScale = useSharedValue(0);
+    const rippleScale1 = useSharedValue(0);
+    const rippleScale2 = useSharedValue(0);
+    const rippleScale3 = useSharedValue(0);
     const turbulenceValue = useSharedValue(0);
     const rippleOpacity = useSharedValue(0);
     
@@ -862,12 +865,17 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         if (interactionFeedback.isActive || cognitiveFeedback.message) {
             feedbackOpacity.value = withTiming(1, { duration: 500 });
             
-            // If it's self-care (Case 6)
-            if (cognitiveFeedback.type === 'SELF_CARE') {
-                rippleScale.value = 0;
+            // If it's self-care or interaction
+            if (cognitiveFeedback.type === 'SELF_CARE' || cognitiveFeedback.type === 'INTERACTION') {
+                rippleScale1.value = 0;
+                rippleScale2.value = 0;
+                rippleScale3.value = 0;
                 rippleOpacity.value = 0.8;
-                rippleScale.value = withTiming(3, { duration: 2500, easing: Easing.out(Easing.quad) });
-                rippleOpacity.value = withTiming(0, { duration: 2500 });
+                
+                rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
+                rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+                rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+                rippleOpacity.value = withTiming(0, { duration: 3000 });
             }
             
             // Auto-hide after some time
@@ -905,9 +913,17 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         opacity: feedbackOpacity.value * 0.6,
     }));
 
-    const rippleStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: rippleScale.value }],
+    const rippleStyle1 = useAnimatedStyle(() => ({
+        transform: [{ scale: rippleScale1.value }],
         opacity: rippleOpacity.value,
+    }));
+    const rippleStyle2 = useAnimatedStyle(() => ({
+        transform: [{ scale: rippleScale2.value }],
+        opacity: rippleOpacity.value * 0.7,
+    }));
+    const rippleStyle3 = useAnimatedStyle(() => ({
+        transform: [{ scale: rippleScale3.value }],
+        opacity: rippleOpacity.value * 0.4,
     }));
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
     
@@ -1761,22 +1777,26 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                 ]} 
                             />
 
-                            {/* [Feedback Layer] Ripple Effect for Self-Care */}
-                            <ReAnimated.View 
-                                pointerEvents="none"
-                                style={[
-                                    {
-                                        position: 'absolute',
-                                        width: 200,
-                                        height: 200,
-                                        borderRadius: 100,
-                                        borderWidth: 2,
-                                        borderColor: '#FF9800',
-                                        zIndex: 101
-                                    },
-                                    rippleStyle
-                                ]} 
-                            />
+                            {/* [Feedback Layer] Ripple Effect (Wave) */}
+                            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
+                                {[rippleStyle1, rippleStyle2, rippleStyle3].map((style, idx) => (
+                                    <ReAnimated.View 
+                                        key={idx}
+                                        style={[
+                                            {
+                                                position: 'absolute',
+                                                width: 240,
+                                                height: 240,
+                                                borderRadius: 120,
+                                                borderWidth: 2,
+                                                borderColor: cognitiveFeedback.type === 'INTERACTION' ? '#4FC3F7' : '#FF9800',
+                                                zIndex: 101 + idx
+                                            },
+                                            style
+                                        ]} 
+                                    />
+                                ))}
+                            </View>
 
                             {/* [Feedback Layer] Gravity Lines for Interaction */}
                             {interactionFeedback.isActive && interactionFeedback.targetId && (() => {
@@ -1807,8 +1827,8 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                         </ReAnimated.View>
                     </View>
 
-                    {/* System Feedback Message Overlay */}
-                    {cognitiveFeedback.type === 'SELF_CARE' ? (
+                    {/* System Feedback Message Overlay (Used for both SELF_CARE and INTERACTION) */}
+                    {(cognitiveFeedback.type === 'SELF_CARE' || cognitiveFeedback.type === 'INTERACTION') ? (
                         <ReAnimated.View 
                             style={[
                                 styles.feedbackMessageOverlay,
@@ -1817,19 +1837,21 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                             pointerEvents="none"
                         >
                             <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-                            <Text style={styles.feedbackMessageText}>{cognitiveFeedback.message}</Text>
+                            <View style={[styles.feedbackMessageContent, { borderColor: cognitiveFeedback.type === 'INTERACTION' ? '#4FC3F780' : '#FF980080' }]}>
+                                <Text style={[styles.feedbackMessageText, { color: cognitiveFeedback.type === 'INTERACTION' ? '#0288D1' : '#E65100' }]}>
+                                    {cognitiveFeedback.message || (interactionFeedback.isActive ? `관측 데이터 동기화 완료. 에너지 ${interactionFeedback.closenessDelta > 0 ? '+' : ''}${interactionFeedback.closenessDelta || 0}% 변동.` : '')}
+                                </Text>
+                            </View>
                         </ReAnimated.View>
                     ) : (
                         <SystemStabilizationModal 
-                            visible={!!cognitiveFeedback.message || interactionFeedback.isActive}
-                            message={cognitiveFeedback.message || (interactionFeedback.isActive ? `관측 데이터가 궤도에 동기화되었습니다. 태양(자아)의 에너지가 ${interactionFeedback.closenessDelta > 0 ? '+' : ''}${interactionFeedback.closenessDelta || 0}% 변동했습니다.` : '')}
+                            visible={!!cognitiveFeedback.message}
+                            message={cognitiveFeedback.message}
                             onClose={() => {
                                 setCognitiveFeedback({ message: null, type: null });
-                                setInteractionFeedback({ ...interactionFeedback, isActive: false });
                             }}
                             onComplete={() => {
                                 setCognitiveFeedback({ message: null, type: null });
-                                setInteractionFeedback({ ...interactionFeedback, isActive: false });
                             }}
                         />
                     )}

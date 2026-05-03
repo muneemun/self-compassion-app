@@ -5,6 +5,27 @@
 
 ---
 
+### [2026-05-03] v1.0.1 [개발자] - 시스템 안정성 확보 및 크래시(하얀 화면) 디버깅
+- **[BugFix] 날짜 파싱 오류 해결:** `SelfTimeCheckInModal` 및 `SelfHealthReport`에서 잘못된 형식의 날짜(Invalid Date)가 렌더링을 중단시키는 현상을 방지하기 위해 유효성 검사 및 `try-catch` 방어 코드 추가.
+- **[BugFix] 파동 애니메이션 참조 에러 해결:** `MainOrbitMap`에서 `withDelay` 함수 import가 누락되어 피드백 발생 시 앱이 중단(ReferenceError)되는 치명적 런타임 크래시 완전 해결.
+- **[Refactor] 상태 업데이트 안정화:** 스토어(`useSelfTimeStore`)에서 `createdAt` 속성을 선택적으로 초기화 및 수정할 수 있게 하여 저장 직후의 상태 충돌(Race Condition)을 원천 차단.
+
+---
+
+### [2026-05-01 ~ 05-02] v1.0.1 [개발자] - 궤도 피드백 개편 및 히스토리 통합 뷰 구현
+- **[Feature] 전체 활동 히스토리 통합:** `SelfHealthReport` 하단 타임라인에 인맥 교류와 '나와의 시간' 기록(`useSelfTimeStore`)을 시간순으로 통합하여 렌더링.
+- **[Feature] 과거 기록 소급 편집 기능:** 타임라인에서 개별 항목 터치 시 속성에 맞는 상세 모달(`RelationshipLogModal`, `SelfTimeCheckInModal`)을 띄워 날짜, 활동 내용, 에너지를 직접 수정할 수 있도록 `updateEntry` 로직 연동.
+- **[UI/UX] 궤도 파동(Ripple Wave) 피드백 도입:** 불편을 주던 무거운 주황색 시스템 모달을 제거하고, 궤도 중앙에서 3중 푸른색 파동이 시간차를 두고 퍼져나가는 고대비 메타 인지 피드백 효과 연출.
+
+---
+
+### [2026-04-25 ~ 04-26] v1.0.1 [개발자] - 정서적 체크인 시스템 고도화 및 기능 복구
+- **[Feature] 정성적 체크인 지표 확장:** 단순 교류 여부를 넘어 만족도(정서적 충족감), 신체적 에너지 소모량 등을 정성적으로 추적할 수 있도록 체크인 입력 지표 모델 확장.
+- **[UI/UX] 궤도 시각적 피드백 복원:** 상호작용 후 주변이 어두워지는 메타 인지 효과(Focus Dimming) 및 타겟 노드 간 중력선(Gravity Lines) 복원. 신규 인맥 추가 시 화면 밖에서 진입하는 애니메이션(Fly-in) 적용.
+- **[Feature] 인맥 상세 타임라인 CRUD 복원:** 인맥별 상세 뷰(Relationship Detail)에서 개별 교류 기록을 조회하고 수정/삭제할 수 있는 전체 플로우 원상 복구.
+
+---
+
 ### [2026-04-24] v1.0 [기획자/아키텍트] - 프로젝트 아키텍처 및 단계별 권한 정책 수립
 - **[Docs] 무료 단계별 권한(Freemium) 정책 반영:** 앱 업데이트(v1.0 -> v1.1) 및 Basic/Silver/Gold 등급에 따라 기능을 단계적으로 개방하기 위한 `feature-access-policy.md` 문서화 완료.
 - **[Docs] DEVELOPMENT_GUIDE.md 업데이트:** 외부 개발자 인수인계 및 협업을 위한 코딩 규칙(Naming Convention), 기능 모듈화 분리 정책, SaaS 전환을 고려한 로컬 데이터 정책 작성.

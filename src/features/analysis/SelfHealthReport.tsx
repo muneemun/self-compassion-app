@@ -8,6 +8,8 @@ import { useColors } from '../../theme/ColorLockContext';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { AppHeader } from '../../components/AppHeader';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { useSelfTimeStore } from '../../store/useSelfTimeStore';
+import { useAppStore } from '../../store/useAppStore';
 
 const { width } = Dimensions.get('window');
 
@@ -25,13 +27,15 @@ const THEME = {
     cortisol: '#8C968D',
 };
 
-export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
+export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () => void; onSelectRelationship?: (id: string) => void }) => {
     const colors = useColors();
     const textMuted = colors.gray[500];
     const [period, setPeriod] = useState<'주간' | '월간' | '연간'>('주간');
     const [infoModal, setInfoModal] = useState<{ visible: boolean; type: 'balance' | 'energy' | 'pulse' | 'oxytocin' | 'cortisol' | null }>({ visible: false, type: null });
     const { balanceData, pulseStats, pulsePoints, energyTotal, stats, dateRange } = useSelfHealthData(period);
     const relationships = useRelationshipStore(state => state.relationships);
+    const selfTimeEntries = useSelfTimeStore(state => state.entries);
+    const { setRelationshipLogModalOpen, setSelfTimeModalOpen } = useAppStore();
 
     // 🔙 Navigation Handler
     const handleBack = () => {
@@ -404,16 +408,41 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
     };
 
     const renderCheckInHistory = () => {
-        // Aggregate all history across all relationships
-        const allHistory = relationships.flatMap(node =>
+        // 1. 인맥 교류 기록 (RelationshipStore.history)
+        const interactionHistory = relationships.flatMap(node =>
             (node.history || []).map(h => ({
-                ...h,
+                id: h.id,
+                type: 'interaction' as const,
+                nodeId: node.id,
                 nodeName: node.name,
                 nodeImage: node.image,
-                nodeId: node.id
+                date: h.date,
+                title: h.title || h.event || '교류',       // ✅ title 필드 우선 사용
+                satisfaction: h.satisfaction,
+                energyDrain: h.energyDrain,
+                temperature: h.temperature ?? node.temperature,
             }))
-        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 15);
+        );
+
+        // 2. 나와의 시간 기록 (SelfTimeStore.entries)
+        const selfTimeHistory = (selfTimeEntries || []).filter(e => !e.isDeleted).map(e => ({
+            id: e.id,
+            type: 'selfTime' as const,
+            nodeId: null as null,
+            nodeName: '나와의 시간',
+            nodeImage: null as null,
+            date: e.createdAt.split('T')[0],
+            title: e.activityName || '자기돌봄',
+            satisfaction: e.emotionalSatisfaction,
+            energyDrain: e.physicalEnergy,
+            temperature: e.emotionalSatisfaction,
+        }));
+
+        // 3. 합쳐서 날짜순 정렬, 최신 15개
+        const allHistory = [...interactionHistory, ...selfTimeHistory]
+            .filter(h => h.date && !isNaN(new Date(h.date).getTime())) // ✅ 유효한 날짜만 필터링
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 15);
 
         if (allHistory.length === 0) return null;
 
@@ -422,49 +451,65 @@ export const SelfHealthReport = ({ onBack }: { onBack: () => void }) => {
                 <View style={styles.cardHeader}>
                     <View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={styles.cardTitle}>전체 체크인 히스토리</Text>
+                            <Text style={styles.cardTitle}>전체 활동 히스토리</Text>
                         </View>
-                        <Text style={styles.cardSubtitle}>최근 교류 기록</Text>
+                        <Text style={styles.cardSubtitle}>인맥 교류 + 나와의 시간 통합 기록</Text>
                     </View>
                 </View>
                 {allHistory.map((h, i) => {
                     const dateStr = new Date(h.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                    const isSelfTime = h.type === 'selfTime';
+                    const badgeColor = isSelfTime ? '#4A8C8C' : ((h.temperature || 50) >= 60 ? colors.accent : '#8C968D');
+                    const badgeLabel = isSelfTime ? '나만의시간' : ((h.temperature || 50) >= 60 ? '긍정' : '소모');
+
                     return (
                         <TouchableOpacity
-                            key={`${h.nodeId}-${i}`}
-                            style={styles.historyItem}
-                            onPress={() => Alert.alert('기록 상세', `${h.nodeName}님과의 기록: ${h.topic || '일상적인 교류'}`)}
+                            key={`${h.type}-${h.id}-${i}`}
+                            style={[styles.historyItem, { marginBottom: 16 }]}
+                            onPress={() => {
+                                if (isSelfTime) {
+                                    // 나와의 시간 편집 모달 열기
+                                    useAppStore.setState({ editingLogId: h.id, isSelfTimeModalOpen: true });
+                                } else if (h.nodeId) {
+                                    // 인맥 교류 편집 모달 열기
+                                    setRelationshipLogModalOpen(true, h.nodeId, h.id);
+                                }
+                            }}
                         >
-                            <View style={styles.historyDateBox}>
-                                <Text style={styles.historyDateText}>{dateStr}</Text>
+                            <View style={[styles.historyDateBox, isSelfTime && { backgroundColor: 'rgba(74,140,140,0.12)' }]}>
+                                <Text style={[styles.historyDateText, isSelfTime && { color: '#4A8C8C' }]}>{dateStr}</Text>
                             </View>
                             <View style={styles.historyContent}>
                                 <View style={styles.historyMainRow}>
-                                    <Text style={styles.historyNodeName}>{h.nodeName}</Text>
-                                    <View style={[styles.statusBadge, { backgroundColor: (h.temperature || 50) >= 60 ? colors.accent + '15' : '#8C968D15' }]}>
-                                        <Text style={[styles.statusBadgeText, { color: (h.temperature || 50) >= 60 ? colors.accent : '#8C968D' }]}>
-                                            {(h.temperature || 50) >= 60 ? '긍정' : '소모'}
+                                    <Text style={styles.historyNodeName}>
+                                        {isSelfTime ? '🌿 나' : h.nodeName}
+                                    </Text>
+                                    <View style={[styles.statusBadge, { backgroundColor: badgeColor + '20' }]}>
+                                        <Text style={[styles.statusBadgeText, { color: badgeColor }]}>
+                                            {badgeLabel}
                                         </Text>
                                     </View>
                                 </View>
-                                <Text style={styles.historyTopic} numberOfLines={1}>{h.topic || '일상적인 교류'}</Text>
+                                {/* ✅ title 필드로 실제 제목 표시 */}
+                                <Text style={styles.historyTopic} numberOfLines={1}>{h.title}</Text>
                             </View>
                             <View style={styles.historyMetrics}>
                                 <View style={styles.miniMetric}>
                                     <Heart size={10} color={colors.accent} fill={colors.accent} />
-                                    <Text style={styles.miniMetricValue}>{h.satisfaction || h.temperature || 50}</Text>
+                                    <Text style={styles.miniMetricValue}>{h.satisfaction || 50}</Text>
                                 </View>
                                 <View style={styles.miniMetric}>
                                     <Zap size={10} color="#D98B73" />
                                     <Text style={styles.miniMetricValue}>{h.energyDrain || 20}</Text>
                                 </View>
+                                <Edit3 size={10} color={colors.primary} opacity={0.3} style={{ marginTop: 4 }} />
                             </View>
                         </TouchableOpacity>
                     );
                 })}
                 <TouchableOpacity
-                    style={{ marginTop: 24, alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)' }}
-                    onPress={() => Alert.alert('히스토리 상세', '준비 중인 기능입니다.')}
+                    style={{ marginTop: 8, alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)' }}
+                    onPress={() => Alert.alert('전체 기록', '준비 중인 기능입니다.')}
                 >
                     <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', opacity: 0.6 }}>전체 기록 보기</Text>
                 </TouchableOpacity>

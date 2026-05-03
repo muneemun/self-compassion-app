@@ -13,7 +13,7 @@ import {
     Dimensions,
     Alert
 } from 'react-native';
-import { X, Sparkles } from 'lucide-react-native';
+import { X, Sparkles, Calendar } from 'lucide-react-native';
 import { useAppStore } from '../../store/useAppStore';
 import { useSelfTimeStore } from '../../store/useSelfTimeStore';
 import { SelfCareCategory, SELF_CARE_CATEGORY_LABELS } from '../../types/selfTime';
@@ -90,6 +90,7 @@ export const SelfTimeCheckInModal = () => {
     const [durationMinutes, setDurationMinutes] = useState(15);
     const [physicalEnergy, setPhysicalEnergy] = useState(30); 
     const [emotionalSatisfaction, setEmotionalSatisfaction] = useState(70);
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Reset or Load state when opened
     useEffect(() => {
@@ -102,6 +103,7 @@ export const SelfTimeCheckInModal = () => {
                     setDurationMinutes(entry.durationMinutes);
                     setPhysicalEnergy(entry.physicalEnergy);
                     setEmotionalSatisfaction(entry.emotionalSatisfaction);
+                    setDate(entry.createdAt.split('T')[0]);
                 }
             } else {
                 setCategory(null);
@@ -109,6 +111,7 @@ export const SelfTimeCheckInModal = () => {
                 setDurationMinutes(15);
                 setPhysicalEnergy(30);
                 setEmotionalSatisfaction(70);
+                setDate(new Date().toISOString().split('T')[0]);
             }
         }
     }, [isSelfTimeModalOpen, editingLogId, entries]);
@@ -125,13 +128,27 @@ export const SelfTimeCheckInModal = () => {
     const handleSave = () => {
         if (!category) return;
 
+        // 📅 날짜 안전하게 처리
+        let finalISODate = new Date().toISOString();
+        try {
+            if (date) {
+                const d = new Date(date);
+                if (!isNaN(d.getTime())) {
+                    finalISODate = d.toISOString();
+                }
+            }
+        } catch (e) {
+            console.error("Invalid date format:", date);
+        }
+
         if (editingLogId) {
             updateEntry(editingLogId, {
                 category,
                 activityName: activityName || SELF_CARE_CATEGORY_LABELS[category],
                 durationMinutes,
                 physicalEnergy,
-                emotionalSatisfaction
+                emotionalSatisfaction,
+                createdAt: finalISODate
             });
         } else {
             addEntry(
@@ -139,7 +156,8 @@ export const SelfTimeCheckInModal = () => {
                 activityName || SELF_CARE_CATEGORY_LABELS[category],
                 durationMinutes,
                 physicalEnergy,
-                emotionalSatisfaction
+                emotionalSatisfaction,
+                finalISODate
             );
             
             // 🚀 메타 인지 피드백 시각화 트리거 (새 기록일 때만)
@@ -212,6 +230,22 @@ export const SelfTimeCheckInModal = () => {
             </View>
         );
     };
+
+    const renderDate = () => (
+        <View style={styles.section}>
+            <Text style={styles.sectionTitle}>기록 날짜</Text>
+            <View style={styles.dateInputWrapper}>
+                <Calendar size={18} color={THEME.primary} style={{ marginRight: 10 }} />
+                <TextInput
+                    style={styles.dateInput}
+                    value={date}
+                    onChangeText={setDate}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={THEME.textMuted}
+                />
+            </View>
+        </View>
+    );
 
     const renderDuration = () => (
         <View style={styles.section}>
@@ -313,6 +347,7 @@ export const SelfTimeCheckInModal = () => {
                         {category && (
                             <View>
                                 {renderSmartSuggestions()}
+                                {renderDate()}
                                 {renderDuration()}
                                 {renderDeltaSliders()}
 
@@ -580,5 +615,21 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: '800',
+    },
+    dateInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: THEME.surface,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(74, 93, 78, 0.08)',
+    },
+    dateInput: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: THEME.textMain,
     },
 });

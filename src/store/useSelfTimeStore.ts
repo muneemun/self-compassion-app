@@ -11,8 +11,10 @@ interface SelfTimeState {
         activityName: string,
         durationMinutes: number,
         physicalEnergy: number,
-        emotionalSatisfaction: number
+        emotionalSatisfaction: number,
+        createdAt?: string
     ) => void;
+    updateEntry: (id: string, updates: Partial<Omit<SelfTimeEntry, 'id' | 'appVersion'>>) => void;
     deleteEntry: (id: string) => void;
     getRecentEntries: (days?: number) => SelfTimeEntry[];
 }
@@ -24,7 +26,7 @@ export const useSelfTimeStore = create<SelfTimeState>()(
         (set, get) => ({
             entries: [],
 
-            addEntry: (category, activityName, durationMinutes, physicalEnergy, emotionalSatisfaction) => {
+            addEntry: (category, activityName, durationMinutes, physicalEnergy, emotionalSatisfaction, createdAt) => {
                 const now = new Date().toISOString();
                 const newEntry: SelfTimeEntry = {
                     id: Math.random().toString(36).substr(2, 9),
@@ -35,12 +37,22 @@ export const useSelfTimeStore = create<SelfTimeState>()(
                     emotionalSatisfaction,
                     isDeleted: false,
                     appVersion: CURRENT_APP_VERSION,
-                    createdAt: now,
+                    createdAt: createdAt || now,
                     updatedAt: now,
                 };
 
                 set((state) => ({
                     entries: [newEntry, ...state.entries],
+                }));
+            },
+
+            updateEntry: (id: string, updates) => {
+                set((state) => ({
+                    entries: state.entries.map(entry =>
+                        entry.id === id
+                            ? { ...entry, ...updates, updatedAt: new Date().toISOString() }
+                            : entry
+                    )
                 }));
             },
 

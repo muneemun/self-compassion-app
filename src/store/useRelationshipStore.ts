@@ -175,7 +175,15 @@ export const useRelationshipStore = create<RelationshipState>((set, get) => ({
             temperature: 50,
             lastInteraction: 'Just added',
             metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
-            history: [],
+            history: [{
+                id: Math.random().toString(36).substr(2, 9),
+                date: new Date().toISOString().split('T')[0],
+                title: '인맥 추가',
+                description: '새로운 관계가 궤도에 등록되었습니다.',
+                closeness: 50,
+                satisfaction: 50,
+                energyDrain: 0,
+            }],
         };
         set((state) => ({ 
             relationships: [...state.relationships, newNode],
