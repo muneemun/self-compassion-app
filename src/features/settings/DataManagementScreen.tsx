@@ -9,6 +9,7 @@ import {
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { BackupService } from '../../services/BackupService';
 
 const { width } = Dimensions.get('window');
 
@@ -85,8 +86,12 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
         </View>
     );
 
-    const MenuButton = ({ icon: Icon, title, subtitle }: any) => (
-        <TouchableOpacity style={[styles.menuButton, { backgroundColor: colors.white }]}>
+    const MenuButton = ({ icon: Icon, title, subtitle, onPress }: any) => (
+        <TouchableOpacity 
+            style={[styles.menuButton, { backgroundColor: colors.white }]} 
+            onPress={onPress}
+            activeOpacity={0.7}
+        >
             <View style={styles.menuLeft}>
                 <View style={[styles.menuIconBox, { backgroundColor: colors.primary + '08' }]}>
                     <Icon size={20} color={colors.primary} />
@@ -148,9 +153,18 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
 
                     {/* Primary Actions */}
                     <View style={styles.actionSection}>
-                        <TouchableOpacity style={[styles.syncButton, { backgroundColor: colors.primary }]}>
-                            <RefreshCw size={20} color={colors.white} />
-                            <Text style={styles.syncButtonText}>지금 클라우드에 백업</Text>
+                        <TouchableOpacity 
+                            style={[styles.syncButton, { backgroundColor: colors.primary }]}
+                            onPress={() => BackupService.exportData()}
+                            activeOpacity={0.8}
+                        >
+                            <Download size={20} color={colors.white} />
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={styles.syncButtonText}>기기(로컬)에 데이터 저장</Text>
+                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '600' }}>
+                                    *서버가 아닌 본인의 기기나 이메일로 보관합니다
+                                </Text>
+                            </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={[styles.pdfButton, { borderColor: colors.accent + '30', backgroundColor: colors.white }]}>
@@ -180,8 +194,9 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
                         <View style={styles.divider} />
                         <MenuButton
                             icon={History}
-                            title="백업 기록/복원"
-                            subtitle="이전 복원 지점 확인 및 데이터 불러오기"
+                            title="기기에서 데이터 복원"
+                            subtitle="저장된 JSON 파일을 불러와 기록 복구"
+                            onPress={() => BackupService.importData()}
                         />
                     </View>
 
@@ -335,12 +350,12 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     syncButton: {
-        height: 56,
-        borderRadius: 28,
+        height: 64,
+        borderRadius: 32,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 10,
+        gap: 12,
         elevation: 4,
         shadowColor: '#4b5d4f',
         shadowOffset: { width: 0, height: 4 },
