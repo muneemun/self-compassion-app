@@ -20,8 +20,14 @@ export const BackupService = {
         userProfile: useAppStore.getState().userProfile,
       };
 
-      const jsonString = JSON.stringify(data, null, 2);
-      const filename = `self_compassion_backup_${new Date().toISOString().split('T')[0]}.json`;
+      let jsonString;
+      try {
+        jsonString = JSON.stringify(data, null, 2);
+      } catch (serializeError) {
+        throw new Error('데이터 구조가 복잡하여 변환할 수 없습니다. (순환 참조 의심)');
+      }
+
+      const filename = `social_orbit_backup_${new Date().toISOString().split('T')[0]}.json`;
 
       // 웹 환경 처리
       if (Platform.OS === 'web') {
@@ -37,7 +43,13 @@ export const BackupService = {
         return;
       }
 
-      // 모바일 환경 처리
+      // 모바일 환경 처리: 디렉토리 존재 확인
+      const dirInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory!);
+      if (!dirInfo.exists) {
+        // 이론적으로는 항상 존재해야 하지만 안전을 위해 확인
+        throw new Error('저장 장치 경로를 찾을 수 없습니다.');
+      }
+
       const fileUri = FileSystem.documentDirectory + filename;
       await FileSystem.writeAsStringAsync(fileUri, jsonString, {
         encoding: FileSystem.EncodingType.UTF8,
@@ -54,9 +66,10 @@ export const BackupService = {
         dialogTitle: '데이터 백업하기',
         UTI: 'public.json',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Backup failed:', error);
-      Alert.alert('백업 실패', '데이터를 내보내는 중 오류가 발생했습니다.');
+      const errorMessage = error?.message || '알 수 없는 오류';
+      Alert.alert('백업 실패', `데이터를 내보내는 중 오류가 발생했습니다.\n\n원인: ${errorMessage}`);
     }
   },
 

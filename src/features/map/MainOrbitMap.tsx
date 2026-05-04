@@ -9,7 +9,8 @@ import {
     Animated as RNAnimated,
     PanResponder,
     ScrollView,
-    TextInput
+    TextInput,
+    Easing as RNEasing
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HubLayout } from '../../layouts/BaseLayout';
@@ -693,13 +694,13 @@ const UserNode = memo(({
                 RNAnimated.timing(pulseAnim, {
                     toValue: 1,
                     duration: duration,
-                    easing: Easing.inOut(Easing.sin),
+                    easing: RNEasing.inOut(RNEasing.sin),
                     useNativeDriver: true,
                 }),
                 RNAnimated.timing(pulseAnim, {
                     toValue: 0,
                     duration: duration,
-                    easing: Easing.inOut(Easing.sin),
+                    easing: RNEasing.inOut(RNEasing.sin),
                     useNativeDriver: true,
                 }),
             ])
@@ -803,7 +804,7 @@ const UserNode = memo(({
                                 <Image source={{ uri: node.image }} style={[styles.avatar, { borderRadius: (avatarSize - 3) / 2 }]} />
                             ) : (
                                 <View style={[styles.avatar, { borderRadius: (avatarSize - 3) / 2, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ fontSize: avatarSize / 3.5 }}>{node.name.charAt(0)}</Text>
+                                    <Text style={{ fontSize: avatarSize / 3.5 }}>{(node.name || '?').charAt(0)}</Text>
                                 </View>
                             )}
                         </View>
@@ -1537,7 +1538,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                         <Image source={{ uri: person.image }} style={[styles.miniAvatarImg, { borderRadius: 28 }]} />
                                                     ) : (
                                                         <View style={{ flex: 1, width: '100%', height: '100%', borderRadius: 28, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-                                                            <Text style={[styles.avatarInitial, { fontSize: 24 }]}>{person.name.charAt(0)}</Text>
+                                                            <Text style={[styles.avatarInitial, { fontSize: 24 }]}>{(person.name || '?').charAt(0)}</Text>
                                                         </View>
                                                     )}
                                                 </View>
@@ -1616,7 +1617,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                             {selectedTarget?.image ? (
                                                 <Image source={{ uri: selectedTarget.image }} style={styles.largeAvatarImg} />
                                             ) : (
-                                                <Text style={{ fontSize: 32 }}>{selectedTarget?.name.charAt(0)}</Text>
+                                                <Text style={{ fontSize: 32 }}>{(selectedTarget?.name || '?').charAt(0)}</Text>
                                             )}
                                         </View>
                                         <Text style={[styles.actionTitle, { fontSize: 24 }]}>{selectedTarget?.name}님</Text>

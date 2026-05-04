@@ -54,6 +54,7 @@ const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
 );
 
 function App() {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health' | 'lab'>('map');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
@@ -84,7 +85,27 @@ function App() {
 
   // [DEV] 강제 데이터 초기화
   useEffect(() => {
-    // setHasCompletedOnboarding(false); // 개발 시 주석 해제하여 매번 온보딩을 테스트할 수 있습니다.
+    // 🛡️ [Emergency Fix] Safety Hydration Timeout (Max 3s)
+    const safetyTimeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn("Hydration Safety Timeout Triggered!");
+        setIsInitialized(true);
+      }
+    }, 3000);
+
+    const interval = setInterval(() => {
+      // @ts-ignore - persist is added via middleware
+      if (useRelationshipStore.persist?.hasHydrated()) {
+        setIsInitialized(true);
+        clearInterval(interval);
+        clearTimeout(safetyTimeout);
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(safetyTimeout);
+      clearInterval(interval);
+    };
   }, []);
 
   // 온보딩 완료 직후 relationships가 0명이면 1회만 자동으로 인맥 추가 화면 표시
@@ -94,6 +115,14 @@ function App() {
       setInitialSetupDone(true);
     }
   }, [hasCompletedOnboarding]);
+
+  if (!isInitialized) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#FAF8F4', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#4A5D4E', fontSize: 16, fontWeight: '600' }}>데이터를 안전하게 불러오는 중...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>

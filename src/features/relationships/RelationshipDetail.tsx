@@ -349,7 +349,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             {node.image ? (
                                 <Image source={{ uri: node.image }} style={styles.largeAvatarImg} />
                             ) : (
-                                <Text style={{ fontSize: 32 }}>{node.name.charAt(0)}</Text>
+                                <Text style={{ fontSize: 32 }}>{(node.name || '?').charAt(0)}</Text>
                             )}
                         </View>
                         <Text style={[styles.actionTitle, { color: colors.primary }]}>{node.name}님</Text>

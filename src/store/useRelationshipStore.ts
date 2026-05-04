@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { RelationshipNode, HealthMetrics } from '../types/relationship';
 
 interface RelationshipState {
@@ -160,215 +163,225 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
 
 const INITIAL_DATA: RelationshipNode[] = [];
 
-export const useRelationshipStore = create<RelationshipState>((set, get) => ({
-    relationships: INITIAL_DATA,
+export const useRelationshipStore = create<RelationshipState>()(
+    persist(
+        (set, get) => ({
+            relationships: INITIAL_DATA,
 
-    addRelationship: (name, type, role, phoneNumber, image) => {
-        const newNode: RelationshipNode = {
-            id: Math.random().toString(36).substr(2, 9),
-            name,
-            type,
-            role,
-            phoneNumber,
-            image,
-            zone: 3,
-            temperature: 50,
-            lastInteraction: 'Just added',
-            metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
-            history: [{
-                id: Math.random().toString(36).substr(2, 9),
-                date: new Date().toISOString().split('T')[0],
-                title: '인맥 추가',
-                description: '새로운 관계가 궤도에 등록되었습니다.',
-                closeness: 50,
-                satisfaction: 50,
-                energyDrain: 0,
-            }],
-        };
-        set((state) => ({ 
-            relationships: [...state.relationships, newNode],
-            lastAddedId: newNode.id
-        }));
-        get().calculateHealth(newNode.id);
-        return newNode.id;
-    },
-
-    updateMetrics: (id, newMetrics) => {
-        set((state) => ({
-            relationships: state.relationships.map((r) =>
-                r.id === id ? { ...r, metrics: { ...r.metrics, ...newMetrics } } : r
-            ),
-        }));
-        get().calculateHealth(id);
-    },
-
-    updateRelationship: (id, updates) => {
-        set((state) => ({
-            relationships: state.relationships.map((r) =>
-                r.id === id ? { ...r, ...updates } : r
-            ),
-        }));
-    },
-    deleteRelationship: (id) => {
-        set((state) => ({
-            relationships: state.relationships.filter((r) => r.id !== id),
-        }));
-    },
-
-    getRelationshipById: (id) => get().relationships.find((r) => r.id === id),
-
-    calculateHealth: (id) => {
-        set((state) => ({
-            relationships: state.relationships.map((r) => {
-                if (r.id !== id) return r;
-
-                // 진단 로직: 지표들의 평균으로 긴밀도 산출
-                const { trust, communication, frequency, satisfaction } = r.metrics;
-                const avgTemp = Math.round((trust + communication + satisfaction) / 3);
-
-                // 존(Zone) 결정 로직: 긴밀도가 높고 자주 소통하면 1존, 아니면 밀려남
-                let newZone = 4;
-                if (avgTemp > 85 && frequency > 70) newZone = 1;
-                else if (avgTemp > 60 && frequency > 40) newZone = 2;
-                else if (avgTemp > 30) newZone = 3;
-
-                return {
-                    ...r,
-                    temperature: avgTemp,
-                    zone: newZone,
-                };
-            }),
-        }));
-    },
-
-    updateDiagnosisResult: (id, data) => {
-        const today = new Date().toISOString().split('T')[0];
-        set((state) => ({
-            relationships: state.relationships.map((r) => {
-                if (r.id !== id) return r;
-
-                const lastHistory = r.history[r.history.length - 1];
-                const newHistoryEntry = {
+            addRelationship: (name, type, role, phoneNumber, image) => {
+                const newNode: RelationshipNode = {
                     id: Math.random().toString(36).substr(2, 9),
-                    date: today,
-                    closeness: data.temperature ?? (lastHistory?.closeness ?? r.temperature),
-                    satisfaction: 50, // Default for non-interaction updates
-                    energyDrain: 30,
-                    oxytocin: data.oxytocin ?? (lastHistory?.oxytocin ?? 50),
-                    cortisol: data.cortisol ?? (lastHistory?.cortisol ?? 50),
-                    title: data.event || '정기 진단',
-                    description: '진단을 통한 관계 상태 업데이트',
-                    event: data.event,
+                    name,
+                    type,
+                    role,
+                    phoneNumber,
+                    image,
+                    zone: 3,
+                    temperature: 50,
+                    lastInteraction: 'Just added',
+                    metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
+                    history: [{
+                        id: Math.random().toString(36).substr(2, 9),
+                        date: new Date().toISOString().split('T')[0],
+                        title: '인맥 추가',
+                        description: '새로운 관계가 궤도에 등록되었습니다.',
+                        closeness: 50,
+                        satisfaction: 50,
+                        energyDrain: 0,
+                    }],
                 };
+                set((state) => ({ 
+                    relationships: [...state.relationships, newNode],
+                    lastAddedId: newNode.id
+                }));
+                get().calculateHealth(newNode.id);
+                return newNode.id;
+            },
 
-                const newHistory = [...r.history, newHistoryEntry].slice(-12);
-                let newRqsHistory = r.rqsHistory || [];
-                // If history is empty but we have an existing result, seed it
-                if (newRqsHistory.length === 0 && r.rqsResult) {
-                    newRqsHistory = [r.rqsResult];
-                }
+            updateMetrics: (id, newMetrics) => {
+                set((state) => ({
+                    relationships: state.relationships.map((r) =>
+                        r.id === id ? { ...r, metrics: { ...r.metrics, ...newMetrics } } : r
+                    ),
+                }));
+                get().calculateHealth(id);
+            },
 
-                if (data.rqsResult) {
-                    const isDuplicate = newRqsHistory.some(h => h?.lastChecked === data.rqsResult?.lastChecked);
-                    if (!isDuplicate) {
-                        newRqsHistory = [...newRqsHistory, data.rqsResult].slice(-10);
-                    }
-                }
+            updateRelationship: (id, updates) => {
+                set((state) => ({
+                    relationships: state.relationships.map((r) =>
+                        r.id === id ? { ...r, ...updates } : r
+                    ),
+                }));
+            },
+            deleteRelationship: (id) => {
+                set((state) => ({
+                    relationships: state.relationships.filter((r) => r.id !== id),
+                }));
+            },
 
-                return {
-                    ...r,
-                    temperature: data.temperature ?? r.temperature,
-                    zone: data.zone ?? r.zone,
-                    rqsResult: data.rqsResult ?? r.rqsResult,
-                    history: newHistory,
-                    rqsHistory: newRqsHistory,
-                };
-            }),
-        }));
-    },
+            getRelationshipById: (id) => get().relationships.find((r) => r.id === id),
 
-    addInteraction: (id, date, satisfaction, energyDrain, title, description) => {
-        const ALPHA = 0.15; // 반응성 계수 (조정 가능)
-        const resonanceDelta = ALPHA * (satisfaction - energyDrain);
+            calculateHealth: (id) => {
+                set((state) => ({
+                    relationships: state.relationships.map((r) => {
+                        if (r.id !== id) return r;
 
-        set((state) => ({
-            relationships: state.relationships.map((r) => {
-                if (r.id !== id) return r;
-                
-                // 기존 temperature를 긴밀도 베이스로 사용
-                const currentCloseness = r.temperature || 50;
-                const newCloseness = Math.max(0, Math.min(100, currentCloseness + resonanceDelta));
-                
-                // 긴밀도 기반 궤도(Zone) 자동 조정 규칙 적용
-                let newZone = r.zone;
-                if (newCloseness > 80) newZone = 1;
-                else if (newCloseness > 60) newZone = 2;
-                else if (newCloseness > 40) newZone = 3;
-                else if (newCloseness > 20) newZone = 4;
-                else newZone = 5;
+                        // 진단 로직: 지표들의 평균으로 긴밀도 산출
+                        const { trust, communication, frequency, satisfaction } = r.metrics;
+                        const avgTemp = Math.round((trust + communication + satisfaction) / 3);
 
-                return {
-                    ...r,
-                    lastInteraction: '방금',
-                    temperature: newCloseness,
-                    zone: newZone,
-                    history: [
-                        ...r.history,
-                        {
+                        // 존(Zone) 결정 로직: 긴밀도가 높고 자주 소통하면 1존, 아니면 밀려남
+                        let newZone = 4;
+                        if (avgTemp > 85 && frequency > 70) newZone = 1;
+                        else if (avgTemp > 60 && frequency > 40) newZone = 2;
+                        else if (avgTemp > 30) newZone = 3;
+
+                        return {
+                            ...r,
+                            temperature: avgTemp,
+                            zone: newZone,
+                        };
+                    }),
+                }));
+            },
+
+            updateDiagnosisResult: (id, data) => {
+                const today = new Date().toISOString().split('T')[0];
+                set((state) => ({
+                    relationships: state.relationships.map((r) => {
+                        if (r.id !== id) return r;
+
+                        const lastHistory = r.history[r.history.length - 1];
+                        const newHistoryEntry = {
                             id: Math.random().toString(36).substr(2, 9),
-                            date,
-                            closeness: newCloseness,
-                            satisfaction,
-                            energyDrain,
-                            title,
-                            description,
-                            event: title,
-                            oxytocin: satisfaction > 70 ? 80 : 30,
-                            cortisol: energyDrain > 70 ? 70 : 20,
+                            date: today,
+                            closeness: data.temperature ?? (lastHistory?.closeness ?? r.temperature),
+                            satisfaction: 50, // Default for non-interaction updates
+                            energyDrain: 30,
+                            oxytocin: data.oxytocin ?? (lastHistory?.oxytocin ?? 50),
+                            cortisol: data.cortisol ?? (lastHistory?.cortisol ?? 50),
+                            title: data.event || '정기 진단',
+                            description: '진단을 통한 관계 상태 업데이트',
+                            event: data.event,
+                        };
+
+                        const newHistory = [...r.history, newHistoryEntry].slice(-12);
+                        let newRqsHistory = r.rqsHistory || [];
+                        // If history is empty but we have an existing result, seed it
+                        if (newRqsHistory.length === 0 && r.rqsResult) {
+                            newRqsHistory = [r.rqsResult];
                         }
-                    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                };
-            })
-        }));
-    },
 
-    updateInteraction: (personId, logId, updates) => {
-        set((state) => ({
-            relationships: state.relationships.map((r) => {
-                if (r.id !== personId) return r;
-                return {
-                    ...r,
-                    history: r.history.map((h) => (h.id === logId ? { ...h, ...updates } : h))
-                };
-            })
-        }));
-    },
+                        if (data.rqsResult) {
+                            const isDuplicate = newRqsHistory.some(h => h?.lastChecked === data.rqsResult?.lastChecked);
+                            if (!isDuplicate) {
+                                newRqsHistory = [...newRqsHistory, data.rqsResult].slice(-10);
+                            }
+                        }
 
-    deleteInteraction: (personId, logId) => {
-        set((state) => ({
-            relationships: state.relationships.map((r) => {
-                if (r.id !== personId) return r;
-                return {
-                    ...r,
-                    history: r.history.filter((h) => h.id !== logId)
-                };
-            })
-        }));
-    },
+                        return {
+                            ...r,
+                            temperature: data.temperature ?? r.temperature,
+                            zone: data.zone ?? r.zone,
+                            rqsResult: data.rqsResult ?? r.rqsResult,
+                            history: newHistory,
+                            rqsHistory: newRqsHistory,
+                        };
+                    }),
+                }));
+            },
 
-    // View State Implementation
-    orbitMapViewState: {
-        zoomLevel: 1.0,
-        selectedFilters: ['전체'],
-        activeSearchTag: '전체',
-        sortMode: 'default',
-        isFilterExpanded: false,
-    },
-    setOrbitMapViewState: (newState) => {
-        set((state) => ({
-            orbitMapViewState: { ...state.orbitMapViewState, ...newState }
-        }));
-    },
-    lastAddedId: null,
-    setLastAddedId: (id) => set({ lastAddedId: id }),
-}));
+            addInteraction: (id, date, satisfaction, energyDrain, title, description) => {
+                const ALPHA = 0.15; // 반응성 계수 (조정 가능)
+                const resonanceDelta = ALPHA * (satisfaction - energyDrain);
+
+                set((state) => ({
+                    relationships: state.relationships.map((r) => {
+                        if (r.id !== id) return r;
+                        
+                        // 기존 temperature를 긴밀도 베이스로 사용
+                        const currentCloseness = r.temperature || 50;
+                        const newCloseness = Math.max(0, Math.min(100, currentCloseness + resonanceDelta));
+                        
+                        // 긴밀도 기반 궤도(Zone) 자동 조정 규칙 적용
+                        let newZone = r.zone;
+                        if (newCloseness > 80) newZone = 1;
+                        else if (newCloseness > 60) newZone = 2;
+                        else if (newCloseness > 40) newZone = 3;
+                        else if (newCloseness > 20) newZone = 4;
+                        else newZone = 5;
+
+                        return {
+                            ...r,
+                            lastInteraction: '방금',
+                            temperature: newCloseness,
+                            zone: newZone,
+                            history: [
+                                ...r.history,
+                                {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    date,
+                                    closeness: newCloseness,
+                                    satisfaction,
+                                    energyDrain,
+                                    title,
+                                    description,
+                                    event: title,
+                                    oxytocin: satisfaction > 70 ? 80 : 30,
+                                    cortisol: energyDrain > 70 ? 70 : 20,
+                                }
+                            ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                        };
+                    })
+                }));
+            },
+
+            updateInteraction: (personId, logId, updates) => {
+                set((state) => ({
+                    relationships: state.relationships.map((r) => {
+                        if (r.id !== personId) return r;
+                        return {
+                            ...r,
+                            history: r.history.map((h) => (h.id === logId ? { ...h, ...updates } : h))
+                        };
+                    })
+                }));
+            },
+
+            deleteInteraction: (personId, logId) => {
+                set((state) => ({
+                    relationships: state.relationships.map((r) => {
+                        if (r.id !== personId) return r;
+                        return {
+                            ...r,
+                            history: r.history.filter((h) => h.id !== logId)
+                        };
+                    })
+                }));
+            },
+
+            // View State Implementation
+            orbitMapViewState: {
+                zoomLevel: 1.0,
+                selectedFilters: ['전체'],
+                activeSearchTag: '전체',
+                sortMode: 'default',
+                isFilterExpanded: false,
+            },
+            setOrbitMapViewState: (newState) => {
+                set((state) => ({
+                    orbitMapViewState: { ...state.orbitMapViewState, ...newState }
+                }));
+            },
+            lastAddedId: null,
+            setLastAddedId: (id) => set({ lastAddedId: id }),
+        }),
+        {
+            name: 'social-orbit-storage',
+            storage: createJSONStorage(() => 
+                Platform.OS === 'web' ? (typeof window !== 'undefined' ? window.localStorage : (null as any)) : AsyncStorage
+            ),
+        }
+    )
+);
