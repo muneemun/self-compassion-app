@@ -27,6 +27,14 @@ const THEME = {
     cortisol: '#8C968D',
 };
 
+const ZONE_COLORS: Record<number, string> = {
+    1: '#FFB74D',
+    2: '#D98B73',
+    3: '#4A5D4E',
+    4: '#90A4AE',
+    5: '#D1D5DB'
+};
+
 export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () => void; onSelectRelationship?: (id: string) => void }) => {
     const colors = useColors();
     const textMuted = colors.gray[500];
@@ -414,7 +422,7 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                                         cx={20 + (sat / 100) * 160}
                                         cy={svgHeight - (20 + (drain / 100) * 120)}
                                         r="5"
-                                        fill={colors.accent}
+                                        fill={ZONE_COLORS[node.zone as keyof typeof ZONE_COLORS] || THEME.primary}
                                         stroke="white"
                                         strokeWidth="1.5"
                                         opacity={0.8}
@@ -438,10 +446,25 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                 
                 <View style={styles.chartLegendRow}>
                     <View style={styles.legendGroup}>
-                        <View style={[styles.legendBarIndicator, { backgroundColor: colors.accent }]} />
-                        <Text style={styles.legendLabel}>인맥 분포</Text>
+                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[1] }]} />
+                        <Text style={styles.legendLabel}>Z1</Text>
                     </View>
-                    <Text style={styles.legendLabel}>X: 만족도 | Y: 에너지 소모</Text>
+                    <View style={styles.legendGroup}>
+                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[2] }]} />
+                        <Text style={styles.legendLabel}>Z2</Text>
+                    </View>
+                    <View style={styles.legendGroup}>
+                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[3] }]} />
+                        <Text style={styles.legendLabel}>Z3</Text>
+                    </View>
+                    <View style={styles.legendGroup}>
+                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[4] }]} />
+                        <Text style={styles.legendLabel}>Z4</Text>
+                    </View>
+                    <View style={styles.legendGroup}>
+                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[5] }]} />
+                        <Text style={styles.legendLabel}>Z5</Text>
+                    </View>
                 </View>
             </View>
         );

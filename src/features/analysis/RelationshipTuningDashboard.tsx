@@ -13,7 +13,7 @@ import {
     Animated, // Import Added
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Line, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Line, Defs, RadialGradient, Stop, G, Text as SvgText } from 'react-native-svg';
 import { ChevronLeft, ChevronUp, ChevronDown, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2, Flame, Snowflake, Activity, Sparkles, Shield } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { HubLayout } from '../../layouts/BaseLayout';
@@ -72,6 +72,61 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const [showCompletePopup, setShowCompletePopup] = useState(false);
     const [autoOpenLog, setAutoOpenLog] = useState(false);
 
+    const getMetrics = (r: RelationshipNode) => {
+        const lastHistory = (r.history || []).slice(-1)[0];
+        const sat = lastHistory?.satisfaction ?? (r.metrics?.satisfaction || 50);
+        const drain = lastHistory?.energyDrain ?? 50;
+        const count = (r.history || []).length;
+        
+        let freqScore = count * 10;
+        if (r.lastInteraction?.includes('방금') || r.lastInteraction?.includes('분 전')) freqScore += 50;
+        else if (r.lastInteraction?.includes('오늘') || r.lastInteraction?.includes('시간 전')) freqScore += 40;
+        else if (r.lastInteraction?.includes('어제')) freqScore += 30;
+        else if (r.lastInteraction?.includes('일 전')) freqScore += 10;
+        
+        return { sat, drain, freqScore, count };
+    };
+
+    const getLensValue = (r: RelationshipNode, lens: string) => {
+        const { sat, drain, freqScore } = getMetrics(r);
+        if (lens === 'Positive') return sat - drain;
+        if (lens === 'Negative') return drain - sat;
+        if (lens === 'Frequency') return freqScore;
+        return sat;
+    };
+
+    const getLensDisplay = (r: RelationshipNode, lens: string) => {
+        const { sat, drain, count } = getMetrics(r);
+        if (lens === 'Positive') return `만족 ${sat} · 소모 ${drain}`;
+        if (lens === 'Negative') return `소모 ${drain} · 만족 ${sat}`;
+        if (lens === 'Frequency') return `${count}회 교류 · ${r.lastInteraction || '기록 없음'}`;
+        return `${r.temperature || 50}%`;
+    };
+
+    const getFilteredRelationships = (lens: string) => {
+        let list = [...relationships];
+        if (lens === 'Positive') {
+            // 영혼의 배터리 기준: 만족도 70 이상 & 에너지 소모 40 이하
+            list = list.filter(r => {
+                const { sat, drain } = getMetrics(r);
+                return sat >= 70 && drain <= 40;
+            });
+        } else if (lens === 'Negative') {
+            // 에너지 포식자 기준: 소모 70 이상 & 만족도 40 이하
+            list = list.filter(r => {
+                const { sat, drain } = getMetrics(r);
+                return drain >= 70 && sat <= 40;
+            });
+        } else if (lens === 'Frequency') {
+            // 일상의 중력 기준: 교류 3회 이상이거나 최근 상호작용 점수가 10점 이상
+            list = list.filter(r => {
+                const { count, freqScore } = getMetrics(r);
+                return count >= 3 || freqScore >= 10;
+            });
+        }
+        return list;
+    };
+
     // 🎯 Dynamic Tuning Logic (Context-Aware)
     const handleStartContextualTuning = () => {
         if (selectedLens === 'None') {
@@ -79,19 +134,9 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             return;
         }
 
-        let sortedData = [...relationships];
-        if (selectedLens === 'Positive') {
-            sortedData = sortedData.sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
-        } else if (selectedLens === 'Negative') {
-            sortedData = sortedData.sort((a, b) => (a.temperature || 0) - (b.temperature || 0));
-        } else if (selectedLens === 'Frequency') {
-            const getWeight = (str: string = '') => {
-                if (str.includes('방금') || str.includes('분 전')) return 100;
-                if (str.includes('오늘') || str.includes('시간 전')) return 80;
-                if (str.includes('어제')) return 60;
-                return 10;
-            };
-            sortedData = sortedData.sort((a, b) => getWeight(b.lastInteraction) - getWeight(a.lastInteraction));
+        let sortedData = getFilteredRelationships(selectedLens);
+        if (selectedLens !== 'None') {
+            sortedData = sortedData.sort((a, b) => getLensValue(b, selectedLens) - getLensValue(a, selectedLens));
         }
 
         const participants = sortedData.slice(0, 10); // Contextual Top 10
@@ -570,13 +615,13 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         <View style={styles.vizSection}>
             <View style={styles.sectionHeader}>
                 <View style={styles.titleWithIcon}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>균형 요약</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>내 에너지 상태</Text>
                 </View>
                 {/* Insight Card Style Summary */}
                 <View style={{ marginTop: 12, backgroundColor: '#F5F7F6', borderRadius: 16, padding: 16 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4, fontWeight: '600' }}>현재 마음의 여유</Text>
+                            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4, fontWeight: '600' }}>내 마음의 빈자리</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isSaturated ? '#EF5350' : '#4A5D4E' }} />
                                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#333' }}>
@@ -586,7 +631,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         </View>
                         <View style={{ width: 1, height: '100%', backgroundColor: '#E0E0E0', marginHorizontal: 16 }} />
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4, fontWeight: '600' }}>우선 조율 포인트</Text>
+                            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4, fontWeight: '600' }}>먼저 돌봐야 할 곳</Text>
                             <Text style={{
                                 fontSize: 14,
                                 fontWeight: '700',
@@ -595,164 +640,75 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                     : '#4A5D4E'
                             }}>
                                 {stabilityStatus.imbalancedZones.length > 0
-                                    ? `Zone ${stabilityStatus.imbalancedZones[0].zone} (${stabilityStatus.imbalancedZones[0].status === 'over' ? '비움 필요' : '채움 필요'})`
-                                    : '균형 잡힘'}
+                                    ? `Zone ${stabilityStatus.imbalancedZones[0].zone} (${stabilityStatus.imbalancedZones[0].status === 'over' ? '비우기' : '채우기'})`
+                                    : '아주 평온해요'}
                             </Text>
                         </View>
                     </View>
                     <View style={{ borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingTop: 12 }}>
                         <Text style={{ fontSize: 13, color: '#555', lineHeight: 20 }}>
                             {stabilityStatus.imbalancedZones.length > 0
-                                ? `현재 Zone ${stabilityStatus.imbalancedZones[0].zone} 영역이 ${stabilityStatus.imbalancedZones[0].status === 'over' ? '너무 혼잡합니다. 관계를 정리하여 마음의 공간을 확보하세요.' : '너무 빈약합니다. 소중한 사람들과 더 자주 교류하여 에너지를 채우세요.'}`
-                                : "관계 에너지가 적절하게 흐르고 있어 마음이 쾌적한 상태입니다."}
+                                ? `지금 Zone ${stabilityStatus.imbalancedZones[0].zone}에 ${stabilityStatus.imbalancedZones[0].status === 'over' ? '사람이 너무 많아서 힘들 수 있어요. 잠시 혼자만의 시간을 가져봐요.' : '사람이 너무 적어요. 편안한 사람들과 시간을 보내며 에너지를 채워봐요.'}`
+                                : "관계 에너지가 골고루 잘 흐르고 있어요. 마음이 아주 편안한 상태네요!"}
                         </Text>
                     </View>
                 </View>
             </View>
 
             <View style={[styles.vizCard, { backgroundColor: colors.white, height: 'auto', aspectRatio: undefined, paddingVertical: 24, justifyContent: 'flex-start' }]}>
-                <TouchableOpacity onPress={onGoToReport} style={styles.vizCardDetailBtn}>
-                    <BarChart2 size={14} color={colors.primary} />
-                    <Text style={[styles.miniSelectText, { color: colors.primary }]}>상세 보기</Text>
-                </TouchableOpacity>
-                {/* 🏷️ Legend for Visualization */}
-                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginBottom: 12, marginTop: 8 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF5350', borderWidth: 2, borderColor: '#EF5350' }} />
-                        <Text style={{ fontSize: 11, color: '#555', fontWeight: '600' }}>과다</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FFB74D' }} />
-                        <Text style={{ fontSize: 11, color: '#555', fontWeight: '600' }}>부족</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ccc', borderStyle: 'dotted' }} />
-                        <Text style={{ fontSize: 11, color: '#999' }}>적정</Text>
-                    </View>
+                {/* 🏷️ Dynamics View (궤도 역학 분석 / 용량 점검) */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 0, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 13, color: '#888', fontWeight: '500' }}>점선(권장 인원) 기준으로 내 마음 공간 점검하기</Text>
+                    <TouchableOpacity onPress={onGoToReport} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(74, 93, 78, 0.05)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }}>
+                        <BarChart2 size={14} color={colors.primary} />
+                        <Text style={[styles.miniSelectText, { color: colors.primary, top: 0 }]}>상세 보기</Text>
+                    </TouchableOpacity>
                 </View>
 
-                <View style={styles.radarWrapper}>
-                    <Svg height="260" width="260" viewBox="0 0 300 300">
-                        {/* Orbit Rings - Touchable Zones with Diagnostic Styles */}
-                        {/* 1. Halo Layer (Error Status Glow) - Drawn BEHIND track */}
-                        {[
-                            { z: 3, r: 110 },
-                            { z: 2, r: 80 },
-                            { z: 1, r: 50 }
-                        ].map(ring => {
-                            const issue = stabilityStatus.imbalancedZones.find(z => z.zone === ring.z);
-                            if (!issue) return null; // Skip if normal
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-evenly', paddingHorizontal: 10, paddingBottom: 16, marginTop: 16 }}>
+                    {[1, 2, 3, 4, 5].map(z => {
+                        const count = relationships.filter((r) => r.zone === z).length;
+                        const ZONE_CAPACITY: Record<number, number> = { 1: 5, 2: 15, 3: 50, 4: 100, 5: 150 };
+                        const cap = ZONE_CAPACITY[z] || 50;
+                        const isOver = count > cap;
+                        
+                        // 권장 인원을 100px 높이로 기준 잡기
+                        const normalHeight = Math.min(100, (count / cap) * 100);
+                        // 초과분은 최대 60px까지만 렌더링 (총 160px)
+                        const overHeight = isOver ? Math.min(60, ((count - cap) / cap) * 100) : 0;
+                        
+                        let zoneColor = colors.accent;
+                        if (z === 1) zoneColor = '#FFB74D';
+                        else if (z === 2) zoneColor = '#D98B73';
+                        else if (z === 3) zoneColor = '#4A5D4E';
+                        else if (z === 4) zoneColor = '#90A4AE';
+                        else if (z === 5) zoneColor = '#D1D5DB';
 
-                            const isOver = issue.status === 'over';
-                            const glowColor = isOver ? "#EF5350" : "#FFB74D";
-
-                            return (
-                                <AnimatedCircle
-                                    key={`halo-${ring.z}`}
-                                    cx="150" cy="150" r={ring.r}
-                                    stroke={glowColor}
-                                    strokeWidth={24} // Wide glow
-                                    strokeOpacity={blinkAnim.interpolate({
-                                        inputRange: [0.3, 1],
-                                        outputRange: [0.1, 0.25] // Subtle pulsing opacity
-                                    })}
-                                    fill="none"
-                                />
-                            );
-                        })}
-
-                        {/* 2. Track Layer (Thin Guide Lines) - Always visible, Clean */}
-                        {[
-                            { z: 3, r: 110 },
-                            { z: 2, r: 80 },
-                            { z: 1, r: 50 }
-                        ].map(ring => (
-                            <Circle
-                                key={`track-${ring.z}`}
-                                cx="150" cy="150" r={ring.r}
-                                stroke="#D9D9D9"
-                                strokeWidth="1.5"
-                                strokeDasharray="3 3"
-                                fill="transparent"
-                                onPress={() => { setIsSelectionMode(true); setFilterZone(ring.z); }}
-                            />
-                        ))}
-
-                        {/* Dynamic Relationship Nodes */}
-                        {relationships.map((r: RelationshipNode, i: number) => {
-                            const angle = (i * 137.5) * (Math.PI / 180);
-                            const rRadius = r.zone === 1 ? 50 : r.zone === 2 ? 80 : 110;
-                            const cx = 150 + rRadius * Math.cos(angle);
-                            const cy = 150 + rRadius * Math.sin(angle);
-                            const isImbalanced = imbalancedRelationships.some((ir: RelationshipNode) => ir.id === r.id);
-
-                            // Lens Logic
-                            let isHighlighted = true;
-                            let highlightColor = colors.primary;
-
-                            if (selectedLens === 'Positive') {
-                                isHighlighted = (r.temperature || 0) >= 80;
-                                highlightColor = '#D4AF37'; // Gold
-                            } else if (selectedLens === 'Negative') {
-                                isHighlighted = (r.temperature || 0) <= 40;
-                                highlightColor = '#D98B73'; // Terracotta
-                            } else if (selectedLens === 'Frequency') {
-                                isHighlighted = (r.lastInteraction?.includes('방금') || r.lastInteraction?.includes('어제'));
-                                highlightColor = colors.accent;
-                            }
-
-                            return (
-                                <React.Fragment key={r.id}>
-                                    {isImbalanced && selectedLens === 'None' && (
-                                        <Circle cx={cx} cy={cy} r={r.zone === 1 ? 12 : 10} stroke="#D98B73" strokeWidth="1" strokeOpacity="0.3" fill="none" />
-                                    )}
-                                    <Circle
-                                        cx={cx} cy={cy}
-                                        r={isHighlighted ? (isImbalanced ? 7 : 5) : 3}
-                                        fill={isHighlighted ? (selectedLens === 'None' && isImbalanced ? '#D98B73' : highlightColor) : colors.primary}
-                                        opacity={isHighlighted ? 1 : 0.15}
-                                    />
-                                    {isHighlighted && selectedLens !== 'None' && (
-                                        <Circle cx={cx} cy={cy} r={8} stroke={highlightColor} strokeWidth="1" strokeOpacity="0.4" fill="none" />
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
-
-                        {/* 🎯 Stable Center Core (Self) */}
-                        <Circle cx="150" cy="150" r="18" fill={colors.primary} onPress={() => setSelfTimeModalOpen(true)} />
-                        <Circle cx="150" cy="150" r="8" fill="white" opacity="0.9" onPress={() => setSelfTimeModalOpen(true)} />
-                    </Svg>
-                </View>
-
-                {/* Info Section (Moved Below Orbit) */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', paddingHorizontal: 24, marginTop: 24 }}>
-                    <View style={styles.stabilityBadgeContainer}>
-                        <TouchableOpacity
-                            style={[styles.stabilityBadge, { backgroundColor: stabilityStatus.color }]}
-                            onPress={handleShowStabilityInfo}
-                            activeOpacity={0.9}
-                        >
-                            <View style={styles.stabilityHeader}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                    <Text style={styles.stabilityLabel}>안정성</Text>
-                                    <Info size={10} color="rgba(255,255,255,0.6)" />
+                        return (
+                            <View key={`dyn-${z}`} style={{ alignItems: 'center', width: 44 }}>
+                                <View style={{ marginBottom: 12, alignItems: 'center' }}>
+                                    {isOver && <AlertCircle size={14} color="#D98B73" style={{ marginBottom: 2 }} />}
+                                    <Text style={{ fontSize: 14, fontWeight: '900', color: isOver ? '#D98B73' : colors.primary }}>
+                                        {count}<Text style={{ fontSize: 10, fontWeight: '600' }}> 명</Text>
+                                    </Text>
                                 </View>
-                                <View style={styles.stabilityStatusTag}>
-                                    <Text style={styles.stabilityStatusText}>{stabilityStatus.label}</Text>
+                                <View style={{ height: 160, width: 32, justifyContent: 'flex-end', alignItems: 'center' }}>
+                                    <View style={{ position: 'absolute', bottom: 100, width: 50, borderBottomWidth: 1, borderBottomColor: '#A0AAB2', borderStyle: 'dashed', zIndex: 10 }} />
+                                    <Text style={{ position: 'absolute', bottom: 104, fontSize: 9, color: '#A0AAB2', fontWeight: '700', backgroundColor: colors.white, paddingHorizontal: 4, zIndex: 11 }}>
+                                        권장 {cap}
+                                    </Text>
+                                    {isOver && (
+                                        <View style={{ height: overHeight, width: '100%', backgroundColor: '#D98B73', borderTopLeftRadius: 6, borderTopRightRadius: 6, zIndex: 6 }} />
+                                    )}
+                                    <View style={{ height: normalHeight, width: '100%', backgroundColor: zoneColor, borderBottomLeftRadius: 6, borderBottomRightRadius: 6, borderTopLeftRadius: isOver ? 0 : 6, borderTopRightRadius: isOver ? 0 : 6, zIndex: 5 }} />
+                                </View>
+                                <View style={{ marginTop: 16, alignItems: 'center' }}>
+                                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: zoneColor, marginBottom: 6, borderWidth: 2, borderColor: 'white', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 }} />
+                                    <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary }}>Zone {z}</Text>
                                 </View>
                             </View>
-                            <Text style={styles.stabilityValue}>{stabilityScore}%</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.stabilityDescText}>{stabilityStatus.desc}</Text>
-                    </View>
-
-                    <View style={[styles.imbalanceTag, { backgroundColor: imbalancedCount > 0 ? 'rgba(217, 139, 115, 0.1)' : colors.primary + '10', borderColor: imbalancedCount > 0 ? 'rgba(217, 139, 115, 0.2)' : colors.primary + '20' }]}>
-                        <View style={[styles.dot, { backgroundColor: imbalancedCount > 0 ? '#D98B73' : colors.primary }]} />
-                        <Text style={[styles.imbalanceText, { color: imbalancedCount > 0 ? '#D98B73' : colors.primary }]}>
-                            {imbalancedCount > 0 ? `불균형 인물 ${imbalancedCount}명` : '평형 상태'}
-                        </Text>
-                    </View>
+                        );
+                    })}
                 </View>
             </View>
         </View>
@@ -811,6 +767,130 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             </TouchableOpacity>
         </View>
     );
+
+    const renderGlobalSocialTopography = () => {
+        const matrixWidth = width - 48; // padding account
+        const svgWidth = 200;
+        const svgHeight = 160;
+
+        // 같은 위치에 있는 노드들을 그룹화 (오차범위 없이 동일 좌표)
+        const pointMap = new Map<string, any[]>();
+        relationships.forEach((node) => {
+            const lastHistory = (node.history || []).slice(-1)[0];
+            const sat = lastHistory?.satisfaction ?? 50;
+            const drain = lastHistory?.energyDrain ?? 50;
+            const key = `${sat}_${drain}`;
+            if (!pointMap.has(key)) pointMap.set(key, []);
+            pointMap.get(key)!.push({ ...node, sat, drain });
+        });
+
+        return (
+            <View style={styles.vizSection}>
+                <View style={styles.sectionHeader}>
+                    <View style={styles.titleWithIcon}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>내 인맥 한눈에 보기</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <Text style={{ fontSize: 13, color: '#888', fontWeight: '500' }}>누가 내 에너지를 채워주고, 누가 빼앗는지 확인해요</Text>
+                        <TouchableOpacity onPress={() => Alert.alert('내 인맥 한눈에 보기', '내 주변 사람들이 나에게 어떤 에너지를 주는지 한눈에 봅니다.')}>
+                            <Info size={16} color={colors.primary} opacity={0.5} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={[styles.vizCard, { backgroundColor: colors.white, height: 'auto', aspectRatio: undefined, paddingVertical: 24 }]}>
+                    <View style={styles.topographyPlot}>
+                        <View style={styles.topographyGrid}>
+                            <View style={[styles.gridCell, { backgroundColor: '#D98B7310' }]}><Text style={styles.gridLabel}>에너지 포식자</Text></View>
+                            <View style={[styles.gridCell, { backgroundColor: '#FFB74D10' }]}><Text style={styles.gridLabel}>에너지 충전소</Text></View>
+                            <View style={[styles.gridCell, { backgroundColor: '#D1D5DB20' }]}><Text style={styles.gridLabel}>피곤한 관계</Text></View>
+                            <View style={[styles.gridCell, { backgroundColor: '#4A5D4E10' }]}><Text style={styles.gridLabel}>편안한 관계</Text></View>
+                        </View>
+
+                        <Svg height="160" width={matrixWidth - 48} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
+                            {/* Axes */}
+                            <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                            <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+
+                            {/* Data Points for each relationship, handling overlaps */}
+                            {Array.from(pointMap.entries()).flatMap(([key, nodes]) => {
+                                const sat = nodes[0].sat;
+                                const drain = nodes[0].drain;
+                                const centerX = 20 + (sat / 100) * 160;
+                                const centerY = svgHeight - (20 + (drain / 100) * 120);
+
+                                return nodes.map((node, i) => {
+                                    const angle = (i * 360 / nodes.length) * (Math.PI / 180);
+                                    const offset = nodes.length > 1 ? 8 : 0; // offset radius for overlapping
+                                    const cx = centerX + offset * Math.cos(angle);
+                                    const cy = centerY + offset * Math.sin(angle);
+                                    
+                                    // 🎨 Zone Color
+                                    let nodeColor = colors.accent;
+                                    if (node.zone === 1) nodeColor = '#FFB74D';
+                                    else if (node.zone === 2) nodeColor = '#D98B73';
+                                    else if (node.zone === 3) nodeColor = '#4A5D4E';
+                                    else if (node.zone === 4) nodeColor = '#90A4AE';
+                                    else if (node.zone === 5) nodeColor = '#D1D5DB';
+
+                                    return (
+                                        <G key={node.id}>
+                                            <Circle
+                                                cx={cx}
+                                                cy={cy}
+                                                r="5"
+                                                fill={nodeColor}
+                                                stroke="white"
+                                                strokeWidth="1.5"
+                                                opacity={0.8}
+                                            />
+                                            <SvgText
+                                                x={cx}
+                                                y={cy + 12}
+                                                fontSize="8"
+                                                fontWeight="700"
+                                                fill={colors.primary}
+                                                textAnchor="middle"
+                                                opacity="0.6"
+                                            >
+                                                {node.name}
+                                            </SvgText>
+                                        </G>
+                                    );
+                                });
+                            })}
+                        </Svg>
+                    </View>
+                    
+                    <View style={styles.chartLegendRow}>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: '#FFB74D' }]} />
+                            <Text style={styles.legendLabel}>Z1</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: '#D98B73' }]} />
+                            <Text style={styles.legendLabel}>Z2</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: '#4A5D4E' }]} />
+                            <Text style={styles.legendLabel}>Z3</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: '#90A4AE' }]} />
+                            <Text style={styles.legendLabel}>Z4</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: '#D1D5DB' }]} />
+                            <Text style={styles.legendLabel}>Z5</Text>
+                        </View>
+                    </View>
+                    <View style={[styles.chartLegendRow, { marginTop: 0, marginBottom: 0 }]}>
+                        <Text style={[styles.legendLabel, { fontSize: 10, opacity: 0.6 }]}>가로: 기쁨 수치 | 세로: 에너지 뺏김 수치</Text>
+                    </View>
+                </View>
+            </View>
+        );
+    };
 
     const renderFocusInsight = () => {
         // 상위 10명 관계 추출 (렌즈별 정렬 로직은 아래에서 수행)
@@ -889,33 +969,52 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     };
 
                     if (selectedLens === 'Positive') {
-                        sortedData = sortedData.sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
                         themeColor = '#D4AF37'; // Gold
                         LensIcon = Star;
                     } else if (selectedLens === 'Negative') {
-                        sortedData = sortedData.sort((a, b) => (a.temperature || 0) - (b.temperature || 0));
                         themeColor = '#D98B73'; // Terracotta
                         LensIcon = Zap;
                     } else if (selectedLens === 'Frequency') {
-                        // interaction frequency logic (simple mapping for now)
-                        const getWeight = (str: string = '') => {
-                            if (str.includes('방금') || str.includes('분 전')) return 100;
-                            if (str.includes('오늘') || str.includes('시간 전')) return 80;
-                            if (str.includes('어제')) return 60;
-                            if (str.includes('일 전')) return 40;
-                            return 10;
-                        };
-                        sortedData = sortedData.sort((a, b) => getWeight(b.lastInteraction) - getWeight(a.lastInteraction));
                         themeColor = colors.primary;
                         LensIcon = History;
+                    }
+
+                    if (selectedLens !== 'None') {
+                        sortedData = getFilteredRelationships(selectedLens).sort((a, b) => getLensValue(b, selectedLens) - getLensValue(a, selectedLens));
                     } else {
-                        sortedData = sortedData.sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
+                        sortedData = [...relationships].sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
                     }
 
                     const topTen = sortedData.slice(0, 10);
                     const displayList = isRankingExpanded ? topTen : topTen.slice(0, 5);
                     const anchor = topTen[0];
-                    if (!anchor) return null;
+                    if (!anchor) {
+                        const getEmptyState = () => {
+                            if (selectedLens === 'Positive') return { icon: Heart, title: '충전이 필요한 순간', desc: '아직 당신을 온전히 충전해 줄 관계를 찾지 못했어요.\n이번 주말엔 나를 편안하게 해주는 사람에게\n가볍게 연락해 보는 건 어떨까요?' };
+                            if (selectedLens === 'Negative') return { icon: Shield, title: '정말 다행이에요!', desc: '현재 당신의 에너지를 심하게 빼앗는 사람이 없습니다.\n평온한 마음의 공간을 마음껏 누리세요. 🌿' };
+                            if (selectedLens === 'Frequency') return { icon: Activity, title: '기록이 필요해요', desc: '최근 깊게 교류한 기록이 부족해요.\n사람들과 어떤 감정을 주고받았는지 가볍게 기록해 볼까요?' };
+                            return { icon: Users, title: '인맥을 추가해보세요', desc: '아직 등록된 인맥이 없어요.\n소중한 사람들을 추가하고 관계를 가꿔보세요.' };
+                        };
+                        const es = getEmptyState();
+                        const EmptyIcon = es.icon;
+                        return (
+                            <View style={[styles.anchorCard, { backgroundColor: colors.white, alignItems: 'center', paddingVertical: 40, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.primary + '20' }]}>
+                                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: themeColor + '10', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                                    <EmptyIcon size={32} color={themeColor} />
+                                </View>
+                                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 8 }}>{es.title}</Text>
+                                <Text style={{ fontSize: 13, color: colors.primary, opacity: 0.6, textAlign: 'center', lineHeight: 20 }}>{es.desc}</Text>
+                                {selectedLens === 'Frequency' && (
+                                    <TouchableOpacity 
+                                        onPress={() => Alert.alert('교류 기록', '홈 탭이나 연락처 카드에서 교류를 기록해 주세요.')}
+                                        style={{ marginTop: 20, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.primary, borderRadius: 20 }}
+                                    >
+                                        <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>기록하러 가기</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        );
+                    }
 
                     return (
                         <>
@@ -930,7 +1029,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                         <Text style={[styles.anchorBadgeText, { color: themeColor }]}>NO. 1</Text>
                                     </View>
                                     <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
-                                        {selectedLens === 'Frequency' ? `${anchor.lastInteraction} • ${anchor.temperature}%` : `${anchor.temperature}%`}
+                                        {selectedLens !== 'None' ? getLensDisplay(anchor, selectedLens) : `${anchor.temperature || 0}%`}
                                     </Text>
                                 </View>
                                 <View style={styles.anchorMain}>
@@ -992,7 +1091,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                                 <View style={styles.squadNameRow}>
                                                     <Text style={[styles.squadName, { color: colors.primary }]}>{r.name}</Text>
                                                     <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
-                                                        {selectedLens === 'Frequency' ? `${r.lastInteraction} • ${r.temperature}%` : `${r.temperature}%`}
+                                                        {selectedLens !== 'None' ? getLensDisplay(r, selectedLens) : `${r.temperature || 0}%`}
                                                     </Text>
                                                 </View>
                                                 <View style={styles.squadPersonaRow}>
@@ -1107,6 +1206,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
 
                     {renderOrbitVisualization()}
+                    {renderGlobalSocialTopography()}
                     {renderFocusInsight()}
 
                     <View style={styles.nudgeSection}>
@@ -2214,10 +2314,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     vizCardDetailBtn: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        zIndex: 10,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
@@ -2226,4 +2322,12 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 10,
     },
+    topographyPlot: { position: 'relative', height: 160, width: '100%', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
+    topographyGrid: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', flexWrap: 'wrap' },
+    gridCell: { width: '50%', height: '50%', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.02)' },
+    gridLabel: { fontSize: 10, fontWeight: '800', color: '#4A5D4E', opacity: 0.2, textTransform: 'uppercase' },
+    chartLegendRow: { flexDirection: 'row', gap: 16, marginBottom: 24, marginTop: 12, justifyContent: 'center' },
+    legendGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendBarIndicator: { width: 12, height: 12, borderRadius: 3 },
+    legendLabel: { fontSize: 11, color: '#888', fontWeight: '600' },
 });

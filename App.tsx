@@ -213,13 +213,12 @@ function App() {
                   <RelationshipEntry
                     onBack={() => {
                         setIsAddingRelationship(false);
-                        setInitialSetupDone(true); // 취소해도 맵으로 이동 허용
+                        setInitialSetupDone(true);
                     }}
                     onComplete={(data) => {
                       setPendingRelationship(data);
-                      // 임시 ID로 진단 시작
                       setSelectedNodeId('temp-' + Date.now());
-                      setDiagnosisMode('ZONE'); // Force ZONE diagnosis for new relationships
+                      setDiagnosisMode('ZONE'); // 궤도 배치 체크리스트만 진행
                       setIsAddingRelationship(false);
                       setInitialSetupDone(true);
                       setIsDiagnosing(true);

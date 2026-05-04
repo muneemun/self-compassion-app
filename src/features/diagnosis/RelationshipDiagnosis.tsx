@@ -482,12 +482,12 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                         styles.confirmBtn,
                         { backgroundColor: colors.primary, marginBottom: 12 }
                     ]}
-                    onPress={() => setStep('RQS')}
+                    onPress={() => onComplete?.({ zone: finalZone })}
                 >
                     <Text style={styles.confirmText}>
-                        심화 캐릭터 진단하기
+                        🪐 궤도 안착 완료
                     </Text>
-                    <Zap size={20} color="#fff" />
+                    <Check size={20} color="#fff" />
                 </TouchableOpacity>
 
                 <TouchableOpacity

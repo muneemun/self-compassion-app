@@ -9,7 +9,7 @@ import { ArrowLeft, UserPlus, Zap, Edit3, Check, Search, Users, Camera, Phone, C
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 
 type EntryMode = 'choice' | 'sync' | 'manual';
-type ManualStep = 'name' | 'phone' | 'role' | 'type';
+type ManualStep = 'name' | 'phone' | 'role' | 'type' | 'zone';
 
 interface ContactItem {
     id: string;
@@ -17,6 +17,44 @@ interface ContactItem {
     phoneNumber?: string;
     image?: string;
 }
+
+const ZONE_CONFIG = [
+    {
+        zone: 1,
+        label: '핵심 그룹',
+        desc: '감정적으로 가장 가깝고, 위기 시 바로 연락할 수 있는 사람',
+        color: '#FFB74D',
+        checks: ['거의 매일 연락하거나 만난다', '깊은 감정과 고민을 솔직하게 나눈다', '위기 상황에서 가장 먼저 떠오른다'],
+    },
+    {
+        zone: 2,
+        label: '정서적 공유 그룹',
+        desc: '자주 만나며 개인적인 이야기를 나눌 수 있는 사람',
+        color: '#D98B73',
+        checks: ['정기적으로 연락하거나 만난다', '서로의 일상을 알고 있다', '개인적인 이야기를 나눌 수 있다'],
+    },
+    {
+        zone: 3,
+        label: '기능적 협력 관계',
+        desc: '업무·활동 등 특정 목적으로 연결된 사람',
+        color: '#4A5D4E',
+        checks: ['주로 업무나 공통 활동을 통해 만난다', '필요할 때 연락하는 관계다', '서로 도움을 주고받을 수 있다'],
+    },
+    {
+        zone: 4,
+        label: '단순 인지 관계',
+        desc: '안면이 있거나 이름을 아는 수준의 사람',
+        color: '#90A4AE',
+        checks: ['자주 만나지는 않는다', '특별한 교류가 없다', '이름이나 얼굴을 알고 있다'],
+    },
+    {
+        zone: 5,
+        label: '배경 소음',
+        desc: '온라인에서만 연결되거나 거의 교류가 없는 사람',
+        color: '#D1D5DB',
+        checks: ['SNS 등 온라인으로만 연결되어 있다', '직접 대화한 적이 거의 없다', '배경 정보로만 알고 있다'],
+    },
+];
 
 export const RelationshipEntry = ({ onBack, onComplete }: {
     onBack: () => void,
@@ -40,6 +78,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
     const [manualCustomType, setManualCustomType] = useState('');
     const [isCustomType, setIsCustomType] = useState(false);
     const [customTypes, setCustomTypes] = useState<string[]>([]);
+    const [manualZone, setManualZone] = useState<number>(3);
 
     // Refs
     const scrollRef = useRef<ScrollView>(null);
@@ -151,7 +190,8 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
             type: 'friend',
             role: 'Acquaintance',
             phoneNumber: contact.phoneNumber,
-            image: contact.image
+            image: contact.image,
+            zone: 3, // 연락처 동기화 시 기본 Zone 3 배치 (이후 수동 조정 가능)
         });
     };
 
@@ -169,18 +209,15 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
             Alert.alert('알림', '관계 유형을 입력해주세요.');
             return;
         }
-
-        // Add to custom types if it's a new one
         if (isCustomType && !customTypes.includes(finalType)) {
             setCustomTypes(prev => [...prev, finalType]);
         }
-
         onComplete({
             name: manualName,
             type: finalType,
             role: manualRole || 'Acquaintance',
             phoneNumber: manualPhone || undefined,
-            image: manualImage || undefined
+            image: manualImage || undefined,
         });
     };
 
@@ -425,13 +462,15 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
                             { backgroundColor: colors.primary, opacity: (manualType || (isCustomType && manualCustomType.trim())) ? 1 : 0.5 }
                         ]}
                         onPress={handleManualSubmit}
+                        disabled={!manualType && !isCustomType}
                     >
-                        <Text style={styles.submitBtnText}>등록 및 진단 시작</Text>
+                        <Text style={styles.submitBtnText}>등록하기</Text>
                     </TouchableOpacity>
                 </View>
             )}
         </View>
     );
+
 
     const renderHeader = () => (
         <View style={COMMON_STYLES.headerContainer}>
@@ -519,6 +558,16 @@ const styles = StyleSheet.create({
     typeChip: { flex: 1, minWidth: '45%', paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
     typeChipText: { fontSize: 14, fontWeight: '800' },
     submitBtn: { height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+    zoneCard: { borderRadius: 16, padding: 16, marginBottom: 10 },
+    zoneHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    zoneDot: { width: 14, height: 14, borderRadius: 7 },
+    zoneLabel: { fontSize: 14, fontWeight: '800' },
+    zoneDesc: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+    zoneCheck: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    checkList: { marginTop: 12, paddingLeft: 26, gap: 6 },
+    checkItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    checkDot: { width: 6, height: 6, borderRadius: 3 },
+    checkText: { fontSize: 12, fontWeight: '500' },
     submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
     syncContainer: { flex: 1, padding: 20 },
     searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 50, borderRadius: 25, marginBottom: 20 },
