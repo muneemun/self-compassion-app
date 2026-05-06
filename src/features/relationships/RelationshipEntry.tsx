@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, LayoutAnimation, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput, Alert, ActivityIndicator, Platform, Keyboard, LayoutAnimation, BackHandler } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as Contacts from 'expo-contacts';
 import * as ImagePicker from 'expo-image-picker';
 import { HubLayout } from '../../layouts/BaseLayout';
@@ -81,7 +82,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
     const [manualZone, setManualZone] = useState<number>(3);
 
     // Refs
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const nameInputRef = useRef<TextInput>(null);
     const phoneInputRef = useRef<TextInput>(null);
     const roleInputRef = useRef<TextInput>(null);
@@ -431,6 +432,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
                             onPress={() => {
                                 setIsCustomType(true);
                                 setManualType(undefined);
+                                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
                             }}
                         >
                             <Text style={[
@@ -516,18 +518,19 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
 
     return (
         <HubLayout header={renderHeader()} scrollable={false}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView
-                    ref={scrollRef}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ flexGrow: 1 }}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {mode === 'choice' && renderChoice()}
-                    {mode === 'sync' && renderSync()}
-                    {mode === 'manual' && renderManual()}
-                </ScrollView>
-            </KeyboardAvoidingView>
+            <KeyboardAwareScrollView
+                ref={scrollRef}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+                enableOnAndroid={true}
+                extraScrollHeight={120}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                {mode === 'choice' && renderChoice()}
+                {mode === 'sync' && renderSync()}
+                {mode === 'manual' && renderManual()}
+            </KeyboardAwareScrollView>
         </HubLayout>
     );
 };

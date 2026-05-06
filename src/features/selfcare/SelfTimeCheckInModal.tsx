@@ -69,9 +69,9 @@ const CustomSlider = React.memo(({ value, onChange, activeColor, trackColor, thu
             onResponderGrant={handleTouch}
             onResponderMove={handleTouch}
         >
-            <View style={[styles.sliderTrack, { backgroundColor: trackColor }]} />
-            <View style={[styles.sliderActive, { backgroundColor: activeColor, width: `${value}%` }]} />
-            <View style={[
+            <View pointerEvents="none" style={[styles.sliderTrack, { backgroundColor: trackColor }]} />
+            <View pointerEvents="none" style={[styles.sliderActive, { backgroundColor: activeColor, width: `${value}%` }]} />
+            <View pointerEvents="none" style={[
                 styles.sliderThumb,
                 { backgroundColor: thumbColor, left: `${value}%`, borderColor: activeColor }
             ]} />

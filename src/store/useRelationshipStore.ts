@@ -231,16 +231,9 @@ export const useRelationshipStore = create<RelationshipState>()(
                         const { trust, communication, frequency, satisfaction } = r.metrics;
                         const avgTemp = Math.round((trust + communication + satisfaction) / 3);
 
-                        // 존(Zone) 결정 로직: 긴밀도가 높고 자주 소통하면 1존, 아니면 밀려남
-                        let newZone = 4;
-                        if (avgTemp > 85 && frequency > 70) newZone = 1;
-                        else if (avgTemp > 60 && frequency > 40) newZone = 2;
-                        else if (avgTemp > 30) newZone = 3;
-
                         return {
                             ...r,
                             temperature: avgTemp,
-                            zone: newZone,
                         };
                     }),
                 }));
@@ -304,19 +297,10 @@ export const useRelationshipStore = create<RelationshipState>()(
                         const currentCloseness = r.temperature || 50;
                         const newCloseness = Math.max(0, Math.min(100, currentCloseness + resonanceDelta));
                         
-                        // 긴밀도 기반 궤도(Zone) 자동 조정 규칙 적용
-                        let newZone = r.zone;
-                        if (newCloseness > 80) newZone = 1;
-                        else if (newCloseness > 60) newZone = 2;
-                        else if (newCloseness > 40) newZone = 3;
-                        else if (newCloseness > 20) newZone = 4;
-                        else newZone = 5;
-
                         return {
                             ...r,
                             lastInteraction: '방금',
                             temperature: newCloseness,
-                            zone: newZone,
                             history: [
                                 ...r.history,
                                 {

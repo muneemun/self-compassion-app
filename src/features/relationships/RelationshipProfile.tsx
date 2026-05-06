@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput, Alert, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput, Alert, Platform, Dimensions } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as ImagePicker from 'expo-image-picker';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
@@ -99,13 +100,18 @@ export const RelationshipProfile = ({ relationshipId, onBack, onDelete }: Relati
     ];
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1, backgroundColor: colors.background }}
-        >
-            <HubLayout header={renderHeader()} scrollable>
-                <View style={styles.container}>
-                    {/* Avatar Section */}
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <HubLayout header={renderHeader()} scrollable={false}>
+                <KeyboardAwareScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    enableOnAndroid={true}
+                    extraScrollHeight={80}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.container}>
+                        {/* Avatar Section */}
                     <View style={styles.avatarSection}>
                         <TouchableOpacity onPress={pickImage} style={styles.avatarWrapper}>
                             {image ? (
@@ -206,9 +212,10 @@ export const RelationshipProfile = ({ relationshipId, onBack, onDelete }: Relati
                     </TouchableOpacity>
 
                     <View style={{ height: 40 }} />
-                </View>
+                    </View>
+                </KeyboardAwareScrollView>
             </HubLayout>
-        </KeyboardAvoidingView>
+        </View>
     );
 };
 

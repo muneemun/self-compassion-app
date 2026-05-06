@@ -34,10 +34,10 @@ const MetricSlider = ({ value, onChange, activeColor, trackColor, thumbColor }: 
 
     return (
         <View style={styles.sliderContainer} {...panResponder.panHandlers}>
-            <View style={[styles.sliderTrack, { backgroundColor: trackColor }]}>
+            <View pointerEvents="none" style={[styles.sliderTrack, { backgroundColor: trackColor }]}>
                 <View style={[styles.sliderFill, { width: `${value}%`, backgroundColor: activeColor }]} />
             </View>
-            <View style={[styles.sliderThumb, { left: `${value}%`, backgroundColor: thumbColor, borderColor: activeColor }]} />
+            <View pointerEvents="none" style={[styles.sliderThumb, { left: `${value}%`, backgroundColor: thumbColor, borderColor: activeColor }]} />
         </View>
     );
 };

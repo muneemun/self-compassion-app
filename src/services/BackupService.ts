@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRelationshipStore } from '../store/useRelationshipStore';
@@ -43,17 +43,10 @@ export const BackupService = {
         return;
       }
 
-      // 모바일 환경 처리: 디렉토리 존재 확인
-      const dirInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory!);
-      if (!dirInfo.exists) {
-        // 이론적으로는 항상 존재해야 하지만 안전을 위해 확인
-        throw new Error('저장 장치 경로를 찾을 수 없습니다.');
-      }
+      // 모바일 환경 처리: 파일 저장
 
       const fileUri = FileSystem.documentDirectory + filename;
-      await FileSystem.writeAsStringAsync(fileUri, jsonString, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      await FileSystem.writeAsStringAsync(fileUri, jsonString);
 
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {

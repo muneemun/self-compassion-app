@@ -151,24 +151,13 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
             lastChecked: new Date().toISOString()
         };
 
-        // Record history
-        const oxytocin = Math.round((areaScores.vitality + areaScores.reciprocity) / 8 * 100);
-        const cortisol = Math.round((4 - areaScores.safety) / 4 * 100);
-        const temperature = Math.round((total / 16) * 100);
-
         setLocalResult({
-            rqsResult,
-            oxytocin,
-            cortisol,
-            temperature
+            rqsResult
         });
 
         // 실제 노드가 있을 때만 업데이트
         if (getRelationshipById(relationshipId)) {
             updateDiagnosisResult(relationshipId, {
-                temperature,
-                oxytocin,
-                cortisol,
                 rqsResult,
                 event: `RQS 심화 진단 (${grade}등급)`
             });
@@ -266,9 +255,6 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
         if (!res) return null;
         const guide = GRADES[res.grade as 'S' | 'A' | 'B' | 'C'];
 
-        const oxytocin = Math.round((res.areaScores.vitality + res.areaScores.reciprocity) / 8 * 100);
-        const cortisol = Math.round((4 - res.areaScores.safety) / 4 * 100);
-
         const getPrescriptionActions = (grade: string) => {
             const actions: Record<string, string[]> = {
                 S: ['정기적인 깊은 대화 시간 확보', '솔직한 감정 공유 및 감사 표현', '위기 시 가장 먼저 도움 요청하기'],
@@ -341,22 +327,7 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
                     </View>
                 </View>
 
-                {/* Impact Analysis Section */}
-                <View style={styles.impactSection}>
-                    <Text style={styles.sectionTitle}>상태 영향도 분석</Text>
-                    <View style={styles.impactContainer}>
-                        <View style={[styles.impactBox, { backgroundColor: '#E8F5E9' }]}>
-                            <Heart size={20} color="#2E7D32" fill="#2E7D32" />
-                            <Text style={styles.impactLabel}>옥시토신</Text>
-                            <Text style={[styles.impactValue, { color: '#2E7D32' }]}>{oxytocin}%</Text>
-                        </View>
-                        <View style={[styles.impactBox, { backgroundColor: '#FFF3E0' }]}>
-                            <Zap size={20} color="#E65100" fill="#E65100" />
-                            <Text style={styles.impactLabel}>코르티솔</Text>
-                            <Text style={[styles.impactValue, { color: '#E65100' }]}>{cortisol}%</Text>
-                        </View>
-                    </View>
-                </View>
+
 
                 {/* Prescription Card */}
                 <View style={[styles.prescriptionCard, { borderColor: guide.color + '40' }]}>
