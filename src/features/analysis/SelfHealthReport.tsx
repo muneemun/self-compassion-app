@@ -310,71 +310,6 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
         );
     };
 
-    const renderBiomarkerStats = () => {
-        const { avgOxytocin, avgCortisol } = energyTotal;
-
-        const getStatus = (type: 'oxytocin' | 'cortisol', val: number) => {
-            if (type === 'oxytocin') {
-                if (val >= 80) return { label: '정서 피크', color: '#D98B73' };
-                if (val >= 60) return { label: '유대감 양호', color: '#7BA67E' };
-                return { label: '회복 필요', color: '#8C968D' };
-            } else {
-                if (val >= 70) return { label: '스트레스 과다', color: '#D98B73' };
-                if (val >= 40) return { label: '긴장 상태', color: '#E9A15A' };
-                return { label: '정서적 이완', color: '#7BA67E' };
-            }
-        };
-
-        const oxy = getStatus('oxytocin', avgOxytocin);
-        const cort = getStatus('cortisol', avgCortisol);
-
-        return (
-            <View style={styles.sectionContainer}>
-                <Text style={[styles.sectionTitle, { color: colors.primary, marginBottom: 16 }]}>{period} 정서 영향 분석</Text>
-                <View style={styles.impactGrid}>
-                    <TouchableOpacity
-                        style={[styles.impactCard, { backgroundColor: colors.white }]}
-                        onPress={() => setInfoModal({ visible: true, type: 'oxytocin' })}
-                    >
-                        <View style={styles.impactLabelRow}>
-                            <View style={[styles.impactIconBg, { backgroundColor: oxy.color + '1A' }]}>
-                                <Heart size={14} color={oxy.color} fill={oxy.color} />
-                            </View>
-                            <Text style={[styles.impactLabel, { color: colors.primary }]}>옥시토신</Text>
-                        </View>
-                        <View style={styles.progressBg}>
-                            <View style={[styles.progressFill, { width: `${avgOxytocin}%`, backgroundColor: oxy.color }]} />
-                        </View>
-                        <View style={styles.impactValueRow}>
-                            <Text style={[styles.impactLevel, { color: oxy.color }]}>{oxy.label}</Text>
-                            <Text style={[styles.impactValue, { color: colors.primary }]}>{avgOxytocin}<Text style={{ fontSize: 10, opacity: 0.4 }}>%</Text></Text>
-                        </View>
-                        <Text style={styles.impactBrief}>따뜻한 교감이 주는 회복 에너지</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.impactCard, { backgroundColor: colors.white }]}
-                        onPress={() => setInfoModal({ visible: true, type: 'cortisol' })}
-                    >
-                        <View style={styles.impactLabelRow}>
-                            <View style={[styles.impactIconBg, { backgroundColor: cort.color + '1A' }]}>
-                                <Activity size={14} color={cort.color} />
-                            </View>
-                            <Text style={[styles.impactLabel, { color: colors.primary }]}>코르티솔</Text>
-                        </View>
-                        <View style={styles.progressBg}>
-                            <View style={[styles.progressFill, { width: `${avgCortisol}%`, backgroundColor: cort.color }]} />
-                        </View>
-                        <View style={styles.impactValueRow}>
-                            <Text style={[styles.impactLevel, { color: cort.color }]}>{cort.label}</Text>
-                            <Text style={[styles.impactValue, { color: colors.primary }]}>{avgCortisol}<Text style={{ fontSize: 10, opacity: 0.4 }}>%</Text></Text>
-                        </View>
-                        <Text style={styles.impactBrief}>정서적 자극으로 인한 긴장 피로도</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
-    };
 
     const renderGlobalSocialTopography = () => {
         const matrixWidth = width - 48; // padding account
@@ -707,16 +642,6 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                     { label: '소모적 (Challenging)', desc: '정서적 온도가 40°C 이하이거나, 갈등/스트레스(Cortisol) 반응이 감지된 상호작용입니다.' },
                     { label: '일관성 (Consistency)', desc: '감정 기복이 크지 않고 안정적인 패턴을 유지하는지 보여줍니다.' },
                 ]
-            },
-            oxytocin: {
-                title: '옥시토신 (Oxytocin)',
-                subtitle: '유대감과 치유의 호르몬',
-                info: '모든 인맥과의 상호작용을 종합한 주간 평균 수치입니다. 사람과 정서적으로 깊이 연결되어 있다고 느낄 때 분비되는 사랑과 신뢰의 물질입니다. 높은 수치는 최근의 관계 활동들이 당신에게 정서적 안도감과 회복의 에너지를 주는 "핵심 그룹" 역할을 하고 있음을 의미합니다.'
-            },
-            cortisol: {
-                title: '코르티솔 (Cortisol)',
-                subtitle: '긴장과 스트레스 호르몬',
-                info: '모든 인맥과의 상호작용을 종합한 주간 평균 수치입니다. 상호작용 시 긴장하거나 위협, 피로를 느낄 때 분비되는 스트레스 반응 물질입니다. 높은 수치가 지속되면 관계 자체가 심리적 부채가 되어 심신을 고갈시키며, 건강한 판단을 어렵게 만듭니다.'
             }
         }[infoModal.type] as any;
 
@@ -761,7 +686,6 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                     {renderPeriodToggle()}
                     {renderSelfTimeCard()}
                     {renderRadarChart()}
-                    {renderBiomarkerStats()}
                     {renderEnergyChart()}
                     {renderGlobalSocialTopography()}
                     {renderCheckInHistory()}
