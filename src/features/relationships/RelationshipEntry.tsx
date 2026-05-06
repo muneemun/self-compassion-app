@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput, Alert, ActivityIndicator, Platform, Keyboard, LayoutAnimation, BackHandler } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput, Alert, ActivityIndicator, Platform, Keyboard, LayoutAnimation, BackHandler, SectionList, PanResponder, GestureResponderEvent } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as Contacts from 'expo-contacts';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,7 +17,39 @@ interface ContactItem {
     name: string;
     phoneNumber?: string;
     image?: string;
+    company?: string;
 }
+
+const getInitialConsonant = (text: string) => {
+    if (!text) return '#';
+    const firstChar = text.trim().charAt(0);
+    const code = firstChar.charCodeAt(0) - 44032;
+    if (code > -1 && code < 11172) {
+        // 한글
+        const cho = Math.floor(code / 588);
+        const consonants = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+        return consonants[cho] || '#';
+    }
+    // 영어인 경우 알파벳 대문자로
+    if (/[a-zA-Z]/.test(firstChar)) {
+        return firstChar.toUpperCase();
+    }
+    return '#';
+};
+
+const getChosungStr = (text: string) => {
+    const consonants = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i) - 44032;
+        if (code > -1 && code < 11172) {
+            result += consonants[Math.floor(code / 588)];
+        } else {
+            result += text.charAt(i);
+        }
+    }
+    return result;
+};
 
 const ZONE_CONFIG = [
     {
@@ -68,6 +100,8 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
     const [contacts, setContacts] = useState<ContactItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeChip, setActiveChip] = useState<string>('ALL');
+    const [contactGroups, setContactGroups] = useState<{id: string, name: string}[]>([{ id: 'ALL', name: '전체' }]);
 
     // Manual setup state
     const [manualStep, setManualStep] = useState<ManualStep>('name');
@@ -83,6 +117,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
 
     // Refs
     const scrollRef = useRef<any>(null);
+    const sectionListRef = useRef<SectionList>(null);
     const nameInputRef = useRef<TextInput>(null);
     const phoneInputRef = useRef<TextInput>(null);
     const roleInputRef = useRef<TextInput>(null);
@@ -146,6 +181,61 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
         return () => backHandler.remove();
     }, [manualStep, mode, manualName, manualPhone, manualRole, manualImage, manualType]);
 
+    const sectionedContacts = useMemo(() => {
+        const query = searchQuery.toLowerCase();
+        const isQueryOnlyChosung = /^[ㄱ-ㅎ]+$/.test(query);
+
+        let filtered = contacts.filter(c => {
+            const name = c.name.toLowerCase();
+            if (name.includes(query)) return true;
+            if (isQueryOnlyChosung) {
+                const nameChosung = getChosungStr(name);
+                if (nameChosung.includes(query)) return true;
+            }
+            return false;
+        });
+
+        if (activeChip === 'COMPANY') {
+            filtered = filtered.filter(c => !!c.company);
+        } else if (activeChip === 'FAMILY') {
+            filtered = filtered.filter(c => 
+                c.name.includes('엄마') || c.name.includes('아빠') || c.name.includes('형') || 
+                c.name.includes('동생') || c.name.includes('누나') || c.name.includes('언니') || 
+                c.name.includes('아들') || c.name.includes('딸') || c.name.includes('가족')
+            );
+        } else if (activeChip === 'HAS_PHONE') {
+            filtered = filtered.filter(c => !!c.phoneNumber);
+        }
+
+        const sectionsMap: { [key: string]: ContactItem[] } = {};
+        filtered.forEach(c => {
+            const initial = getInitialConsonant(c.name);
+            if (!sectionsMap[initial]) sectionsMap[initial] = [];
+            sectionsMap[initial].push(c);
+        });
+
+        const sortedSections = Object.keys(sectionsMap).sort((a, b) => {
+            if (a === '#') return 1;
+            if (b === '#') return -1;
+            return a.localeCompare(b);
+        }).map(key => ({
+            title: key,
+            data: sectionsMap[key].sort((a, b) => a.name.localeCompare(b.name))
+        }));
+
+        return sortedSections;
+    }, [contacts, searchQuery, activeChip]);
+
+    const scrollToSection = (index: number) => {
+        if (sectionListRef.current && sectionedContacts[index]) {
+            sectionListRef.current.scrollToLocation({
+                sectionIndex: index,
+                itemIndex: 0,
+                animated: true,
+            });
+        }
+    };
+
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -159,30 +249,72 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
         }
     };
 
-    const fetchContacts = async () => {
+    const fetchContacts = async (groupId?: string) => {
         setLoading(true);
-        const { status } = await Contacts.requestPermissionsAsync();
-        if (status === 'granted') {
-            const { data } = await Contacts.getContactsAsync({
-                fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
-            });
+        try {
+            const { status } = await Contacts.requestPermissionsAsync();
+            if (status === 'granted') {
+                if (contactGroups.length === 1) {
+                    try {
+                        const { data: groups } = await Contacts.getGroupsAsync({});
+                        if (groups && groups.length > 0) {
+                            setContactGroups([{ id: 'ALL', name: '전체' }, ...groups.map(g => ({ id: g.id!, name: g.name || '그룹없음' }))]);
+                        } else {
+                            setContactGroups([
+                                { id: 'ALL', name: '전체' },
+                                { id: 'COMPANY', name: '🏢 직장/동료' },
+                                { id: 'FAMILY', name: '👨‍👩‍👧 가족' },
+                                { id: 'HAS_PHONE', name: '📞 번호 있음' }
+                            ]);
+                        }
+                    } catch (e) {
+                        console.log('Groups fetch failed', e);
+                        setContactGroups([
+                            { id: 'ALL', name: '전체' },
+                            { id: 'COMPANY', name: '🏢 직장/동료' },
+                            { id: 'FAMILY', name: '👨‍👩‍👧 가족' },
+                            { id: 'HAS_PHONE', name: '📞 번호 있음' }
+                        ]);
+                    }
+                }
 
-            if (data.length > 0) {
-                const formatted = data.map(c => ({
-                    id: c.id,
-                    name: c.name,
-                    phoneNumber: c.phoneNumbers?.[0]?.number,
-                    image: c.image?.uri
-                })).filter(c => c.name);
-                setContacts(formatted);
-                setMode('sync');
+                const query: any = {
+                    fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Image, Contacts.Fields.Company],
+                };
+                if (groupId && groupId !== 'ALL' && !['COMPANY', 'FAMILY', 'HAS_PHONE'].includes(groupId)) {
+                    query.groupId = groupId;
+                }
+                const { data } = await Contacts.getContactsAsync(query);
+
+                if (data.length > 0) {
+                    const formatted = data.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        phoneNumber: c.phoneNumbers?.[0]?.number,
+                        image: c.image?.uri
+                    })).filter(c => c.name);
+                    setContacts(formatted);
+                    setMode('sync');
+                } else {
+                    if (groupId && groupId !== 'ALL') {
+                        setContacts([]);
+                    } else {
+                        Alert.alert('알림', '가져올 수 있는 연락처가 없습니다.');
+                    }
+                }
             } else {
-                Alert.alert('알림', '가져올 수 있는 연락처가 없습니다.');
+                Alert.alert('권한 필요', '연락처 접근 권한이 필요합니다.');
             }
-        } else {
-            Alert.alert('권한 필요', '연락처 접근 권한이 필요합니다.');
+        } catch (error) {
+            console.error('Failed to load contacts', error);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
+    };
+
+    const handleChipPress = (groupId: string) => {
+        setActiveChip(groupId);
+        fetchContacts(groupId);
     };
 
     const handleAddContact = (contact: ContactItem) => {
@@ -248,7 +380,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
 
             <TouchableOpacity
                 style={[styles.choiceCard, { backgroundColor: colors.white }]}
-                onPress={fetchContacts}
+                onPress={() => fetchContacts()}
             >
                 <View style={[styles.choiceIcon, { backgroundColor: 'rgba(74,93,78,0.1)' }]}>
                     <Zap size={24} color={colors.primary} />
@@ -488,7 +620,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
     );
 
     const renderSync = () => (
-        <View style={styles.syncContainer}>
+        <View style={[styles.syncContainer, { paddingBottom: Platform.OS === 'android' ? 60 : 40 }]}>
             <View style={[styles.searchBar, { backgroundColor: colors.white }]}>
                 <Search size={18} color={colors.primary} style={{ opacity: 0.4 }} />
                 <TextInput
@@ -499,38 +631,71 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
                     onChangeText={setSearchQuery}
                 />
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-                {contacts.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).map(contact => (
-                    <TouchableOpacity key={contact.id} style={styles.contactItem} onPress={() => handleAddContact(contact)}>
-                        <View style={[styles.contactAvatar, { backgroundColor: 'rgba(74,93,78,0.05)' }]}>
-                            {contact.image ? <Image source={{ uri: contact.image }} style={styles.miniAvatar} /> : <Users size={20} color={colors.primary} />}
-                        </View>
-                        <View style={styles.contactInfo}>
-                            <Text style={[styles.contactName, { color: colors.primary }]}>{contact.name}</Text>
-                            <Text style={[styles.contactPhone, { color: colors.primary, opacity: 0.5 }]}>{contact.phoneNumber}</Text>
-                        </View>
-                        <View style={[styles.addIcon, { backgroundColor: colors.primary }]}><UserPlus size={14} color="#fff" /></View>
+
+            {/* Smart Filter Chips using Native Groups */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipScrollContent}>
+                {contactGroups.map(chip => (
+                    <TouchableOpacity
+                        key={chip.id}
+                        style={[
+                            styles.filterChip,
+                            activeChip === chip.id ? { backgroundColor: colors.primary } : { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.primary + '20' }
+                        ]}
+                        onPress={() => handleChipPress(chip.id)}
+                    >
+                        <Text style={[
+                            styles.filterChipText,
+                            activeChip === chip.id ? { color: colors.white } : { color: colors.primary }
+                        ]}>{chip.name}</Text>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
+
+            <View style={styles.listWrapper}>
+                <SectionList
+                    ref={sectionListRef}
+                    sections={sectionedContacts}
+                    keyExtractor={(item) => item.id}
+                    showsVerticalScrollIndicator={false}
+                    renderSectionHeader={({ section: { title } }) => (
+                        <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
+                            <Text style={[styles.sectionHeaderText, { color: colors.primary }]}>{title}</Text>
+                        </View>
+                    )}
+                    renderItem={({ item: contact }) => (
+                        <TouchableOpacity style={styles.contactItem} onPress={() => handleAddContact(contact)} activeOpacity={0.6}>
+                            <View style={[styles.contactAvatar, { backgroundColor: 'rgba(74,93,78,0.05)' }]}>
+                                {contact.image ? <Image source={{ uri: contact.image }} style={styles.miniAvatar} /> : <Users size={20} color={colors.primary} />}
+                            </View>
+                            <View style={styles.contactInfo}>
+                                <Text style={[styles.contactName, { color: colors.primary }]}>{contact.name}</Text>
+                                <Text style={[styles.contactPhone, { color: colors.primary, opacity: 0.5 }]}>{contact.phoneNumber}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                    stickySectionHeadersEnabled
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                />
+            </View>
         </View>
     );
 
     return (
         <HubLayout header={renderHeader()} scrollable={false}>
-            <KeyboardAwareScrollView
-                ref={scrollRef}
-                style={{ flex: 1 }}
-                contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
-                enableOnAndroid={true}
-                extraScrollHeight={120}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                {mode === 'choice' && renderChoice()}
-                {mode === 'sync' && renderSync()}
-                {mode === 'manual' && renderManual()}
-            </KeyboardAwareScrollView>
+            {mode === 'sync' ? renderSync() : (
+                <KeyboardAwareScrollView
+                    ref={scrollRef}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+                    enableOnAndroid={true}
+                    extraScrollHeight={120}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {mode === 'choice' && renderChoice()}
+                    {mode === 'manual' && renderManual()}
+                </KeyboardAwareScrollView>
+            )}
         </HubLayout>
     );
 };
@@ -589,4 +754,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    chipScroll: { maxHeight: 40, marginBottom: 16, flexGrow: 0 },
+    chipScrollContent: { gap: 8, paddingHorizontal: 4 },
+    filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    filterChipText: { fontSize: 13, fontWeight: '800' },
+    listWrapper: { flex: 1 },
+    sectionHeader: { paddingVertical: 8, paddingHorizontal: 4, marginBottom: 4 },
+    sectionHeaderText: { fontSize: 16, fontWeight: '900' },
 });
