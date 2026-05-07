@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, Orbit, SlidersHorizontal, Activity, Rocket, FlaskConical } from 'lucide-react-native';
 
 import { ColorLockProvider } from './src/theme/ColorLockContext';
+import { COMMON_STYLES } from './src/theme/LayoutStyles';
 import { MainOrbitMap } from './src/features/map/MainOrbitMap';
 import { RelationshipList } from './src/features/relationships/RelationshipList';
 import { SosRxCenter } from './src/features/prescription/SosRxCenter';
@@ -20,6 +22,8 @@ import { EgoReflectionDashboard } from './src/features/analysis/EgoReflectionDas
 import { RelationshipTuningDashboard } from './src/features/analysis/RelationshipTuningDashboard';
 import { SelfHealthReport } from './src/features/analysis/SelfHealthReport';
 import { RelationshipLogModal } from './src/features/relationships/RelationshipLogModal';
+import { InteractionHistoryScreen } from './src/features/relationships/InteractionHistoryScreen';
+import { ZoomableRelationshipMap } from './src/features/analysis/ZoomableRelationshipMap';
 import { useAppStore } from './src/store/useAppStore';
 import { useRelationshipStore } from './src/store/useRelationshipStore';
 import { SettingsScreen } from './src/features/settings/SettingsScreen';
@@ -29,7 +33,6 @@ import { ReminderSettingsScreen } from './src/features/settings/ReminderSettings
 import { NotificationSettingsScreen } from './src/features/settings/NotificationSettingsScreen';
 import { SelfTimeCheckInModal } from './src/features/selfcare/SelfTimeCheckInModal';
 import { LabMapScreen } from './src/features/map/LabMapScreen';
-import { Orbit, SlidersHorizontal, Activity, Rocket, FlaskConical } from 'lucide-react-native';
 import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
 
 const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
@@ -66,6 +69,8 @@ function App() {
   const [isViewingProfileEdit, setIsViewingProfileEdit] = useState(false);
   const [isViewingReminders, setIsViewingReminders] = useState(false);
   const [isViewingNotifications, setIsViewingNotifications] = useState(false);
+  const [isViewingInteractionHistory, setIsViewingInteractionHistory] = useState(false);
+  const [isViewingDetailedMap, setIsViewingDetailedMap] = useState(false);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [pendingRelationship, setPendingRelationship] = useState<{
     name: string;
@@ -81,7 +86,7 @@ function App() {
   const setHasCompletedOnboarding = useAppStore(state => state.setHasCompletedOnboarding);
   // ✅ Reactive subscription — NOT getState() snapshot
   const relationships = useRelationshipStore(state => state.relationships);
-  const { addRelationship, updateDiagnosisResult } = useRelationshipStore();
+  const { addRelationship, updateAnalysisResult } = useRelationshipStore();
 
   // [DEV] 강제 데이터 초기화
   useEffect(() => {
@@ -165,7 +170,7 @@ function App() {
                           );
 
                           if (result) {
-                            updateDiagnosisResult(newId, {
+                            updateAnalysisResult(newId, {
                               ...result,
                               event: '초기 진단 완료'
                             });
@@ -232,6 +237,25 @@ function App() {
                   <ReminderSettingsScreen onBack={() => setIsViewingReminders(false)} />
                 ) : isViewingNotifications ? (
                   <NotificationSettingsScreen onBack={() => setIsViewingNotifications(false)} />
+                ) : isViewingInteractionHistory ? (
+                  <InteractionHistoryScreen onBack={() => setIsViewingInteractionHistory(false)} />
+                ) : isViewingDetailedMap ? (
+                  <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF8F4' }}>
+                    <View style={COMMON_STYLES.headerContainer}>
+                      <TouchableOpacity onPress={() => setIsViewingDetailedMap(false)} style={COMMON_STYLES.secondaryActionBtn}>
+                        <ArrowLeft size={24} color="#4A5D4E" />
+                      </TouchableOpacity>
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 17, fontWeight: '900', color: '#4A5D4E' }}>상세 관계 지형도</Text>
+                        <Text style={{ fontSize: 11, color: '#999', marginTop: 2 }}>확대/축소하여 상세 분석</Text>
+                      </View>
+                      <View style={{ width: 44 }} />
+                    </View>
+                    <ZoomableRelationshipMap onSelectNode={(id) => {
+                      setSelectedNodeId(id);
+                      setIsViewingDetailedMap(false);
+                    }} />
+                  </SafeAreaView>
                 ) : (
                   <>
                     <View style={styles.tabView}>
@@ -259,6 +283,7 @@ function App() {
                         <RelationshipTuningDashboard
                           onBack={() => setActiveTab('map')}
                           onGoToReport={() => setActiveTab('insight')}
+                          onViewDetailedMap={() => setIsViewingDetailedMap(true)}
                           onSelectNode={(id) => {
                             setSelectedNodeId(id);
                             setIsViewingReport(false);
@@ -284,6 +309,7 @@ function App() {
                       <View style={activeTab === 'health' ? styles.tabActive : styles.tabHidden}>
                         <SelfHealthReport
                           onBack={() => setActiveTab('map')}
+                          onViewAllHistory={() => setIsViewingInteractionHistory(true)}
                           onSelectRelationship={(id) => {
                             setSelectedNodeId(id);
                           }}

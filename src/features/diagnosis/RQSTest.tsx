@@ -48,7 +48,7 @@ const GRADES: Record<'S' | 'A' | 'B' | 'C', { name: string; min: number; color: 
 
 export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onViewReport }: RQSTestProps) => {
     const colors = useColors();
-    const { getRelationshipById, updateRelationship, updateDiagnosisResult } = useRelationshipStore();
+    const { getRelationshipById, updateRelationship, updateAnalysisResult } = useRelationshipStore();
     const foundNode = getRelationshipById(relationshipId);
 
     // 임시 ID인 경우 더미 노드 생성
@@ -157,9 +157,9 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
 
         // 실제 노드가 있을 때만 업데이트
         if (getRelationshipById(relationshipId)) {
-            updateDiagnosisResult(relationshipId, {
+            updateAnalysisResult(relationshipId, {
                 rqsResult,
-                event: `RQS 심화 진단 (${grade}등급)`
+                event: `RQS 심화 분석 (${grade}등급)`
             });
         }
 
@@ -175,7 +175,7 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
         <View style={COMMON_STYLES.headerContainer}>
             <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
             <View style={{ alignItems: 'center' }}>
-                <Text style={[styles.headerSub, { color: colors.primary, opacity: 0.5 }]}>RQS 심화 진단</Text>
+                <Text style={[styles.headerSub, { color: colors.primary, opacity: 0.5 }]}>RQS 심화 분석</Text>
                 <Text style={[styles.headerTitle, { color: colors.primary }]}>캐릭터 판별 테스트</Text>
             </View>
             <TouchableOpacity onPress={handleBack} style={COMMON_STYLES.secondaryActionBtn}>
@@ -300,7 +300,7 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
                 <View style={styles.analysisCard}>
                     <View style={styles.cardHeader}>
                         <Activity size={18} color={guide.color} />
-                        <Text style={[styles.cardTitle, { color: colors.primary }]}>심층 관계 진단</Text>
+                        <Text style={[styles.cardTitle, { color: colors.primary }]}>심층 관계 분석</Text>
                     </View>
                     <Text style={[styles.descriptionText, { color: colors.primary }]}>{guide.desc}</Text>
 
@@ -353,9 +353,9 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
                             <Sparkles size={14} color="white" />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={[styles.guidanceTitle, { color: colors.accent }]}>진단 결과 확인 안내</Text>
+                            <Text style={[styles.guidanceTitle, { color: colors.accent }]}>분석 결과 확인 안내</Text>
                             <Text style={[styles.guidanceText, { color: colors.primary }]}>
-                                심화 진단 리포트와 심리 처방전은{'\n'}
+                                심화 분석 리포트와 심리 처방전은{'\n'}
                                 <Text style={{ fontWeight: '800' }}>인물 상세 페이지</Text>에서 확인하실 수 있습니다.
                             </Text>
                         </View>
@@ -369,7 +369,7 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
                         }}
                     >
                         <TrendingUp size={20} color={colors.primary} />
-                        <Text style={[styles.reportBtnText, { color: colors.primary }]}>심화 진단 리포트 보기</Text>
+                        <Text style={[styles.reportBtnText, { color: colors.primary }]}>심화 분석 리포트 보기</Text>
                     </TouchableOpacity>
                 )}
 

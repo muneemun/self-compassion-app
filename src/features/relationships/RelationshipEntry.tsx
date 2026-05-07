@@ -324,7 +324,7 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
             role: 'Acquaintance',
             phoneNumber: contact.phoneNumber,
             image: contact.image,
-            zone: 3, // 연락처 동기화 시 기본 Zone 3 배치 (이후 수동 조정 가능)
+            zone: 1, // 연락처 동기화 시 기본 Zone 1 배치 (사용자가 진단 통해 추후 조정 가능)
         });
     };
 

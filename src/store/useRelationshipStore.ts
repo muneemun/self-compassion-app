@@ -14,7 +14,7 @@ interface RelationshipState {
     deleteRelationship: (id: string) => void;
     getRelationshipById: (id: string) => RelationshipNode | undefined;
     calculateHealth: (id: string) => void;
-    updateDiagnosisResult: (id: string, updates: {
+    updateAnalysisResult: (id: string, updates: {
         zone?: number;
         temperature?: number;
         oxytocin?: number;
@@ -177,17 +177,18 @@ export const useRelationshipStore = create<RelationshipState>()(
                     phoneNumber,
                     image,
                     zone: 3,
-                    temperature: 50,
+                    temperature: 0,
                     lastInteraction: 'Just added',
-                    metrics: { trust: 50, communication: 50, frequency: 50, satisfaction: 50 },
+                    metrics: { trust: 0, communication: 0, frequency: 0, satisfaction: 0 },
                     history: [{
                         id: Math.random().toString(36).substr(2, 9),
                         date: new Date().toISOString().split('T')[0],
-                        title: '인맥 추가',
+                        title: '관계 등록',
                         description: '새로운 관계가 궤도에 등록되었습니다.',
-                        closeness: 50,
-                        satisfaction: 50,
+                        closeness: 0,
+                        satisfaction: 0,
                         energyDrain: 0,
+                        createdAt: new Date().toISOString(),
                     }],
                 };
                 set((state) => ({ 
@@ -239,7 +240,7 @@ export const useRelationshipStore = create<RelationshipState>()(
                 }));
             },
 
-            updateDiagnosisResult: (id, data) => {
+            updateAnalysisResult: (id, data) => {
                 const today = new Date().toISOString().split('T')[0];
                 set((state) => ({
                     relationships: state.relationships.map((r) => {
@@ -249,13 +250,14 @@ export const useRelationshipStore = create<RelationshipState>()(
                         const newHistoryEntry = {
                             id: Math.random().toString(36).substr(2, 9),
                             date: today,
+                            createdAt: new Date().toISOString(),
                             closeness: data.temperature ?? (lastHistory?.closeness ?? r.temperature),
-                            satisfaction: 50, // Default for non-interaction updates
-                            energyDrain: 30,
+                            satisfaction: 0, 
+                            energyDrain: 0,
                             oxytocin: data.oxytocin ?? (lastHistory?.oxytocin ?? 50),
                             cortisol: data.cortisol ?? (lastHistory?.cortisol ?? 50),
-                            title: data.event || '정기 진단',
-                            description: '진단을 통한 관계 상태 업데이트',
+                            title: data.event || '관계 분석',
+                            description: '분석을 통한 관계 상태 업데이트',
                             event: data.event,
                         };
 
@@ -306,6 +308,7 @@ export const useRelationshipStore = create<RelationshipState>()(
                                 {
                                     id: Math.random().toString(36).substr(2, 9),
                                     date,
+                                    createdAt: new Date().toISOString(),
                                     closeness: newCloseness,
                                     satisfaction,
                                     energyDrain,
@@ -315,7 +318,7 @@ export const useRelationshipStore = create<RelationshipState>()(
                                     oxytocin: satisfaction > 70 ? 80 : 30,
                                     cortisol: energyDrain > 70 ? 70 : 20,
                                 }
-                            ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                            ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                         };
                     })
                 }));
@@ -327,7 +330,13 @@ export const useRelationshipStore = create<RelationshipState>()(
                         if (r.id !== personId) return r;
                         return {
                             ...r,
-                            history: r.history.map((h) => (h.id === logId ? { ...h, ...updates } : h))
+                            history: r.history
+                                .map((h) => (h.id === logId ? { ...h, ...updates } : h))
+                                .sort((a, b) => {
+                                    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
+                                    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
+                                    return timeA - timeB;
+                                })
                         };
                     })
                 }));

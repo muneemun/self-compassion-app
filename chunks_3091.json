@@ -1,0 +1,8 @@
+{
+  "Description": "\"\ud29c\ub2dd \ud0ed\uc758 \ub80c\uc988 \uae30\uc900\uc744 Health \ud0ed\uc758 \uc9c0\ud615\ub3c4 \uc815\ubcf4(satisfaction, energyDrain, history)\uc5d0 \ub9de\ucdb0 \uc7ac\uc815\uc758\ud558\uace0, \ud29c\ub2dd \ud0ed\uc5d0 \uc804\uccb4 \uad00\uacc4 \uc9c0\ud615\ub3c4\ub97c \ucd94\uac00\ud569\ub2c8\ub2e4.\"",
+  "Instruction": "\"Redefine lens criteria in tuning dashboard using topography data and insert topography component\"",
+  "ReplacementChunks": "[{\"AllowMultiple\":false,\"EndLine\":16,\"ReplacementContent\":\"import Svg, { Circle, Line, Defs, RadialGradient, Stop, G, Text as SvgText } from 'react-native-svg';\",\"StartLine\":16,\"TargetContent\":\"import Svg, { Circle, Line, Defs, RadialGradient, Stop } from \n<truncated 13315 bytes>",
+  "TargetFile": "\"/Users/muneemun/Documents/GitHub/self-compassion-app/src/features/analysis/RelationshipTuningDashboard.tsx\"",
+  "toolAction": "\"Updating RelationshipTuningDashboard.tsx\"",
+  "toolSummary": "\"Apply topography and new lens logic\""
+}

@@ -39,9 +39,10 @@ interface RelationshipTuningDashboardProps {
     onBack: () => void;
     onSelectNode: (id: string) => void;
     onGoToReport: () => void;
+    onViewDetailedMap?: () => void;
 }
 
-export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardProps> = ({ onBack, onSelectNode, onGoToReport }) => {
+export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardProps> = ({ onBack, onSelectNode, onGoToReport, onViewDetailedMap }) => {
     const colors = useColors();
     const { relationships, updateDiagnosisResult } = useRelationshipStore();
     const setSelfTimeModalOpen = useAppStore(state => state.setSelfTimeModalOpen);
@@ -617,7 +618,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         <View style={styles.vizSection}>
             <View style={styles.sectionHeader}>
                 <View style={styles.titleWithIcon}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>내 에너지 상태</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>나의 관계 밸런스</Text>
                 </View>
                 {/* Insight Card Style Summary */}
                 <View style={{ marginTop: 12, backgroundColor: '#F5F7F6', borderRadius: 16, padding: 16 }}>
@@ -663,15 +664,15 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
             <View style={[styles.vizCard, { backgroundColor: colors.white, height: 'auto', aspectRatio: undefined, paddingVertical: 24, justifyContent: 'flex-start' }]}>
                 {/* 🏷️ Dynamics View (궤도 역학 분석 / 용량 점검) */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 0, marginBottom: 8 }}>
-                    <Text style={{ fontSize: 13, color: '#888', fontWeight: '500' }}>점선(권장 인원) 기준으로 내 마음 공간 점검하기</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, width: '100%', marginTop: 0, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 13, color: '#888', fontWeight: '600', flex: 1, textAlign: 'left' }}>거리 별 관계 분포도</Text>
                     <TouchableOpacity onPress={onGoToReport} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(74, 93, 78, 0.05)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }}>
                         <BarChart2 size={14} color={colors.primary} />
                         <Text style={[styles.miniSelectText, { color: colors.primary, top: 0 }]}>상세 보기</Text>
                     </TouchableOpacity>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-evenly', paddingHorizontal: 10, paddingBottom: 16, marginTop: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16, marginTop: 16 }}>
                     {[1, 2, 3, 4, 5].map(z => {
                         const count = relationships.filter((r) => r.zone === z).length;
                         const ZONE_CAPACITY: Record<number, number> = { 1: 5, 2: 15, 3: 50, 4: 100, 5: 150 };
@@ -781,10 +782,18 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
         // 같은 위치에 있는 노드들을 그룹화 (오차범위 없이 동일 좌표)
         const pointMap = new Map<string, any[]>();
+        const counts = { q1: 0, q2: 0, q3: 0, q4: 0 }; // q1: TL, q2: TR, q3: BL, q4: BR
+
         relationships.forEach((node) => {
             const lastHistory = (node.history || []).slice(-1)[0];
             const sat = lastHistory?.satisfaction ?? 50;
             const drain = lastHistory?.energyDrain ?? 50;
+            
+            if (sat < 50 && drain >= 50) counts.q1++;
+            else if (sat >= 50 && drain >= 50) counts.q2++;
+            else if (sat < 50 && drain < 50) counts.q3++;
+            else if (sat >= 50 && drain < 50) counts.q4++;
+
             const key = `${sat}_${drain}`;
             if (!pointMap.has(key)) pointMap.set(key, []);
             pointMap.get(key)!.push({ ...node, sat, drain });
@@ -794,12 +803,15 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             <View style={styles.vizSection}>
                 <View style={styles.sectionHeader}>
                     <View style={styles.titleWithIcon}>
-                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>내 인맥 한눈에 보기</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>정서적 관계 지형도</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                        <Text style={{ fontSize: 13, color: '#888', fontWeight: '500' }}>누가 내 에너지를 채워주고, 누가 빼앗는지 확인해요</Text>
-                        <TouchableOpacity onPress={() => Alert.alert('내 인맥 한눈에 보기', '내 주변 사람들이 나에게 어떤 에너지를 주는지 한눈에 봅니다.')}>
-                            <Info size={16} color={colors.primary} opacity={0.5} />
+                        <Text style={{ fontSize: 13, color: '#888', fontWeight: '500', flex: 1 }}>만족도와 에너지 소모에 따른 우리 관계의 위치</Text>
+                        <TouchableOpacity 
+                            onPress={onViewDetailedMap}
+                            style={{ backgroundColor: colors.primary + '10', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        >
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary }}>상세 지도 🗺️</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -807,10 +819,22 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                 <View style={[styles.vizCard, { backgroundColor: colors.white, height: 'auto', aspectRatio: undefined, paddingVertical: 24 }]}>
                     <View style={styles.topographyPlot}>
                         <View style={styles.topographyGrid}>
-                            <View style={[styles.gridCell, { backgroundColor: '#D98B7310' }]}><Text style={styles.gridLabel}>에너지 포식자</Text></View>
-                            <View style={[styles.gridCell, { backgroundColor: '#FFB74D10' }]}><Text style={styles.gridLabel}>에너지 충전소</Text></View>
-                            <View style={[styles.gridCell, { backgroundColor: '#D1D5DB20' }]}><Text style={styles.gridLabel}>피곤한 관계</Text></View>
-                            <View style={[styles.gridCell, { backgroundColor: '#4A5D4E10' }]}><Text style={styles.gridLabel}>편안한 관계</Text></View>
+                            <View style={[styles.gridCell, { backgroundColor: '#D98B7305' }]}>
+                                <Text style={styles.gridLabel}>에너지 포식자</Text>
+                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
+                            </View>
+                            <View style={[styles.gridCell, { backgroundColor: '#FFB74D05' }]}>
+                                <Text style={styles.gridLabel}>에너지 충전소</Text>
+                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
+                            </View>
+                            <View style={[styles.gridCell, { backgroundColor: '#D1D5DB10' }]}>
+                                <Text style={styles.gridLabel}>피곤한 관계</Text>
+                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
+                            </View>
+                            <View style={[styles.gridCell, { backgroundColor: '#4A5D4E05' }]}>
+                                <Text style={styles.gridLabel}>편안한 관계</Text>
+                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
+                            </View>
                         </View>
 
                         <Svg height="160" width={matrixWidth - 48} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
@@ -844,23 +868,12 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                             <Circle
                                                 cx={cx}
                                                 cy={cy}
-                                                r="5"
+                                                r="4"
                                                 fill={nodeColor}
                                                 stroke="white"
-                                                strokeWidth="1.5"
+                                                strokeWidth="1"
                                                 opacity={0.8}
                                             />
-                                            <SvgText
-                                                x={cx}
-                                                y={cy + 12}
-                                                fontSize="8"
-                                                fontWeight="700"
-                                                fill={colors.primary}
-                                                textAnchor="middle"
-                                                opacity="0.6"
-                                            >
-                                                {node.name}
-                                            </SvgText>
                                         </G>
                                     );
                                 });
@@ -2331,7 +2344,19 @@ const styles = StyleSheet.create({
     topographyPlot: { position: 'relative', height: 160, width: '100%', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
     topographyGrid: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', flexWrap: 'wrap' },
     gridCell: { width: '50%', height: '50%', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.02)' },
-    gridLabel: { fontSize: 10, fontWeight: '800', color: '#4A5D4E', opacity: 0.2, textTransform: 'uppercase' },
+    gridLabel: { fontSize: 10, fontWeight: '800', color: '#4A5D4E', opacity: 0.3, textTransform: 'uppercase' },
+    countBadge: {
+        marginTop: 4,
+        backgroundColor: 'rgba(74,93,78,0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+    },
+    countText: {
+        fontSize: 12,
+        fontWeight: '900',
+        color: '#4A5D4E',
+    },
     chartLegendRow: { flexDirection: 'row', gap: 16, marginBottom: 24, marginTop: 12, justifyContent: 'center' },
     legendGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     legendBarIndicator: { width: 12, height: 12, borderRadius: 3 },

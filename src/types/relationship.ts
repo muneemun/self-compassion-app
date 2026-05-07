@@ -34,6 +34,7 @@ export interface RelationshipNode {
     history: {
         id: string; // Unique ID for editing/deleting
         date: string;
+        createdAt: string; // Added for precise time sorting
         closeness: number;      // 기존 temperature -> 정서 긴밀도로 의미 전환
         satisfaction: number;   // 교류 충족감 (0 ~ 100)
         energyDrain: number;    // 정서적 소모량 (0 ~ 100)

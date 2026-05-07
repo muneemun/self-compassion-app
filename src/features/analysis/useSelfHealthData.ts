@@ -8,48 +8,6 @@ export const useSelfHealthData = (period: PeriodType) => {
     const relationships = useRelationshipStore((state) => state.relationships);
     const selfTimeEntries = useSelfTimeStore((state) => state.entries);
 
-    // 1. Relationship Balance (Radar Chart)
-    const balanceData = useMemo(() => {
-        if (relationships.length === 0) {
-            return { Trust: 50, Growth: 50, Stability: 50, Passion: 50, Joy: 50 };
-        }
-
-        let totalTrust = 0;
-        let totalGrowth = 0;
-        let totalStability = 0;
-        let totalPassion = 0;
-        let totalJoy = 0;
-        const count = relationships.length;
-
-        relationships.forEach(r => {
-            const { trust, communication, frequency, satisfaction } = r.metrics;
-            const areaScores = r.rqsResult?.areaScores;
-
-            const trustScore = areaScores?.safety ? areaScores.safety * 25 : trust;
-            totalTrust += trustScore;
-
-            const growthScore = areaScores?.growth ? areaScores.growth * 25 : satisfaction;
-            totalGrowth += growthScore;
-
-            const stabilityScore = areaScores?.reciprocity ? areaScores.reciprocity * 25 : (trust * 0.7 + frequency * 0.3);
-            totalStability += stabilityScore;
-
-            const joyScore = areaScores?.vitality ? areaScores.vitality * 25 : (satisfaction + (r.temperature || 50)) / 2;
-            totalJoy += joyScore;
-
-            const passionScore = (areaScores?.vitality && areaScores?.growth) ? ((areaScores.vitality + areaScores.growth) / 2) * 25 : communication;
-            totalPassion += passionScore;
-        });
-
-        return {
-            Trust: Math.round(totalTrust / count),
-            Growth: Math.round(totalGrowth / count),
-            Stability: Math.round(totalStability / count),
-            Passion: Math.round(totalPassion / count),
-            Joy: Math.round(totalJoy / count),
-        };
-    }, [relationships]);
-
     // 2. Period Data Calculation
     const periodData = useMemo(() => {
         const now = new Date();
@@ -159,7 +117,22 @@ export const useSelfHealthData = (period: PeriodType) => {
             }
         });
 
-        const bestCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '없음';
+        const rawBestCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '없음';
+        
+        const EASY_CATEGORY_MAP: Record<string, string> = {
+            'SOMATIC': '가벼운 운동',
+            'somatic': '가벼운 운동',
+            'WRITING': '일기 쓰기',
+            'writing': '일기 쓰기',
+            'CREATIVE': '만들기/그리기',
+            'creative': '만들기/그리기',
+            'SENSORY': '편안한 휴식',
+            'sensory': '편안한 휴식',
+            'MINDFULNESS': '조용히 생각하기',
+            'mindfulness': '조용히 생각하기'
+        };
+
+        const bestCategory = EASY_CATEGORY_MAP[rawBestCategory] || rawBestCategory;
         const avgRestorationDelta = selfTimeCount > 0 ? Math.round(totalRestoreSatisfaction / selfTimeCount) : 0;
 
         const interactionCounts = slots.map(s => s.interactionCount);
@@ -216,7 +189,6 @@ export const useSelfHealthData = (period: PeriodType) => {
     }, [relationships, selfTimeEntries, period]);
 
     return {
-        balanceData,
         ...periodData
     };
 };

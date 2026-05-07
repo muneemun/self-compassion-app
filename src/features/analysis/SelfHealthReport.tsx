@@ -35,12 +35,12 @@ const ZONE_COLORS: Record<number, string> = {
     5: '#D1D5DB'
 };
 
-export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () => void; onSelectRelationship?: (id: string) => void }) => {
+export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationship }: { onBack: () => void; onViewAllHistory?: () => void; onSelectRelationship?: (id: string) => void }) => {
     const colors = useColors();
     const textMuted = colors.gray[500];
     const [period, setPeriod] = useState<'주간' | '월간' | '연간'>('주간');
-    const [infoModal, setInfoModal] = useState<{ visible: boolean; type: 'balance' | 'energy' | 'pulse' | 'oxytocin' | 'cortisol' | null }>({ visible: false, type: null });
-    const { balanceData, pulseStats, pulsePoints, energyTotal, stats, dateRange, selfTimeStats } = useSelfHealthData(period);
+    const [infoModal, setInfoModal] = useState<{ visible: boolean; type: 'energy' | 'pulse' | 'oxytocin' | 'cortisol' | null }>({ visible: false, type: null });
+    const { pulseStats, pulsePoints, energyTotal, stats, dateRange, selfTimeStats } = useSelfHealthData(period);
     const relationships = useRelationshipStore(state => state.relationships);
     const selfTimeEntries = useSelfTimeStore(state => state.entries);
     const { setRelationshipLogModalOpen, setSelfTimeModalOpen } = useAppStore();
@@ -85,113 +85,11 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
         </View>
     );
 
-    const renderRadarChart = () => {
-        const size = 200;
-        const center = size / 2;
-        const radius = size * 0.4;
-
-        // Real Data from Hook
-        const data = balanceData;
-        const keys = Object.keys(data);
-        const totalPoints = keys.length;
-
-        const getPoint = (value: number, index: number, maxRadius: number) => {
-            const angle = (Math.PI * 2 * index) / totalPoints - Math.PI / 2;
-            const r = (value / 100) * maxRadius;
-            const x = center + r * Math.cos(angle);
-            const y = center + r * Math.sin(angle);
-            return `${x},${y}`;
-        };
-
-        const polyPoints = keys.map((key, i) => getPoint(data[key as keyof typeof data], i, radius)).join(' ');
-        const levels = [20, 40, 60, 80, 100];
-
-        return (
-            <View style={styles.radarContainer}>
-                <View style={styles.cardHeader}>
-                    <View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={[styles.cardTitle, { color: colors.primary }]}>관계 밸런스</Text>
-                            <TouchableOpacity onPress={() => setInfoModal({ visible: true, type: 'balance' })}>
-                                <Info size={16} color={colors.primary} opacity={0.5} />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.cardSubtitle}>현재 정서적 균형이 잡혀있습니다</Text>
-                    </View>
-                    <View style={styles.iconCircle}>
-                        <Shield size={20} color={colors.primary} />
-                    </View>
-                </View>
-
-                <View style={styles.chartWrapper}>
-                    <Svg height={size} width={size}>
-                        {levels.map(l => (
-                            <Polygon
-                                key={l}
-                                points={keys.map((_, i) => getPoint(l, i, radius)).join(' ')}
-                                stroke={THEME.primary}
-                                strokeOpacity={0.1}
-                                strokeWidth="1"
-                                fill="none"
-                            />
-                        ))}
-                        {keys.map((_, i) => {
-                            const p = getPoint(100, i, radius).split(',');
-                            return (
-                                <Line
-                                    key={i}
-                                    x1={center} y1={center}
-                                    x2={p[0]} y2={p[1]}
-                                    stroke={THEME.primary}
-                                    strokeOpacity={0.1}
-                                    strokeWidth="1"
-                                />
-                            );
-                        })}
-                        <Polygon
-                            points={polyPoints}
-                            fill={THEME.primary}
-                            fillOpacity={0.2}
-                            stroke={THEME.primary}
-                            strokeWidth="2"
-                        />
-                        {keys.map((key, i) => {
-                            const p = getPoint(data[key as keyof typeof data], i, radius).split(',');
-                            return (
-                                <Circle key={i} cx={p[0]} cy={p[1]} r="3" fill={THEME.primary} />
-                            );
-                        })}
-                    </Svg>
-                    <Text style={[styles.chartLabel, { top: 0, alignSelf: 'center' }]}>신뢰</Text>
-                    <Text style={[styles.chartLabel, { right: 10, top: '35%' }]}>성장</Text>
-                    <Text style={[styles.chartLabel, { right: 20, bottom: 20 }]}>안정</Text>
-                    <Text style={[styles.chartLabel, { left: 20, bottom: 20 }]}>열정</Text>
-                    <Text style={[styles.chartLabel, { left: 10, top: '35%' }]}>즐거움</Text>
-                </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.metricsScroll}>
-                    <View style={styles.metricChip}>
-                        <TrendingUp size={16} color={colors.primary} />
-                        <Text style={styles.metricText}>소통 +12%</Text>
-                    </View>
-                    <View style={[styles.metricChip, { borderColor: THEME.secondary }]}>
-                        <BatteryFull size={16} color={THEME.secondary} />
-                        <Text style={[styles.metricText, { color: THEME.secondary }]}>활동 지수 안정</Text>
-                    </View>
-                    <View style={styles.metricChip}>
-                        <CheckCircle2 size={16} color={colors.primary} />
-                        <Text style={styles.metricText}>신뢰 안정적</Text>
-                    </View>
-                </ScrollView>
-            </View>
-        );
-    };
-
     const renderSelfTimeCard = () => {
         if (!selfTimeStats || selfTimeStats.selfTimeCount === 0) return null;
 
         return (
-            <View style={[styles.card, { backgroundColor: 'rgba(74,140,140,0.05)', borderColor: 'rgba(74,140,140,0.2)', borderWidth: 1 }]}>
+            <View style={[styles.card, { backgroundColor: 'rgba(74,140,140,0.06)', borderColor: 'rgba(74,140,140,0.15)', borderWidth: 1, shadowOpacity: 0, elevation: 0 }]}>
                 <View style={[styles.cardHeader, { marginBottom: 12 }]}>
                     <View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -316,26 +214,51 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
         const svgWidth = 200;
         const svgHeight = 160;
 
+        const pointMap = new Map<string, any[]>();
+        const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
+
+        relationships.forEach((node) => {
+            const lastHistory = (node.history || []).slice(-1)[0];
+            const sat = lastHistory?.satisfaction ?? 50;
+            const drain = lastHistory?.energyDrain ?? 50;
+            
+            if (sat < 50 && drain >= 50) counts.q1++;
+            else if (sat >= 50 && drain >= 50) counts.q2++;
+            else if (sat < 50 && drain < 50) counts.q3++;
+            else if (sat >= 50 && drain < 50) counts.q4++;
+
+            const key = `${sat}_${drain}`;
+            if (!pointMap.has(key)) pointMap.set(key, []);
+            pointMap.get(key)!.push({ ...node, sat, drain });
+        });
+
         return (
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
                     <View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={styles.cardTitle}>전체 관계 지형도</Text>
-                            <TouchableOpacity onPress={() => Alert.alert('관계 지형도', '모든 관계의 만족도와 에너지 소모량을 한눈에 조망합니다.')}>
-                                <Info size={16} color={colors.primary} opacity={0.5} />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.cardSubtitle}>전체 인맥의 정서 분포 조감</Text>
+                        <Text style={styles.cardTitle}>정서적 관계 지형도</Text>
+                        <Text style={styles.cardSubtitle}>전체 인맥의 관계 밸런스 조감</Text>
                     </View>
                 </View>
 
                 <View style={styles.topographyPlot}>
                     <View style={styles.topographyGrid}>
-                        <View style={[styles.gridCell, { backgroundColor: colors.primary + '05' }]}><Text style={styles.gridLabel}>고출력</Text></View>
-                        <View style={[styles.gridCell, { backgroundColor: colors.accent + '05' }]}><Text style={styles.gridLabel}>충전</Text></View>
-                        <View style={[styles.gridCell, { backgroundColor: '#8C968D10' }]}><Text style={styles.gridLabel}>소모</Text></View>
-                        <View style={[styles.gridCell, { backgroundColor: '#90A4AE10' }]}><Text style={styles.gridLabel}>안정</Text></View>
+                        <View style={[styles.gridCell, { backgroundColor: '#D98B7305' }]}>
+                            <Text style={styles.gridLabel}>에너지 포식자</Text>
+                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
+                        </View>
+                        <View style={[styles.gridCell, { backgroundColor: '#FFB74D05' }]}>
+                            <Text style={styles.gridLabel}>에너지 충전소</Text>
+                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
+                        </View>
+                        <View style={[styles.gridCell, { backgroundColor: '#D1D5DB10' }]}>
+                            <Text style={styles.gridLabel}>피곤한 관계</Text>
+                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
+                        </View>
+                        <View style={[styles.gridCell, { backgroundColor: '#4A5D4E05' }]}>
+                            <Text style={styles.gridLabel}>편안한 관계</Text>
+                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
+                        </View>
                     </View>
 
                     <Svg height="160" width={matrixWidth - 48} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
@@ -343,37 +266,23 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                         <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
                         <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
 
-                        {/* Data Points for each relationship */}
-                        {relationships.map((node) => {
-                            const lastHistory = (node.history || []).slice(-1)[0];
-                            if (!lastHistory) return null;
+                        {Array.from(pointMap.entries()).flatMap(([key, nodes]) => {
+                            const sat = nodes[0].sat;
+                            const drain = nodes[0].drain;
+                            const cx = 20 + (sat / 100) * 160;
+                            const cy = svgHeight - (20 + (drain / 100) * 120);
 
-                            const sat = lastHistory.satisfaction || 50;
-                            const drain = lastHistory.energyDrain || 50;
-                            
                             return (
-                                <G key={node.id}>
-                                    <Circle
-                                        cx={20 + (sat / 100) * 160}
-                                        cy={svgHeight - (20 + (drain / 100) * 120)}
-                                        r="5"
-                                        fill={ZONE_COLORS[node.zone as keyof typeof ZONE_COLORS] || THEME.primary}
-                                        stroke="white"
-                                        strokeWidth="1.5"
-                                        opacity={0.8}
-                                    />
-                                    <SvgText
-                                        x={20 + (sat / 100) * 160}
-                                        y={svgHeight - (20 + (drain / 100) * 120) + 12}
-                                        fontSize="8"
-                                        fontWeight="700"
-                                        fill={colors.primary}
-                                        textAnchor="middle"
-                                        opacity="0.6"
-                                    >
-                                        {node.name}
-                                    </SvgText>
-                                </G>
+                                <Circle
+                                    key={key}
+                                    cx={cx}
+                                    cy={cy}
+                                    r="4"
+                                    fill={ZONE_COLORS[nodes[0].zone as keyof typeof ZONE_COLORS] || THEME.primary}
+                                    stroke="white"
+                                    strokeWidth="1"
+                                    opacity={0.8}
+                                />
                             );
                         })}
                     </Svg>
@@ -415,7 +324,8 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                 nodeName: node.name,
                 nodeImage: node.image,
                 date: h.date,
-                title: h.title || h.event || '교류',       // ✅ title 필드 우선 사용
+                createdAt: h.createdAt || h.date, // Fallback for old data
+                title: h.title || h.event || '교류',
                 satisfaction: h.satisfaction,
                 energyDrain: h.energyDrain,
                 temperature: h.temperature ?? node.temperature,
@@ -430,17 +340,38 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
             nodeName: '나와의 시간',
             nodeImage: null as null,
             date: e.createdAt.split('T')[0],
+            createdAt: e.createdAt,
             title: e.activityName || '자기돌봄',
             satisfaction: e.emotionalSatisfaction,
             energyDrain: e.physicalEnergy,
             temperature: e.emotionalSatisfaction,
         }));
 
-        // 3. 합쳐서 날짜순 정렬, 최신 15개
+        // 3. 합쳐서 시간순 정렬, 최신 10개
+        const getRelativeTime = (dateStr: string) => {
+            const now = new Date();
+            const past = new Date(dateStr);
+            const diffMs = now.getTime() - past.getTime();
+            const diffMin = Math.floor(diffMs / (1000 * 60));
+            const diffHr = Math.floor(diffMin / 60);
+            const diffDay = Math.floor(diffHr / 24);
+
+            if (diffMin < 1) return '방금 전';
+            if (diffMin < 60) return `${diffMin}분 전`;
+            if (diffHr < 24) return `${diffHr}시간 전`;
+            if (diffDay === 1) return '어제';
+            if (diffDay < 7) return `${diffDay}일 전`;
+            return past.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+        };
+
         const allHistory = [...interactionHistory, ...selfTimeHistory]
-            .filter(h => h.date && !isNaN(new Date(h.date).getTime())) // ✅ 유효한 날짜만 필터링
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 15);
+            .filter(h => h.createdAt && !isNaN(new Date(h.createdAt).getTime()))
+            .sort((a, b) => {
+                const timeA = new Date(a.createdAt).getTime();
+                const timeB = new Date(b.createdAt).getTime();
+                return timeB - timeA;
+            })
+            .slice(0, 10);
 
         if (allHistory.length === 0) return null;
 
@@ -455,27 +386,30 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                     </View>
                 </View>
                 {allHistory.map((h, i) => {
-                    const dateStr = new Date(h.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                    const dateStr = new Date(h.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                    const timeStr = new Date(h.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
                     const isSelfTime = h.type === 'selfTime';
-                    const badgeColor = isSelfTime ? '#4A8C8C' : ((h.temperature || 50) >= 60 ? colors.accent : '#8C968D');
-                    const badgeLabel = isSelfTime ? '나만의시간' : ((h.temperature || 50) >= 60 ? '긍정' : '소모');
+                    const badgeColor = isSelfTime ? '#4A8C8C' : ((h.temperature || 0) >= 60 ? colors.accent : '#8C968D');
+                    const badgeLabel = isSelfTime ? '나만의시간' : ((h.temperature || 0) >= 60 ? '긍정' : '소모');
 
                     return (
                         <TouchableOpacity
                             key={`${h.type}-${h.id}-${i}`}
                             style={[styles.historyItem, { marginBottom: 16 }]}
                             onPress={() => {
+                                const isInitial = h.title?.includes('초기') || h.title?.includes('등록');
+                                if (isInitial) return; // 초기 데이터는 수정 불가
+
                                 if (isSelfTime) {
-                                    // 나와의 시간 편집 모달 열기
                                     useAppStore.setState({ editingLogId: h.id, isSelfTimeModalOpen: true });
                                 } else if (h.nodeId) {
-                                    // 인맥 교류 편집 모달 열기
                                     setRelationshipLogModalOpen(true, h.nodeId, h.id);
                                 }
                             }}
                         >
                             <View style={[styles.historyDateBox, isSelfTime && { backgroundColor: 'rgba(74,140,140,0.12)' }]}>
-                                <Text style={[styles.historyDateText, isSelfTime && { color: '#4A8C8C' }]}>{dateStr}</Text>
+                                <Text style={[styles.historyDateText, isSelfTime && { color: '#4A8C8C' }]}>{getRelativeTime(h.createdAt)}</Text>
+                                <Text style={{ fontSize: 9, color: isSelfTime ? '#4A8C8C' : colors.primary, opacity: 0.4, marginTop: 2 }}>{timeStr}</Text>
                             </View>
                             <View style={styles.historyContent}>
                                 <View style={styles.historyMainRow}>
@@ -492,24 +426,26 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                                 <Text style={styles.historyTopic} numberOfLines={1}>{h.title}</Text>
                             </View>
                             <View style={styles.historyMetrics}>
-                                <View style={styles.miniMetric}>
-                                    <Heart size={10} color={colors.accent} fill={colors.accent} />
-                                    <Text style={styles.miniMetricValue}>{h.satisfaction || 50}</Text>
+                                <View style={[styles.miniMetric, { backgroundColor: isSelfTime ? 'rgba(74,140,140,0.1)' : 'rgba(217,139,115,0.1)' }]}>
+                                    <Text style={[styles.miniMetricLabel, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
+                                        {isSelfTime ? '회복' : (h.title?.includes('초기') || h.title?.includes('등록') ? '상태' : '교감')}
+                                    </Text>
+                                    <Text style={[styles.miniMetricValue, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
+                                        {h.title?.includes('초기') || h.title?.includes('등록') ? '준거' : (h.satisfaction || 50) + '%'}
+                                    </Text>
                                 </View>
-                                <View style={styles.miniMetric}>
-                                    <Zap size={10} color="#D98B73" />
-                                    <Text style={styles.miniMetricValue}>{h.energyDrain || 20}</Text>
-                                </View>
-                                <Edit3 size={10} color={colors.primary} opacity={0.3} style={{ marginTop: 4 }} />
+                                {!(h.title?.includes('초기') || h.title?.includes('등록')) && (
+                                    <Edit3 size={12} color={colors.primary} opacity={0.3} style={{ marginTop: 4 }} />
+                                )}
                             </View>
                         </TouchableOpacity>
                     );
                 })}
                 <TouchableOpacity
                     style={{ marginTop: 8, alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)' }}
-                    onPress={() => Alert.alert('전체 기록', '준비 중인 기능입니다.')}
+                    onPress={onViewAllHistory}
                 >
-                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', opacity: 0.6 }}>전체 기록 보기</Text>
+                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', opacity: 0.6 }}>전체 활동 기록 보기 ➔</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -617,7 +553,7 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
         const content = {
             balance: {
                 title: '관계 밸런스 지표 가이드',
-                subtitle: 'RQS Diagnosis Basis',
+                subtitle: 'RQS 관계 분석 기준',
                 items: [
                     { label: '신뢰 (Trust)', desc: '심리적 안전 영역 (Safety): 약점을 드러내도 괜찮은 안전한 관계' },
                     { label: '성장 (Growth)', desc: '성장 및 정체성 영역 (Growth): 나를 더 나은 사람으로 만드는 관계' },
@@ -685,7 +621,6 @@ export const SelfHealthReport = ({ onBack, onSelectRelationship }: { onBack: () 
                 <View style={styles.scrollContent}>
                     {renderPeriodToggle()}
                     {renderSelfTimeCard()}
-                    {renderRadarChart()}
                     {renderEnergyChart()}
                     {renderGlobalSocialTopography()}
                     {renderCheckInHistory()}
@@ -718,12 +653,7 @@ const styles = StyleSheet.create({
     cardTitle: { fontSize: 18, fontWeight: '800' },
     cardSubtitle: { fontSize: 13, color: THEME.textMuted, marginTop: 4 },
     iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(74, 93, 78, 0.1)', alignItems: 'center', justifyContent: 'center' },
-    chartWrapper: { position: 'relative', height: 240, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-    chartLabel: { position: 'absolute', fontSize: 11, fontWeight: '700', color: THEME.primary, backgroundColor: THEME.background, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, overflow: 'hidden' },
-    metricsScroll: { gap: 12, paddingHorizontal: 4 },
-    metricChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, backgroundColor: THEME.surface, borderWidth: 1, borderColor: 'rgba(74, 93, 78, 0.1)' },
-    metricText: { fontSize: 13, fontWeight: '700', color: THEME.primary },
-    infoBtn: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(74, 93, 78, 0.05)' },
+    chartWrapper: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
     editBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(74, 93, 78, 0.1)', alignItems: 'center', justifyContent: 'center' },
     pulseContainer: { height: 120, marginVertical: 10 },
     pulseFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
@@ -794,10 +724,24 @@ const styles = StyleSheet.create({
     historyContent: { flex: 1, gap: 2 },
     historyMainRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     historyNodeName: { fontSize: 14, fontWeight: '800', color: THEME.primary },
+    miniMetric: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+    miniMetricLabel: { fontSize: 9, fontWeight: '800', opacity: 0.8 },
+    miniMetricValue: { fontSize: 10, fontWeight: '900' },
     statusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgeText: { fontSize: 9, fontWeight: '800' },
     historyTopic: { fontSize: 12, color: THEME.textMuted, fontWeight: '600' },
     historyMetrics: { alignItems: 'flex-end', gap: 4 },
-    miniMetric: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    miniMetricValue: { fontSize: 10, fontWeight: '800', color: THEME.primary, opacity: 0.6 },
+    ctaBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginTop: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    ctaBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '800',
+    },
 });

@@ -20,7 +20,7 @@ interface DiagnosisProps {
     onViewReport?: (id: string) => void;
 }
 
-type DiagnosisStep = 'CHECKLIST' | 'ANIMATION' | 'RESULT' | 'RQS';
+type AnalysisStep = 'CHECKLIST' | 'ANIMATION' | 'RESULT' | 'RQS';
 import { RQSTest } from './RQSTest';
 
 interface AlgorithmicQuestion {
@@ -105,16 +105,16 @@ const CHECKLIST: AlgorithmicQuestion[] = [
 ];
 
 const ZONE_GUIDES: Record<number, any> = {
-    1: { name: '핵심 그룹', energy: '50%', color: '#FFB74D', desc: '무조건적인 수용과 정서적 안전감 제공', title: 'Safety Base' },
-    2: { name: '정서적 공유 그룹', energy: '25%', color: '#D98B73', desc: '가치관을 공유하며 정기적으로 교류함', title: 'Psychological Ally' },
-    3: { name: '기능적 협력 관계', energy: '15%', color: '#4A5D4E', desc: '업무/필요에 의해 자주 보나 유대는 낮음', title: 'Strategic Partner' },
-    4: { name: '단순 인지 관계', energy: '10%', color: '#90A4AE', desc: '이름과 얼굴을 아는 인지적 한계선', title: 'Social Acquaintance' },
-    5: { name: '배경 소음(외부 환경)', energy: '0%', color: '#D1D5DB', desc: '인지 범위 밖의 타인 및 불필요한 연결', title: 'Background Noise' },
+    1: { name: '핵심 그룹', impact: '최대 지지', color: '#FFB74D', desc: '무조건적인 수용과 정서적 안전감 제공', title: 'Safety Base' },
+    2: { name: '정서적 공유 그룹', impact: '정서 교감', color: '#D98B73', desc: '가치관을 공유하며 정기적으로 교류함', title: 'Psychological Ally' },
+    3: { name: '기능적 협력 관계', impact: '일상 협력', color: '#4A5D4E', desc: '업무/필요에 의해 자주 보나 유대는 낮음', title: 'Strategic Partner' },
+    4: { name: '단순 인지 관계', impact: '단순 인지', color: '#90A4AE', desc: '이름과 얼굴을 아는 인지적 한계선', title: 'Social Acquaintance' },
+    5: { name: '배경 소음(외부 환경)', impact: '에너지 차단', color: '#D1D5DB', desc: '인지 범위 밖의 타인 및 불필요한 연결', title: 'Background Noise' },
 };
 
 export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, onComplete, pendingData, onViewReport }: DiagnosisProps) => {
     const colors = useColors();
-    const { getRelationshipById, updateRelationship, updateDiagnosisResult } = useRelationshipStore();
+    const { getRelationshipById, updateRelationship, updateAnalysisResult } = useRelationshipStore();
     const foundNode = getRelationshipById(relationshipId);
 
     // 임시 ID인 경우 더미 노드 생성 (pending 데이터 활용)
@@ -143,10 +143,10 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
     const handleBackPress = () => {
         if (step === "CHECKLIST" || step === "RQS") {
             Alert.alert(
-                '진단 중단',
-                '지금 나가면 진단 과정이 저장되지 않습니다. 정말 중단할까요?',
+                '분석 중단',
+                '지금 나가면 분석 과정이 저장되지 않습니다. 정말 중단할까요?',
                 [
-                    { text: '계속 진단', style: 'cancel' },
+                    { text: '계속 분석', style: 'cancel' },
                     { text: '중단하고 나가기', style: 'destructive', onPress: () => onBack() }
                 ]
             );
@@ -194,7 +194,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
             const temp = target === 1 ? 98 : target === 2 ? 85 : target === 3 ? 60 : target === 4 ? 30 : 5;
             setFinalZone(target);
 
-            updateDiagnosisResult(relationshipId, {
+            updateAnalysisResult(relationshipId, {
                 zone: target,
                 temperature: temp,
                 event: '관계 층위 재설정'
@@ -206,7 +206,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                 transitionQuestion();
             } else {
                 setFinalZone(5);
-                updateDiagnosisResult(relationshipId, {
+                updateAnalysisResult(relationshipId, {
                     zone: 5,
                     temperature: 0,
                     event: '관계 층위 재설정'
@@ -269,7 +269,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
             <View style={[COMMON_STYLES.headerContainer, { backgroundColor: colors.background }]}>
                 <View style={{ width: UI_CONSTANTS.BUTTON_SIZE }} />
                 <View style={styles.headerTitleContainer}>
-                    <Text style={[styles.headerSub, { color: colors.primary, opacity: 0.5 }]}>Orbit Diagnosis</Text>
+                    <Text style={[styles.headerSub, { color: colors.primary, opacity: 0.5 }]}>Orbit Analysis</Text>
                     <Text style={[styles.headerTitle, { color: colors.primary }]}>
                         {step === 'CHECKLIST' ? '단계별 배치 매뉴얼' : '인덱싱 중...'}
                     </Text>
@@ -458,7 +458,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                 <View style={styles.resultTextSection}>
                     <View style={styles.completeChip}>
                         <Check size={14} color={colors.accent} />
-                        <Text style={[styles.completeText, { color: colors.accent }]}>ANALYSIS COMPLETE</Text>
+                        <Text style={[styles.completeText, { color: colors.accent }]}>ARRANGEMENT COMPLETE</Text>
                     </View>
 
                     <Text style={[styles.resultZone, { color: colors.primary }]}>
@@ -473,7 +473,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                     </Text>
 
                     <Text style={[styles.resultEnergy, { color: guide.color }]}>
-                        권장 에너지 비중 {guide.energy}
+                        정서 영향력: {guide.impact}
                     </Text>
                 </View>
 
@@ -530,7 +530,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                     onComplete?.(completeResult);
                     onBack();
                     Alert.alert(
-                        "진단 완료",
+                        "분석 완료",
                         "관계의 물리적 속성 분석이 완료되었습니다. 해당 인물과의 정서 긴밀도가 맵에 반영됩니다."
                     );
                 }}

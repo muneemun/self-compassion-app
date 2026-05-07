@@ -1602,7 +1602,9 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                             <View style={[styles.modalFullContainer, { backgroundColor: colors.background }]}>
                                 <View style={styles.modalHeader}>
                                     <View style={{ width: 44 }} />
-                                    <Text style={[styles.modalTitle, { color: colors.primary }]}>액션 선택</Text>
+                                    <Text style={[styles.modalTitle, { color: colors.primary }]}>
+                                        {searchMode === 'navigation' ? '인맥 검색' : searchMode === 'action' ? '체크인 대상 선택' : '액션 선택'}
+                                    </Text>
                                     <TouchableOpacity
                                         onPress={() => setIsSearchModalVisible(false)}
                                         style={styles.modalCloseBtn}

@@ -95,6 +95,24 @@ export const RelationshipLogModal = () => {
 
     if (!isRelationshipLogModalOpen || !node) return null;
 
+    const getSatisfactionLabel = (v: number) => {
+        if (v < 20) return "다소 불편한 마음";
+        if (v < 40) return "덤덤하고 무난함";
+        if (v < 60) return "평온하고 괜찮음";
+        if (v < 80) return "즐겁고 유익함";
+        if (v < 95) return "매우 따뜻하고 충만함";
+        return "최고의 정서적 교감";
+    };
+
+    const getEnergyLabel = (v: number) => {
+        if (v < 20) return "일상적인 수준";
+        if (v < 40) return "약간의 신경 쓰임";
+        if (v < 60) return "집중과 에너지가 소모됨";
+        if (v < 80) return "기운이 빠지고 지침";
+        if (v < 95) return "상당한 체력 소모와 피로";
+        return "완전한 탈진 상태";
+    };
+
     const handleSave = () => {
         if (!newLog.title.trim()) return;
         
@@ -215,41 +233,49 @@ export const RelationshipLogModal = () => {
                                 />
                             </View>
 
-                            <View style={styles.metricsGroup}>
+                                <View style={styles.metricsHeaderInfo}>
+                                    <Text style={styles.metricsMainGuide}>수치는 하루 전체의 비중이 아닌, 이번 만남의 '체감 강도'입니다.</Text>
+                                </View>
+
                                 <View style={styles.metricItem}>
                                     <View style={styles.metricHeader}>
                                         <View style={styles.metricLabelRow}>
                                             <Heart size={16} color={colors.accent} fill={colors.accent} />
-                                            <Text style={[styles.metricLabel, { color: colors.primary }]}>충족감 (만족도)</Text>
+                                            <Text style={[styles.metricLabel, { color: colors.primary }]}>정서적 충족감</Text>
                                         </View>
                                         <Text style={[styles.metricValue, { color: colors.accent }]}>{newLog.satisfaction}%</Text>
                                     </View>
                                     <MetricSlider 
                                         value={newLog.satisfaction}
-                                        onChange={(v) => setNewLog(p => ({ ...p, satisfaction: v }))}
+                                        onChange={(v: number) => setNewLog(p => ({ ...p, satisfaction: v }))}
                                         activeColor={colors.accent}
                                         trackColor={colors.primary + '10'}
                                         thumbColor={colors.white}
                                     />
+                                    <Text style={[styles.intensityLabel, { color: colors.accent }]}>
+                                        {getSatisfactionLabel(newLog.satisfaction)}
+                                    </Text>
                                 </View>
 
                                 <View style={styles.metricItem}>
                                     <View style={styles.metricHeader}>
                                         <View style={styles.metricLabelRow}>
                                             <Zap size={16} color="#90A4AE" fill="#90A4AE" />
-                                            <Text style={[styles.metricLabel, { color: colors.primary }]}>에너지 소모량</Text>
+                                            <Text style={[styles.metricLabel, { color: colors.primary }]}>신체적 에너지 소모</Text>
                                         </View>
                                         <Text style={[styles.metricValue, { color: '#90A4AE' }]}>{newLog.energyDrain}%</Text>
                                     </View>
                                     <MetricSlider 
                                         value={newLog.energyDrain}
-                                        onChange={(v) => setNewLog(p => ({ ...p, energyDrain: v }))}
+                                        onChange={(v: number) => setNewLog(p => ({ ...p, energyDrain: v }))}
                                         activeColor="#90A4AE"
                                         trackColor={colors.primary + '10'}
                                         thumbColor={colors.white}
                                     />
+                                    <Text style={[styles.intensityLabel, { color: '#90A4AE' }]}>
+                                        {getEnergyLabel(newLog.energyDrain)}
+                                    </Text>
                                 </View>
-                            </View>
 
                             <Text style={styles.guideText}>
                                 충족감이 소모량보다 높으면 긴밀도가 상승합니다.
@@ -341,6 +367,22 @@ const styles = StyleSheet.create({
     metricLabel: {
         fontSize: 15,
         fontWeight: '700',
+    },
+    metricsHeaderInfo: {
+        marginBottom: 8,
+        paddingHorizontal: 4,
+    },
+    metricsMainGuide: {
+        fontSize: 11,
+        color: '#8C968D',
+        fontWeight: '700',
+        lineHeight: 16,
+    },
+    intensityLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        marginTop: 4,
+        textAlign: 'right',
     },
     metricValue: {
         fontSize: 18,

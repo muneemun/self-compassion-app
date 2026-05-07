@@ -163,11 +163,11 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     const getZoneGuide = (zone: number): { name: string; count: string; energy: string; desc: string; color: string, icon: any } => {
         const guides: Record<number, any> = {
-            1: { name: '핵심 그룹', count: '1~5명', energy: '50%', desc: '무조건적인 수용과 정서적 안전감 제공', color: '#FFB74D', icon: Heart },
-            2: { name: '정서적 공유 그룹', count: '10~15명', energy: '25%', desc: '가치관을 공유하며 정기적으로 교류함', color: '#D98B73', icon: Star },
-            3: { name: '기능적 협력 관계', count: '유동적', energy: '15%', desc: '업무/필요에 의해 자주 보나 유대는 낮음', color: '#4A5D4E', icon: Zap },
-            4: { name: '단순 인지 관계', count: '최대 150명', energy: '10%', desc: '이름과 얼굴을 아는 인지적 한계선', color: '#90A4AE', icon: Calendar },
-            5: { name: '배경 소음(외부 환경)', count: '무제한', energy: '0%', desc: '인지 범위 밖의 타인 및 불필요한 연결', color: '#D1D5DB', icon: Trash2 },
+            1: { name: '핵심 그룹', count: '1~5명', energy: '최대 지지', desc: '무조건적인 수용과 정서적 안전감 제공', color: '#FFB74D', icon: Heart },
+            2: { name: '정서적 공유 그룹', count: '10~15명', energy: '정서 환기', desc: '가치관을 공유하며 정기적으로 교류함', color: '#D98B73', icon: Star },
+            3: { name: '기능적 협력 관계', count: '유동적', energy: '일상 성취', desc: '업무/필요에 의해 자주 보나 유대는 낮음', color: '#4A5D4E', icon: Zap },
+            4: { name: '단순 인지 관계', count: '최대 150명', energy: '사회적 연결', desc: '이름과 얼굴을 아는 인지적 한계선', color: '#90A4AE', icon: Calendar },
+            5: { name: '배경 소음(외부 환경)', count: '무제한', energy: '간헐적 접촉', desc: '인지 범위 밖의 타인 및 불필요한 연결', color: '#D1D5DB', icon: Trash2 },
         };
         return guides[zone] || guides[5];
     };
@@ -196,7 +196,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     };
 
     const METRIC_GUIDE = {
-        stability: { title: '안정성 (Stability)', info: '관계 내 심리적 안전감과 신뢰의 두께를 의미합니다. 70% 이상일 때 안정적입니다.' },
+        stability: { title: '안정성 (Stability)', info: '관계 내 심리적 안전감과 신뢰의 두께를 의미합니다. 높을수록 갈등에도 흔들리지 않는 견고한 신뢰를 뜻합니다.' },
         intimacy: {
             title: '정서 긴밀도 (Emotional Temp)',
             info: '정서적 공명과 자발적 연결의 강도입니다.\n\n[긴밀도별 의미]\n🔥 81~100%: 깊은 유대감/치유 (소울메이트)\n☀️ 61~80%: 따뜻함/즐거움 (좋은 관계)\n☁️ 41~60%: 보통/일상적 (특별한 감정 없음)\n❄️ 0~40%: 냉랭함/스트레스 (관계 점검 필요)'

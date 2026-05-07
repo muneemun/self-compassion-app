@@ -1,121 +1,199 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Dimensions } from 'react-native';
-import { ArrowLeft, Calendar, Search, Filter, MessageCircle, Heart, Zap } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Dimensions, Image } from 'react-native';
+import { ArrowLeft, Calendar, Search, Filter, MessageCircle, Heart, Zap, User, Edit3, Clock } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { useSelfTimeStore } from '../../store/useSelfTimeStore';
+import { useAppStore } from '../../store/useAppStore';
 
 const { width } = Dimensions.get('window');
 
 interface Props {
-    relationshipId: string;
+    relationshipId?: string; // Optional for Global History
     onBack: () => void;
 }
 
 export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBack }) => {
     const colors = useColors();
-    const node = useRelationshipStore(state => state.relationships.find(r => r.id === relationshipId));
+    const relationships = useRelationshipStore(state => state.relationships);
+    const selfTimeEntries = useSelfTimeStore(state => state.entries);
+    const setRelationshipLogModalOpen = useAppStore(state => state.setRelationshipLogModalOpen);
 
-    const [filterType, setFilterType] = useState<'ALL' | 'POSITIVE' | 'NEGATIVE'>('ALL');
+    const [filterType, setFilterType] = useState<'ALL' | 'INTERACTION' | 'SELF_TIME'>('ALL');
+
+    const getRelativeTime = (dateStr: string) => {
+        const now = new Date();
+        const past = new Date(dateStr);
+        const diffMs = now.getTime() - past.getTime();
+        const diffMin = Math.floor(diffMs / (1000 * 60));
+        const diffHr = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHr / 24);
+
+        if (diffMin < 1) return '방금 전';
+        if (diffMin < 60) return `${diffMin}분 전`;
+        if (diffHr < 24) return `${diffHr}시간 전`;
+        if (diffDay === 1) return '어제';
+        if (diffDay < 7) return `${diffDay}일 전`;
+        return past.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    };
 
     const historyData = useMemo(() => {
-        if (!node?.history) return [];
-        let data = [...node.history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        // 1. Interactions
+        let interactions = relationships.flatMap(node => 
+            (node.history || []).map(h => ({
+                ...h,
+                type: 'INTERACTION' as const,
+                nodeId: node.id,
+                nodeName: node.name,
+                nodeImage: node.image,
+                createdAt: h.createdAt || h.date
+            }))
+        );
 
-        if (filterType === 'POSITIVE') {
-            data = data.filter(item => item.temperature >= 60);
-        } else if (filterType === 'NEGATIVE') {
-            data = data.filter(item => item.temperature < 60);
+        if (relationshipId) {
+            interactions = interactions.filter(h => h.nodeId === relationshipId);
         }
-        return data;
-    }, [node?.history, filterType]);
 
-    if (!node) return null;
+        // 2. Self Time (only if no specific relationshipId or filter allows)
+        let selfTime: any[] = [];
+        if (!relationshipId) {
+            selfTime = (selfTimeEntries || []).filter(e => !e.isDeleted).map(e => ({
+                id: e.id,
+                type: 'SELF_TIME' as const,
+                nodeName: '나와의 시간',
+                title: e.activityName || '자기돌봄',
+                satisfaction: e.emotionalSatisfaction,
+                energyDrain: e.physicalEnergy,
+                createdAt: e.createdAt,
+                date: e.createdAt.split('T')[0],
+                category: e.category
+            }));
+        }
 
-    const renderItem = ({ item }: { item: any }) => (
-        <View style={[styles.logItem, { borderColor: item.temperature >= 70 ? colors.accent : '#eee' }]}>
-            <View style={styles.logLeft}>
-                <View style={[styles.dateBadge, { backgroundColor: colors.background }]}>
-                    <Text style={styles.dateText}>{item.date.split('-')[1]}/{item.date.split('-')[2]}</Text>
-                    <Text style={styles.yearText}>{item.date.split('-')[0]}</Text>
-                </View>
-                <View style={styles.connectorLine} />
-            </View>
+        let combined = [...interactions, ...selfTime].sort((a, b) => {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
 
-            <View style={[styles.logCard, { backgroundColor: '#fff' }]}>
-                <View style={styles.logHeader}>
-                    <View style={styles.logTypeTag}>
-                        <MessageCircle size={10} color={colors.primary} />
-                        <Text style={styles.logType}>상호작용</Text>
+        if (filterType === 'INTERACTION') {
+            combined = combined.filter(h => h.type === 'INTERACTION');
+        } else if (filterType === 'SELF_TIME') {
+            combined = combined.filter(h => h.type === 'SELF_TIME');
+        }
+
+        return combined;
+    }, [relationships, selfTimeEntries, relationshipId, filterType]);
+
+    const renderItem = ({ item }: { item: any }) => {
+        const isSelfTime = item.type === 'SELF_TIME';
+        const displayColor = isSelfTime ? '#4A8C8C' : colors.accent;
+        const displayBg = isSelfTime ? 'rgba(74,140,140,0.05)' : 'rgba(217,139,115,0.05)';
+
+        return (
+            <TouchableOpacity 
+                activeOpacity={0.7}
+                onPress={() => {
+                    const isInitial = item.title?.includes('초기') || item.title?.includes('등록');
+                    if (isInitial) return;
+
+                    if (isSelfTime) {
+                        useAppStore.setState({ editingLogId: item.id, isSelfTimeModalOpen: true });
+                    } else {
+                        setRelationshipLogModalOpen(true, item.nodeId, item.id);
+                    }
+                }}
+                style={styles.logItem}
+            >
+                <View style={styles.logLeft}>
+                    <View style={[styles.dateCircle, { backgroundColor: displayBg }]}>
+                        <Text style={[styles.relativeDate, { color: displayColor }]}>{getRelativeTime(item.createdAt)}</Text>
                     </View>
-                    <Text style={[styles.tempText, { color: item.temperature >= 60 ? colors.accent : '#999' }]}>
-                        {item.temperature}%
-                    </Text>
+                    <View style={styles.connectorLine} />
                 </View>
 
-                <Text style={styles.logEvent}>{item.event || "기록 없음"}</Text>
+                <View style={[styles.logCard, { borderLeftColor: displayColor }]}>
+                    <View style={styles.logHeader}>
+                        <View style={styles.nodeInfo}>
+                            {item.nodeImage ? (
+                                <Image source={{ uri: item.nodeImage }} style={styles.nodeAvatar} />
+                            ) : (
+                                <View style={[styles.nodeAvatar, { backgroundColor: displayBg, alignItems: 'center', justifyContent: 'center' }]}>
+                                    <User size={12} color={displayColor} />
+                                </View>
+                            )}
+                            <Text style={[styles.nodeName, { color: colors.primary }]}>{item.nodeName}</Text>
+                        </View>
+                        <View style={[styles.typeBadge, { backgroundColor: displayBg }]}>
+                            <Text style={[styles.typeText, { color: displayColor }]}>{isSelfTime ? '치유' : '교감'}</Text>
+                        </View>
+                    </View>
 
-                <View style={styles.logFooter}>
-                    {item.oxytocin && item.oxytocin > 50 && (
-                        <View style={styles.hormoneTag}>
-                            <Heart size={10} color="#E91E63" />
-                            <Text style={styles.hormoneText}>옥시토신 {item.oxytocin}%</Text>
+                    <Text style={[styles.logTitle, { color: colors.primary }]}>{item.title || item.event}</Text>
+                    
+                    <View style={styles.logFooter}>
+                        <View style={styles.metricRow}>
+                            <Clock size={12} color="#999" />
+                            <Text style={styles.timeText}>{new Date(item.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                         </View>
-                    )}
-                    {item.cortisol && item.cortisol > 50 && (
-                        <View style={styles.hormoneTag}>
-                            <Zap size={10} color="#F44336" />
-                            <Text style={styles.hormoneText}>코르티솔 {item.cortisol}%</Text>
+                        <View style={styles.metricRow}>
+                            <Heart size={12} color={displayColor} />
+                            <Text style={[styles.metricText, { color: displayColor }]}>
+                                {item.title?.includes('초기') || item.title?.includes('등록') ? '준거 설정' : `${item.satisfaction || item.temperature || 50}%`}
+                            </Text>
                         </View>
-                    )}
+                    </View>
                 </View>
-            </View>
-        </View>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: '#FCF9F2' }]}>
-            {/* Header */}
+        <SafeAreaView style={[styles.container, { backgroundColor: '#FAF8F4' }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onBack} style={styles.backBtn}>
                     <ArrowLeft size={24} color={colors.primary} />
                 </TouchableOpacity>
-                <View>
-                    <Text style={[styles.headerTitle, { color: colors.primary }]}>{node.name}님과의 기록</Text>
-                    <Text style={styles.headerSubtitle}>총 {node.history?.length || 0}개의 상호작용</Text>
+                <View style={styles.headerTitleArea}>
+                    <Text style={[styles.headerTitle, { color: colors.primary }]}>
+                        {relationshipId ? "기록 타임라인" : "전체 활동 히스토리"}
+                    </Text>
+                    <Text style={styles.headerSubtitle}>
+                        {historyData.length}개의 정서 데이터가 연결되어 있습니다.
+                    </Text>
                 </View>
                 <View style={{ width: 40 }} />
             </View>
 
-            {/* Filter Tabs */}
-            <View style={styles.filterRow}>
-                {['ALL', 'POSITIVE', 'NEGATIVE'].map((type) => (
-                    <TouchableOpacity
-                        key={type}
-                        style={[
-                            styles.filterChip,
-                            filterType === type && { backgroundColor: colors.primary }
-                        ]}
-                        onPress={() => setFilterType(type as any)}
-                    >
-                        <Text style={[
-                            styles.filterText,
-                            { color: filterType === type ? 'white' : colors.primary }
-                        ]}>
-                            {type === 'ALL' ? '전체' : type === 'POSITIVE' ? '긍정적' : '부정적'}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+            {!relationshipId && (
+                <View style={styles.filterContainer}>
+                    {[
+                        { id: 'ALL', label: '전체' },
+                        { id: 'INTERACTION', label: '인맥 교류' },
+                        { id: 'SELF_TIME', label: '나와의 시간' }
+                    ].map(f => (
+                        <TouchableOpacity
+                            key={f.id}
+                            onPress={() => setFilterType(f.id as any)}
+                            style={[
+                                styles.filterTab,
+                                filterType === f.id && { backgroundColor: colors.primary, borderColor: colors.primary }
+                            ]}
+                        >
+                            <Text style={[styles.filterTabText, filterType === f.id && { color: 'white' }]}>{f.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
 
-            {/* List */}
             <FlatList
                 data={historyData}
                 renderItem={renderItem}
-                keyExtractor={(item, index) => index.toString()}
-                contentContainerStyle={styles.listContent}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
+                contentContainerStyle={styles.listContainer}
+                showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>기록이 없습니다.</Text>
+                    <View style={styles.emptyState}>
+                        <MessageCircle size={48} color={colors.primary} opacity={0.1} />
+                        <Text style={styles.emptyText}>아직 기록된 활동이 없습니다.</Text>
                     </View>
                 }
             />
@@ -131,147 +209,156 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-    },
-    headerSubtitle: {
-        fontSize: 12,
-        color: '#999',
-        textAlign: 'center',
+        borderBottomColor: 'rgba(0,0,0,0.03)',
     },
     backBtn: {
-        padding: 8,
-        marginLeft: -8,
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    filterRow: {
+    headerTitleArea: {
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 17,
+        fontWeight: '900',
+    },
+    headerSubtitle: {
+        fontSize: 11,
+        color: '#999',
+        marginTop: 2,
+    },
+    filterContainer: {
         flexDirection: 'row',
         paddingHorizontal: 20,
         paddingVertical: 12,
         gap: 8,
     },
-    filterChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+    filterTab: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
         borderRadius: 20,
-        backgroundColor: 'rgba(0,0,0,0.03)',
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: 'rgba(0,0,0,0.02)',
     },
-    filterText: {
+    filterTabText: {
         fontSize: 12,
         fontWeight: '700',
+        color: '#999',
     },
-    listContent: {
+    listContainer: {
         padding: 20,
-        paddingBottom: 40,
+        paddingBottom: 100,
     },
     logItem: {
         flexDirection: 'row',
-        marginBottom: 20,
+        gap: 16,
     },
     logLeft: {
         alignItems: 'center',
-        marginRight: 16,
         width: 50,
     },
-    dateBadge: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
+    dateCircle: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
         zIndex: 2,
     },
-    dateText: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#333',
-    },
-    yearText: {
-        fontSize: 9,
-        color: '#999',
+    relativeDate: {
+        fontSize: 10,
+        fontWeight: '900',
+        textAlign: 'center',
     },
     connectorLine: {
-        width: 2,
+        width: 1.5,
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.05)',
-        marginTop: -10,
-        marginBottom: -30, // Next item connection
+        backgroundColor: 'rgba(0,0,0,0.04)',
+        marginVertical: 4,
     },
     logCard: {
         flex: 1,
-        borderRadius: 16,
+        backgroundColor: '#fff',
+        borderRadius: 20,
         padding: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 8,
+        marginBottom: 20,
+        borderLeftWidth: 4,
+        shadowColor: '#4A5D4E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
         elevation: 2,
     },
     logHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 8,
+        alignItems: 'center',
+        marginBottom: 10,
     },
-    logTypeTag: {
+    nodeInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 8,
+    },
+    nodeAvatar: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+    },
+    nodeName: {
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    typeBadge: {
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 3,
         borderRadius: 8,
-        backgroundColor: '#f5f5f5',
     },
-    logType: {
+    typeText: {
         fontSize: 10,
-        fontWeight: '700',
-        color: '#666',
-    },
-    tempText: {
-        fontSize: 14,
         fontWeight: '900',
     },
-    logEvent: {
+    logTitle: {
         fontSize: 15,
-        fontWeight: '600',
-        color: '#333',
+        fontWeight: '700',
         marginBottom: 12,
-        lineHeight: 22,
+        lineHeight: 20,
     },
     logFooter: {
         flexDirection: 'row',
-        gap: 8,
+        justifyContent: 'space-between',
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.03)',
     },
-    hormoneTag: {
+    metricRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 100,
-        backgroundColor: 'rgba(0,0,0,0.02)',
     },
-    hormoneText: {
-        fontSize: 10,
+    timeText: {
+        fontSize: 11,
+        color: '#999',
         fontWeight: '600',
-        color: '#666',
     },
-    emptyContainer: {
-        padding: 40,
+    metricText: {
+        fontSize: 11,
+        fontWeight: '900',
+    },
+    emptyState: {
+        padding: 60,
         alignItems: 'center',
+        gap: 12,
     },
     emptyText: {
-        color: '#999',
         fontSize: 14,
-    }
+        color: '#999',
+        fontWeight: '600',
+    },
 });
