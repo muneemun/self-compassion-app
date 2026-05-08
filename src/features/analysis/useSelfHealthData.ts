@@ -53,7 +53,12 @@ export const useSelfHealthData = (period: PeriodType) => {
             }
         }
 
-        const interactionHistory = relationships.flatMap(r => r.history || []).map(h => ({ ...h, isSelfTime: false }));
+        const IGNORED_KEYWORDS = ['등록', '초기', 'RQS', '진단', '분석'];
+        const interactionHistory = relationships
+            .flatMap(r => r.history || [])
+            .filter(h => !IGNORED_KEYWORDS.some(keyword => h.title?.includes(keyword)))
+            .map(h => ({ ...h, isSelfTime: false }));
+            
         const mappedSelfTime = selfTimeEntries.filter(e => !e.isDeleted).map(e => ({
             id: e.id,
             date: e.createdAt.split('T')[0],
@@ -141,7 +146,7 @@ export const useSelfHealthData = (period: PeriodType) => {
         const avgTemps = slots.map((s, i) => totalCounts[i] > 0 ? Math.round(s.totalTemp / totalCounts[i]) : null);
         const labels = slots.map(s => s.label);
 
-        const maxCount = Math.max(...interactionCounts, ...selfTimeCounts, 1);
+        const maxCount = Math.max(...interactionCounts, ...selfTimeCounts, 5); // 최소 기준치를 5로 두어 데이터가 적을 때 꽉 차지 않게 함
         const normalizedInteractionCounts = interactionCounts.map(c => Math.round((c / maxCount) * 100));
         const normalizedSelfTimeCounts = selfTimeCounts.map(c => Math.round((c / maxCount) * 100));
 

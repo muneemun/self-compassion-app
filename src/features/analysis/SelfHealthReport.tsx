@@ -152,11 +152,11 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                 <View style={styles.chartLegendRow}>
                     <View style={styles.legendGroup}>
                         <View style={[styles.legendBarIndicator, { backgroundColor: THEME.secondary + '40' }]} />
-                        <Text style={styles.legendLabel}>교류 소모량</Text>
+                        <Text style={styles.legendLabel}>교류량</Text>
                     </View>
                     <View style={styles.legendGroup}>
                         <View style={[styles.legendBarIndicator, { backgroundColor: '#4A8C8C' + '50' }]} />
-                        <Text style={styles.legendLabel}>자기 회복량</Text>
+                        <Text style={styles.legendLabel}>나의 시간 (회복)</Text>
                     </View>
                     <View style={styles.legendGroup}>
                         <View style={[styles.legendLineIndicator, { borderColor: THEME.accent }]} />
@@ -564,10 +564,11 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             },
             energy: {
                 title: '에너지 사용 리포트 가이드',
-                subtitle: 'Energy Consumption & Satisfaction',
+                subtitle: '나의 활동과 마음 온도',
                 items: [
-                    { label: '관계 활동량', desc: '해당 일에 발생한 상호작용 기록의 횟수입니다. 활동의 양적인 측면을 보여줍니다.' },
-                    { label: '정서 온도', desc: '상호작용 시 느낀 정서적 만족도의 평균치입니다. 활동의 질적인 측면을 보여줍니다.' },
+                    { label: '교류량', desc: '소중한 사람들과 얼마나 자주 어울렸는지 보여주는 횟수예요.' },
+                    { label: '나의 시간 (회복)', desc: '일기를 쓰거나 휴식을 취하는 등, 나를 돌보는 데 쓴 시간이에요.' },
+                    { label: '정서 온도', desc: '그날 누구와 함께, 혹은 혼자서 마음이 얼마나 편안했는지 보여주는 평균 온도예요.\n온도가 높다고 무조건 좋고, 낮다고 나쁜 건 아니에요! 내 마음의 온도가 어떻게 변하는지 지켜보는 것이 더 중요해요.' },
                 ]
             },
             pulse: {
