@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Dimensions, BackHandler, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Orbit, SlidersHorizontal, Activity, Rocket, FlaskConical } from 'lucide-react-native';
 
@@ -71,6 +71,7 @@ function App() {
   const [isViewingNotifications, setIsViewingNotifications] = useState(false);
   const [isViewingInteractionHistory, setIsViewingInteractionHistory] = useState(false);
   const [isViewingDetailedMap, setIsViewingDetailedMap] = useState(false);
+  const [isViewingRelationshipList, setIsViewingRelationshipList] = useState(false);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [pendingRelationship, setPendingRelationship] = useState<{
     name: string;
@@ -112,6 +113,50 @@ function App() {
       clearInterval(interval);
     };
   }, []);
+
+  // Android Back Button Handler
+  useEffect(() => {
+    const handleBackPress = () => {
+      // If a modal/detail screen is open, close it
+      if (isDiagnosing) { setIsDiagnosing(false); setPendingRelationship(null); setSelectedNodeId(null); return true; }
+      if (isManagingProfile) { setIsManagingProfile(false); return true; }
+      if (isViewingReport) { setIsViewingReport(false); return true; }
+      if (isViewingDetailedMap) { setIsViewingDetailedMap(false); return true; }
+      if (isViewingInteractionHistory) { setIsViewingInteractionHistory(false); return true; }
+      if (isViewingDataManagement) { setIsViewingDataManagement(false); return true; }
+      if (isViewingProfileEdit) { setIsViewingProfileEdit(false); return true; }
+      if (isViewingReminders) { setIsViewingReminders(false); return true; }
+      if (isViewingNotifications) { setIsViewingNotifications(false); return true; }
+      if (isAddingRelationship) { setIsAddingRelationship(false); return true; }
+      if (selectedNodeId) { setSelectedNodeId(null); return true; }
+      if (isViewingRelationshipList) { setIsViewingRelationshipList(false); return true; }
+
+      // If we are not on the main 'map' tab, go back to 'map'
+      if (activeTab !== 'map') {
+        setActiveTab('map');
+        return true;
+      }
+
+      // If we are on the main 'map' tab, prompt exit
+      Alert.alert(
+        '앱 종료',
+        '앱을 종료하시겠습니까?',
+        [
+          { text: '취소', style: 'cancel' },
+          { text: '종료', onPress: () => BackHandler.exitApp(), style: 'destructive' }
+        ]
+      );
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => backHandler.remove();
+  }, [
+    isDiagnosing, isManagingProfile, isViewingReport, isViewingDetailedMap, 
+    isViewingInteractionHistory, isViewingDataManagement, isViewingProfileEdit, 
+    isViewingReminders, isViewingNotifications, isAddingRelationship, 
+    selectedNodeId, isViewingRelationshipList, activeTab
+  ]);
 
   // 온보딩 완료 직후 relationships가 0명이면 1회만 자동으로 인맥 추가 화면 표시
   useEffect(() => {
@@ -260,19 +305,29 @@ function App() {
                   <>
                     <View style={styles.tabView}>
                       <View style={activeTab === 'map' ? styles.tabActive : styles.tabHidden}>
-                        <MainOrbitMap
-                          onSelectNode={(id: string) => setSelectedNodeId(id)}
-                          onPressAdd={() => setIsAddingRelationship(true)}
-                          onDiagnose={(id, mode) => {
-                            setSelectedNodeId(id);
-                            setDiagnosisMode(mode);
-                            setIsDiagnosing(true);
-                          }}
-                          onRecordLog={(id) => {
-                            setSelectedNodeId(id);
-                            setAutoOpenLog(true);
-                          }}
-                        />
+                        {isViewingRelationshipList ? (
+                          <RelationshipList 
+                            onBack={() => setIsViewingRelationshipList(false)} 
+                            onSelect={(id) => { 
+                              setSelectedNodeId(id); 
+                              setIsViewingRelationshipList(false); 
+                            }} 
+                          />
+                        ) : (
+                          <MainOrbitMap
+                            onSelectNode={(id: string) => setSelectedNodeId(id)}
+                            onPressAdd={() => setIsAddingRelationship(true)}
+                            onDiagnose={(id, mode) => {
+                              setSelectedNodeId(id);
+                              setDiagnosisMode(mode);
+                              setIsDiagnosing(true);
+                            }}
+                            onRecordLog={(id) => {
+                              setSelectedNodeId(id);
+                              setAutoOpenLog(true);
+                            }}
+                          />
+                        )}
                       </View>
                       <View style={activeTab === 'insight' ? styles.tabActive : styles.tabHidden}>
                         <EgoReflectionDashboard
@@ -325,7 +380,14 @@ function App() {
                       <View style={styles.navContainer}>
                         <TouchableOpacity
                           style={styles.navItem}
-                          onPress={() => setActiveTab('map')}
+                          onPress={() => {
+                            if (activeTab === 'map') {
+                              setIsViewingRelationshipList(!isViewingRelationshipList);
+                            } else {
+                              setActiveTab('map');
+                              setIsViewingRelationshipList(false);
+                            }
+                          }}
                         >
                           <View style={styles.iconWrapper}>
                             {activeTab === 'map' && <View style={styles.activeIconBg} />}

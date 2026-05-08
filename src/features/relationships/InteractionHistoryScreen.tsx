@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Calendar, Search, Filter, MessageCircle, Heart, Zap, User, Edit3, Clock } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
@@ -147,7 +148,7 @@ export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBa
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: '#FAF8F4' }]}>
+        <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: '#FAF8F4' }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onBack} style={styles.backBtn}>
                     <ArrowLeft size={24} color={colors.primary} />
