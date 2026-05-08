@@ -3,19 +3,22 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated, 
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
-import { Plus, Search, Radio, Heart, Users, Target, Briefcase, Menu, ChevronDown, ChevronUp, Star, Trash2, Zap, Calendar, Activity, Flame, Snowflake } from 'lucide-react-native';
+import { Plus, Search, Radio, Heart, Users, Target, Briefcase, Menu, ChevronDown, ChevronUp, Star, Trash2, Zap, Calendar, Flame, Leaf, CircleDashed } from 'lucide-react-native';
 import { UI_CONSTANTS, COMMON_STYLES } from '../../theme/LayoutStyles';
 
 const { width } = Dimensions.get('window');
 
 import { useRelationshipStore } from '../../store/useRelationshipStore';
-import { RelationshipNode, RELATIONSHIP_TYPE_LABELS } from '../../types/relationship';
+import { RelationshipNode, RELATIONSHIP_TYPE_LABELS, getDynamicCharacter, RQS_GRADE_BADGES } from '../../types/relationship';
 
-const BadgeIcon = ({ color, temperature }: { color: string, temperature: number }) => {
+// 4-Quadrant aligned character badge
+const BadgeIcon = ({ character }: { character: ReturnType<typeof getDynamicCharacter> }) => {
     const iconSize = 14;
-    if (temperature >= 80) return <Flame color={color} size={iconSize} fill={color} />;
-    if (temperature <= 40) return <Snowflake color={color} size={iconSize} />;
-    return <Activity color={color} size={iconSize} />;
+    if (!character) return null;
+    if (character.icon === 'Zap')          return <Zap color={character.color} size={iconSize} />;
+    if (character.icon === 'Flame')        return <Flame color={character.color} size={iconSize} fill={character.color} />;
+    if (character.icon === 'CircleDashed') return <CircleDashed color={character.color} size={iconSize} />;
+    return <Leaf color={character.color} size={iconSize} />;
 };
 
 const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect?: (id: string) => void }) => {
@@ -29,12 +32,9 @@ const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect
     };
     const zoneColor = zoneColors[node.zone] || colors.primary;
 
-    // 🌀 Calculate Dynamics (Active Interaction State)
-    const dynamics = (() => {
-        if (node.temperature >= 80) return { color: '#D98B73' }; // Flame concept
-        if (node.temperature <= 40) return { color: '#90A4AE' };  // Snowflake concept
-        return { color: '#4A5D4E' }; // Normal Activity concept
-    })();
+    // [Platformization] Use interactions for character calculation
+    const character = getDynamicCharacter(node.interactions || []);
+    const rqsGrade = node.rqsResult?.grade ? RQS_GRADE_BADGES[node.rqsResult.grade] : null;
 
     return (
         <TouchableOpacity
@@ -51,9 +51,18 @@ const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect
                         </View>
                     )}
                 </View>
-                <View style={[styles.badge, { backgroundColor: colors.white, borderColor: dynamics.color }]}>
-                    <BadgeIcon color={dynamics.color} temperature={node.temperature} />
-                </View>
+                {/* Primary: 4-quadrant character badge (교류 기록 기반) */}
+                {character && (
+                    <View style={[styles.badge, { backgroundColor: character.bgColor, borderColor: character.color }]}>
+                        <BadgeIcon character={character} />
+                    </View>
+                )}
+                {/* Supplementary: RQS grade badge (RQS 실시한 경우만) */}
+                {rqsGrade && (
+                    <View style={[styles.rqsBadge, { backgroundColor: rqsGrade.color }]}>
+                        <Text style={styles.rqsBadgeText}>{rqsGrade.grade}</Text>
+                    </View>
+                )}
             </View>
 
             <View style={styles.infoContainer}>
@@ -107,7 +116,7 @@ const ZoneSection = ({ zone, title, priority, count }: { zone: number, title: st
 };
 
 interface RelationshipListProps {
-    onSelectNode?: (id: string) => void;
+    onSelect?: (id: string) => void;
     onPressAdd?: () => void;
     hideHeader?: boolean;
     selectedTab: string;
@@ -118,7 +127,7 @@ interface RelationshipListProps {
 }
 
 export const RelationshipList = ({
-    onSelectNode,
+    onSelect,
     onPressAdd,
     hideHeader = false,
     selectedTab,
@@ -139,7 +148,12 @@ export const RelationshipList = ({
             >
                 <Plus color={colors.white} size={UI_CONSTANTS.ICON_SIZE} />
             </TouchableOpacity>
-            <View style={[COMMON_STYLES.headerRightGroup, { gap: 20 }]}>
+            
+            <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 17, fontWeight: '900', color: colors.primary }}>관계 궤도</Text>
+            </View>
+
+            <View style={[COMMON_STYLES.headerRightGroup, { gap: 12 }]}>
                 <TouchableOpacity style={COMMON_STYLES.secondaryActionBtn}>
                     <Search color={colors.primary} size={UI_CONSTANTS.ICON_SIZE} />
                 </TouchableOpacity>
@@ -149,6 +163,7 @@ export const RelationshipList = ({
             </View>
         </View>
     );
+
 
     const renderInnerContent = () => {
         const zoneFilters = [
@@ -282,7 +297,7 @@ export const RelationshipList = ({
                             <>
                                 <ZoneSection zone={1} title="핵심 그룹" priority count={zone1Nodes.length} />
                                 {zone1Nodes.map(node => (
-                                    <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
+                                    <RelationshipCard key={node.id} node={node} onSelect={onSelect} />
                                 ))}
                             </>
                         );
@@ -295,7 +310,7 @@ export const RelationshipList = ({
                             <>
                                 <ZoneSection zone={2} title="정서적 공유 그룹" count={zone2Nodes.length} />
                                 {zone2Nodes.map(node => (
-                                    <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
+                                    <RelationshipCard key={node.id} node={node} onSelect={onSelect} />
                                 ))}
                             </>
                         );
@@ -308,7 +323,7 @@ export const RelationshipList = ({
                             <>
                                 <ZoneSection zone={3} title="기능적 협력 관계" count={zone3Nodes.length} />
                                 {zone3Nodes.map(node => (
-                                    <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
+                                    <RelationshipCard key={node.id} node={node} onSelect={onSelect} />
                                 ))}
                             </>
                         );
@@ -321,7 +336,7 @@ export const RelationshipList = ({
                             <>
                                 <ZoneSection zone={4} title="단순 인지 관계" count={zone4Nodes.length} />
                                 {zone4Nodes.map(node => (
-                                    <RelationshipCard key={node.id} node={node} onSelect={onSelectNode} />
+                                    <RelationshipCard key={node.id} node={node} onSelect={onSelect} />
                                 ))}
                             </>
                         );
@@ -496,26 +511,26 @@ const styles = StyleSheet.create({
         width: 28,
         height: 28,
         borderRadius: 14,
-        borderWidth: 3,
+        borderWidth: 2,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    tempWarningBadge: {
+    rqsBadge: {
         position: 'absolute',
         top: -4,
         left: -4,
         width: 20,
         height: 20,
         borderRadius: 10,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    rqsBadgeText: {
+        fontSize: 9,
+        fontWeight: '900',
+        color: '#FFFFFF',
     },
     infoContainer: {
         flex: 1,

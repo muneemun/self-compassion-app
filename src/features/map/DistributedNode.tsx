@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import ReAnimated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { RelationshipNode, getDynamicCharacter } from '../../types/relationship';
-import { Skull, Shield, Star, Zap, Heart, Info } from 'lucide-react-native';
+import { RelationshipNode, getDynamicCharacter, RQS_GRADE_BADGES } from '../../types/relationship';
+import { Zap, Flame, CircleDashed, Leaf } from 'lucide-react-native';
 
 interface DistributedNodeProps {
     node: RelationshipNode;
@@ -20,6 +20,7 @@ export const DistributedNode: React.FC<DistributedNodeProps> = ({
     onSelectNode 
 }) => {
     const character = getDynamicCharacter(node.history || []);
+    const rqsGrade = node.rqsResult?.grade ? RQS_GRADE_BADGES[node.rqsResult.grade] : null;
     
     const animatedStyle = useAnimatedStyle(() => {
         const scaleFactor = 0.55 + (zoomSharedValue.value - 1) * 0.3375;
@@ -36,8 +37,21 @@ export const DistributedNode: React.FC<DistributedNodeProps> = ({
         };
     });
 
-    const isVampire = character?.type === 'Vampire';
-    const isAntidote = character?.type === 'Antidote';
+    const renderCharacterBadge = () => {
+        if (!character) return null;
+        const iconSize = 10;
+        let icon = null;
+        if (character.icon === 'Zap')          icon = <Zap color="white" size={iconSize} />;
+        else if (character.icon === 'Flame')   icon = <Flame color="white" size={iconSize} fill="white" />;
+        else if (character.icon === 'CircleDashed') icon = <CircleDashed color="white" size={iconSize} />;
+        else                                   icon = <Leaf color="white" size={iconSize} />;
+
+        return (
+            <View style={[styles.badge, { backgroundColor: character.color }]}>
+                {icon}
+            </View>
+        );
+    };
 
     return (
         <ReAnimated.View style={[styles.container, animatedStyle]}>
@@ -49,23 +63,24 @@ export const DistributedNode: React.FC<DistributedNodeProps> = ({
                 <View style={[
                     styles.avatarFrame, 
                     { borderColor: character?.color || '#4A5D4E' },
-                    isVampire && styles.vampireFrame,
-                    isAntidote && styles.antidoteFrame
                 ]}>
                     <Image 
                         source={{ uri: node.image || 'https://via.placeholder.com/100' }} 
                         style={styles.avatar} 
                     />
-                    {isVampire && <View style={styles.vampireOverlay} />}
                 </View>
                 
+                {/* Primary character badge */}
                 <View style={styles.badgeContainer}>
-                    {isVampire ? (
-                        <View style={[styles.badge, { backgroundColor: '#2C2C2C' }]}><Skull color="white" size={10} /></View>
-                    ) : isAntidote ? (
-                        <View style={[styles.badge, { backgroundColor: '#D98B73' }]}><Shield color="white" size={10} /></View>
-                    ) : null}
+                    {renderCharacterBadge()}
                 </View>
+
+                {/* RQS grade supplementary badge (top-left) */}
+                {rqsGrade && (
+                    <View style={[styles.rqsBadge, { backgroundColor: rqsGrade.color }]}>
+                        <Text style={styles.rqsBadgeText}>{rqsGrade.grade}</Text>
+                    </View>
+                )}
 
                 <View style={styles.labelContainer}>
                     <Text style={styles.label} numberOfLines={1}>{node.name}</Text>
@@ -74,6 +89,7 @@ export const DistributedNode: React.FC<DistributedNodeProps> = ({
         </ReAnimated.View>
     );
 };
+
 
 const styles = StyleSheet.create({
     container: {
@@ -99,27 +115,10 @@ const styles = StyleSheet.create({
         shadowRadius: 5,
         elevation: 3
     },
-    vampireFrame: {
-        borderWidth: 3,
-        shadowColor: '#2C2C2C',
-        shadowOpacity: 0.4,
-    },
-    antidoteFrame: {
-        borderWidth: 3,
-        shadowColor: '#D98B73',
-        shadowOpacity: 0.4,
-    },
     avatar: {
         width: 40,
         height: 40,
         borderRadius: 20,
-    },
-    vampireOverlay: {
-        position: 'absolute',
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(44, 44, 44, 0.3)',
     },
     badgeContainer: {
         position: 'absolute',
@@ -134,6 +133,23 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1.5,
         borderColor: 'white'
+    },
+    rqsBadge: {
+        position: 'absolute',
+        top: 0,
+        left: -4,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: 'white',
+    },
+    rqsBadgeText: {
+        fontSize: 8,
+        fontWeight: '900',
+        color: 'white',
     },
     labelContainer: {
         marginTop: 4,

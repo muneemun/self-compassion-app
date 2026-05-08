@@ -107,7 +107,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const getFilteredRelationships = (lens: string) => {
         let list = [...relationships];
         if (lens === 'Positive') {
-            // 영혼의 배터리 기준: 만족도 70 이상 & 에너지 소모 40 이하
+            // 나의 비타민 기준: 만족도 70 이상 & 에너지 소모 40 이하
             list = list.filter(r => {
                 const { sat, drain } = getMetrics(r);
                 return sat >= 70 && drain <= 40;
@@ -152,9 +152,9 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
     const getLensTuningInfo = () => {
         switch (selectedLens) {
-            case 'Positive': return { label: '영혼의 배터리 조율', icon: Star, color: '#D4AF37' };
-            case 'Negative': return { label: '에너지 포식자 조율', icon: Zap, color: '#D98B73' };
-            case 'Frequency': return { label: '일상의 중력 조율', icon: History, color: colors.primary };
+            case 'Positive': return { label: '나의 비타민 조율', icon: Star, color: '#D4AF37' };
+            case 'Negative': return { label: '주의가 필요해 조율', icon: Zap, color: '#D98B73' };
+            case 'Frequency': return { label: '자주 만난 사이 조율', icon: History, color: colors.primary };
             default: return { label: '관계 균형 조율하기', icon: Scale, color: colors.primary };
         }
     };
@@ -785,14 +785,19 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         const counts = { q1: 0, q2: 0, q3: 0, q4: 0 }; // q1: TL, q2: TR, q3: BL, q4: BR
 
         relationships.forEach((node) => {
-            const lastHistory = (node.history || []).slice(-1)[0];
-            const sat = lastHistory?.satisfaction ?? 50;
-            const drain = lastHistory?.energyDrain ?? 50;
+            // [Platformization] Use pure interaction data only
+            const interactions = node.interactions || [];
+            if (interactions.length === 0) return;
+
+            const lastInteraction = interactions[interactions.length - 1];
+            const sat = lastInteraction.satisfaction ?? 50;
+            const drain = lastInteraction.energyDrain ?? 50;
             
             if (sat < 50 && drain >= 50) counts.q1++;
             else if (sat >= 50 && drain >= 50) counts.q2++;
             else if (sat < 50 && drain < 50) counts.q3++;
             else if (sat >= 50 && drain < 50) counts.q4++;
+
 
             const key = `${sat}_${drain}`;
             if (!pointMap.has(key)) pointMap.set(key, []);
@@ -811,77 +816,106 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                             onPress={onViewDetailedMap}
                             style={{ backgroundColor: colors.primary + '10', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}
                         >
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary }}>상세 지도 🗺️</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary }}>상세 지도</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                <View style={[styles.vizCard, { backgroundColor: colors.white, height: 'auto', aspectRatio: undefined, paddingVertical: 24 }]}>
-                    <View style={styles.topographyPlot}>
-                        <View style={styles.topographyGrid}>
-                            <View style={[styles.gridCell, { backgroundColor: '#D98B7305' }]}>
-                                <Text style={styles.gridLabel}>에너지 포식자</Text>
-                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
-                            </View>
-                            <View style={[styles.gridCell, { backgroundColor: '#FFB74D05' }]}>
-                                <Text style={styles.gridLabel}>에너지 충전소</Text>
-                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
-                            </View>
-                            <View style={[styles.gridCell, { backgroundColor: '#D1D5DB10' }]}>
-                                <Text style={styles.gridLabel}>피곤한 관계</Text>
-                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
-                            </View>
-                            <View style={[styles.gridCell, { backgroundColor: '#4A5D4E05' }]}>
-                                <Text style={styles.gridLabel}>편안한 관계</Text>
-                                <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
-                            </View>
+                <View style={[styles.vizCard, { backgroundColor: colors.white, height: 'auto', aspectRatio: undefined, paddingVertical: 24, paddingHorizontal: 16 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {/* Vertical Label (Left) */}
+                        <View style={{ width: 24, height: 160, justifyContent: 'center', alignItems: 'center' }}>
+                            <Text style={{ 
+                                fontSize: 8, 
+                                fontWeight: '800', 
+                                color: colors.primary, 
+                                opacity: 0.5, 
+                                transform: [{ rotate: '-90deg' }],
+                                width: 160,
+                                textAlign: 'center'
+                            }}>
+                                낮음 ← 만족도 → 높음
+                            </Text>
                         </View>
 
-                        <Svg height="160" width={matrixWidth - 48} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
-                            {/* Axes */}
-                            <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
-                            <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                        <View style={{ flex: 1 }}>
+                            <View style={styles.topographyPlot}>
+                                <View style={styles.topographyGrid}>
+                                    {/* Top Row: Satisfaction High */}
+                                    <View style={[styles.gridCell, { backgroundColor: '#4A5D4E08' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#4A5D4E' }]}>편안한 사이</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
+                                    </View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#FFB74D08' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#FFB74D' }]}>뜨거운 사이</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
+                                    </View>
+                                    {/* Bottom Row: Satisfaction Low */}
+                                    <View style={[styles.gridCell, { backgroundColor: '#90A4AE08' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#90A4AE' }]}>평범한 사이</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
+                                    </View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#D98B7308' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#D98B73' }]}>지치는 사이</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
+                                    </View>
+                                </View>
 
-                            {/* Data Points for each relationship, handling overlaps */}
-                            {Array.from(pointMap.entries()).flatMap(([key, nodes]) => {
-                                const sat = nodes[0].sat;
-                                const drain = nodes[0].drain;
-                                const centerX = 20 + (sat / 100) * 160;
-                                const centerY = svgHeight - (20 + (drain / 100) * 120);
+                                <Svg height="160" width="100%" viewBox="0 0 200 160" style={{ position: 'absolute' }}>
+                                    {/* Central Axes Lines - Perfectly Aligned to Grid center */}
+                                    <Line x1="0" y1="80" x2="200" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                                    <Line x1="100" y1="0" x2="100" y2="160" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
 
-                                return nodes.map((node, i) => {
-                                    const angle = (i * 360 / nodes.length) * (Math.PI / 180);
-                                    const offset = nodes.length > 1 ? 8 : 0; // offset radius for overlapping
-                                    const cx = centerX + offset * Math.cos(angle);
-                                    const cy = centerY + offset * Math.sin(angle);
-                                    
-                                    // 🎨 Zone Color
-                                    let nodeColor = colors.accent;
-                                    if (node.zone === 1) nodeColor = '#FFB74D';
-                                    else if (node.zone === 2) nodeColor = '#D98B73';
-                                    else if (node.zone === 3) nodeColor = '#4A5D4E';
-                                    else if (node.zone === 4) nodeColor = '#90A4AE';
-                                    else if (node.zone === 5) nodeColor = '#D1D5DB';
+                                    {/* Data Points */}
+                                    {Array.from(pointMap.entries()).flatMap(([key, nodes]) => {
+                                        const sat = nodes[0].sat;
+                                        const drain = nodes[0].drain;
+                                        // Numeric positioning relative to viewBox="0 0 200 160"
+                                        const centerX = (drain / 100) * 200;
+                                        const centerY = 160 - (sat / 100) * 160;
 
-                                    return (
-                                        <G key={node.id}>
-                                            <Circle
-                                                cx={cx}
-                                                cy={cy}
-                                                r="4"
-                                                fill={nodeColor}
-                                                stroke="white"
-                                                strokeWidth="1"
-                                                opacity={0.8}
-                                            />
-                                        </G>
-                                    );
-                                });
-                            })}
-                        </Svg>
+                                        return nodes.map((node, i) => {
+                                            const angle = (i * 360 / nodes.length) * (Math.PI / 180);
+                                            const offset = nodes.length > 1 ? 8 : 0;
+                                            
+                                            return (
+                                                <G key={node.id}>
+                                                    <Circle
+                                                        cx={centerX + offset * Math.cos(angle)}
+                                                        cy={centerY + offset * Math.sin(angle)}
+                                                        r="4"
+                                                        fill={
+                                                            node.zone === 1 ? '#FFB74D' :
+                                                            node.zone === 2 ? '#D98B73' :
+                                                            node.zone === 3 ? '#4A5D4E' :
+                                                            node.zone === 4 ? '#90A4AE' : '#D1D5DB'
+                                                        }
+                                                        stroke="white"
+                                                        strokeWidth="1"
+                                                        opacity={0.8}
+                                                    />
+                                                </G>
+                                            );
+                                        });
+                                    })}
+                                </Svg>
+                            </View>
+                            
+                            {/* Horizontal Label (Bottom) */}
+                            <Text style={{ 
+                                fontSize: 8, 
+                                fontWeight: '800', 
+                                color: colors.primary, 
+                                opacity: 0.5, 
+                                textAlign: 'center',
+                                marginTop: 8
+                            }}>
+                                낮음 ← 에너지 → 높음
+                            </Text>
+                        </View>
                     </View>
                     
-                    <View style={styles.chartLegendRow}>
+                    <View style={[styles.chartLegendRow, { marginTop: 16 }]}>
                         <View style={styles.legendGroup}>
                             <View style={[styles.legendBarIndicator, { backgroundColor: '#FFB74D' }]} />
                             <Text style={styles.legendLabel}>Z1</Text>
@@ -904,7 +938,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         </View>
                     </View>
                     <View style={[styles.chartLegendRow, { marginTop: 0, marginBottom: 0 }]}>
-                        <Text style={[styles.legendLabel, { fontSize: 10, opacity: 0.6 }]}>가로: 기쁨 수치 | 세로: 에너지 뺏김 수치</Text>
+                        <Text style={[styles.legendLabel, { fontSize: 10, opacity: 0.6 }]}>가로: 에너지 소모 | 세로: 관계 만족도</Text>
                     </View>
                 </View>
             </View>
@@ -920,8 +954,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         if (topRelationships.length === 0) return null;
 
         const anchor = topRelationships[0];
-        const energySquad = topRelationships.slice(1);
-
+        
         const PERSONA_INFO: any = {
             1: { label: '나의 앵커', icon: Anchor, desc: `"${anchor.name}님과의 대화는 당신에게 깊은 안정감을 주었습니다."` },
             2: { label: '성장 거울', icon: Infinity, desc: '거울 • 성장 피드백' },
@@ -930,6 +963,22 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             5: { label: '긍정 태양', icon: Sun, desc: '선샤인 • 긍정 에너지' },
         };
 
+        const getThemeColor = () => {
+            if (selectedLens === 'Positive') return '#D4AF37'; // Gold
+            if (selectedLens === 'Negative') return '#D98B73'; // Terracotta
+            if (selectedLens === 'Frequency') return colors.primary;
+            return colors.accent;
+        };
+        const themeColor = getThemeColor();
+        
+        const getLensIcon = () => {
+            if (selectedLens === 'Positive') return Star;
+            if (selectedLens === 'Negative') return Zap;
+            if (selectedLens === 'Frequency') return History;
+            return Star;
+        };
+        const LensIcon = getLensIcon();
+
         return (
             <View style={styles.focusSection}>
                 {/* 🔍 Lens Tabs (Moved Here) */}
@@ -937,9 +986,9 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lensScroll}>
                         {[
                             { id: 'None', label: '전체', icon: LayoutGrid },
-                            { id: 'Positive', label: '영혼의 배터리', icon: Star },
-                            { id: 'Negative', label: '에너지 포식자', icon: Zap },
-                            { id: 'Frequency', label: '일상의 중력', icon: History },
+                            { id: 'Positive', label: '나의 비타민', icon: Star },
+                            { id: 'Negative', label: '주의가 필요해', icon: Zap },
+                            { id: 'Frequency', label: '자주 만난 사이', icon: History },
                         ].map((lens) => (
                             <TouchableOpacity
                                 key={lens.id}
@@ -960,24 +1009,31 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                 </View>
 
                 <View style={styles.focusHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>
-                        {selectedLens === 'Positive' ? '✨ 영혼의 배터리 순위' :
-                            selectedLens === 'Negative' ? '⚠️ 에너지 포식자 순위' :
-                                selectedLens === 'Frequency' ? '📊 일상의 중력 순위' : '집중 인사이트'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+                            {selectedLens === 'Positive' ? '✨ 나의 비타민 순위' :
+                                selectedLens === 'Negative' ? '⚠️ 주의가 필요해 순위' :
+                                    selectedLens === 'Frequency' ? '📊 자주 만난 사이 순위' : '집중 인사이트'}
+                        </Text>
+                        {selectedLens !== 'None' && (
+                            <TouchableOpacity 
+                                onPress={handleStartContextualTuning}
+                                style={[styles.selectAllBtn, { borderColor: themeColor + '30' }]}
+                            >
+                                <Text style={[styles.selectAllText, { color: themeColor }]}>전체 조율하기</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <Text style={styles.focusSub}>
-                        {selectedLens === 'Positive' ? '당신에게 가장 긍정적인 회복 에너지를 주는 인물들입니다.' :
-                            selectedLens === 'Negative' ? '현재 심리적 소모가 큰 관계들입니다. 적절한 방어와 조율이 필요합니다.' :
-                                selectedLens === 'Frequency' ? '당신의 일상적인 시간을 가장 많이 점유하고 있는 실질적 관계들입니다.' :
-                                    `당신의 웰빙에 가장 긍정적인 영향을 준 에너지 인물들입니다.`}
+                        {selectedLens === 'Positive' ? '함께 있으면 저절로 기운이 나는 고마운 친구들이에요.' :
+                            selectedLens === 'Negative' ? '만나고 나면 조금 지칠 수 있어요. 마음을 잘 돌봐주세요.' :
+                                selectedLens === 'Frequency' ? '내 하루를 가장 많이 함께하고 있는 단짝들이에요.' :
+                                    `내 마음에 가장 좋은 영향을 주는 에너지 친구들이에요.`}
                     </Text>
                 </View>
 
                 {(() => {
                     let sortedData = [...relationships];
-                    let themeColor = colors.accent;
-                    let LensIcon = Star;
-
                     // Zone Colors for Borders
                     const zoneColors: Record<number, string> = {
                         1: '#FFB74D',
@@ -986,17 +1042,6 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         4: '#90A4AE',
                         5: '#D1D5DB'
                     };
-
-                    if (selectedLens === 'Positive') {
-                        themeColor = '#D4AF37'; // Gold
-                        LensIcon = Star;
-                    } else if (selectedLens === 'Negative') {
-                        themeColor = '#D98B73'; // Terracotta
-                        LensIcon = Zap;
-                    } else if (selectedLens === 'Frequency') {
-                        themeColor = colors.primary;
-                        LensIcon = History;
-                    }
 
                     if (selectedLens !== 'None') {
                         sortedData = getFilteredRelationships(selectedLens).sort((a, b) => getLensValue(b, selectedLens) - getLensValue(a, selectedLens));
@@ -1009,10 +1054,10 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     const anchor = topTen[0];
                     if (!anchor) {
                         const getEmptyState = () => {
-                            if (selectedLens === 'Positive') return { icon: Heart, title: '충전이 필요한 순간', desc: '아직 당신을 온전히 충전해 줄 관계를 찾지 못했어요.\n이번 주말엔 나를 편안하게 해주는 사람에게\n가볍게 연락해 보는 건 어떨까요?' };
-                            if (selectedLens === 'Negative') return { icon: Shield, title: '정말 다행이에요!', desc: '현재 당신의 에너지를 심하게 빼앗는 사람이 없습니다.\n평온한 마음의 공간을 마음껏 누리세요. 🌿' };
-                            if (selectedLens === 'Frequency') return { icon: Activity, title: '기록이 필요해요', desc: '최근 깊게 교류한 기록이 부족해요.\n사람들과 어떤 감정을 주고받았는지 가볍게 기록해 볼까요?' };
-                            return { icon: Users, title: '인맥을 추가해보세요', desc: '아직 등록된 인맥이 없어요.\n소중한 사람들을 추가하고 관계를 가꿔보세요.' };
+                            if (selectedLens === 'Positive') return { icon: Heart, title: '비타민이 필요해요', desc: '아직 나를 온전히 웃게 해줄 친구를 찾지 못했어요.\n이번 주말엔 마음이 편한 사람에게\n가볍게 연락해 보는 건 어떨까요?' };
+                            if (selectedLens === 'Negative') return { icon: Shield, title: '평온한 상태예요', desc: '지금 나를 지치게 하는 사람이 없어요.\n평화로운 마음을 마음껏 누려보세요. 🌿' };
+                            if (selectedLens === 'Frequency') return { icon: Activity, title: '기록이 부족해요', desc: '최근에 누구와 만났는지 기록이 적어요.\n친구들과 어떤 이야기를 나눴는지 적어볼까요?' };
+                            return { icon: Users, title: '친구를 추가해보세요', desc: '아직 등록된 인맥이 없어요.\n소중한 사람들을 추가하고 관계를 가꿔보세요.' };
                         };
                         const es = getEmptyState();
                         const EmptyIcon = es.icon;
@@ -1073,10 +1118,10 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                     <Text style={styles.anchorDesc}>
                                         {(() => {
                                             switch (selectedLens) {
-                                                case 'Positive': return '당신을 가장 따사롭게 회복시키며 긍정 에너지를 공급하는 최고의 지지자입니다.';
-                                                case 'Frequency': return '현재 당신의 물리적 시간과 관심을 가장 많이 점유하고 있는 일상의 중심축입니다.';
-                                                case 'Negative': return '심리적 소모도가 가장 높고 에너지 방어가 필요한 관계입니다.';
-                                                default: return '현재 당신의 인맥 궤도에서 가장 강력한 심리적 영향력을 미치는 존재입니다.';
+                                                case 'Positive': return '함께 있으면 저절로 기운이 나는 소중한 비타민 같은 친구예요.';
+                                                case 'Frequency': return '내 하루를 가장 많이 함께하며 일상을 나누는 단짝이에요.';
+                                                case 'Negative': return '만나고 나면 기운이 조금 빠질 수 있어요. 마음을 잘 돌봐주세요.';
+                                                default: return '내 마음의 궤도에서 가장 큰 영향을 주고 있는 소중한 사람이에요.';
                                             }
                                         })()}
                                     </Text>
@@ -1228,7 +1273,8 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     {renderGlobalSocialTopography()}
                     {renderFocusInsight()}
 
-                    <View style={styles.nudgeSection}>
+                    {/* 🚀 우선 관리 (Nudge) 영역 - 집중 인사이트 렌즈로 대체되어 현재는 숨김 처리 */}
+                    {/* <View style={styles.nudgeSection}>
                         <View style={styles.nudgeHeader}>
                             <Text style={[styles.sectionTitle, { color: colors.primary }]}>우선 관리</Text>
                             <TouchableOpacity>
@@ -1244,7 +1290,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.nudgeScroll}
                         />
-                    </View>
+                    </View> */}
 
                     <View style={{ height: 260 }} />
 
@@ -2341,7 +2387,7 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 10,
     },
-    topographyPlot: { position: 'relative', height: 160, width: '100%', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
+    topographyPlot: { position: 'relative', height: 160, width: '100%', marginVertical: 12 },
     topographyGrid: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', flexWrap: 'wrap' },
     gridCell: { width: '50%', height: '50%', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.02)' },
     gridLabel: { fontSize: 10, fontWeight: '800', color: '#4A5D4E', opacity: 0.3, textTransform: 'uppercase' },
@@ -2352,10 +2398,17 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
         borderRadius: 10,
     },
-    countText: {
+    countText: { fontSize: 10, fontWeight: '800', color: '#4A5D4E' },
+    selectAllBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+    },
+    selectAllText: {
         fontSize: 12,
-        fontWeight: '900',
-        color: '#4A5D4E',
+        fontWeight: '800',
     },
     chartLegendRow: { flexDirection: 'row', gap: 16, marginBottom: 24, marginTop: 12, justifyContent: 'center' },
     legendGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },

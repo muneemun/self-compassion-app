@@ -19,10 +19,10 @@ import { AppHeader } from '../../components/AppHeader';
 import {
     Search, Plus, LocateFixed, LayoutGrid, List,
     ChevronDown, ChevronUp, HeartPulse, X, ChevronRight,
-    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Snowflake, Activity
+    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Leaf, CircleDashed, Activity
 } from 'lucide-react-native';
 import { RelationshipList } from '../relationships/RelationshipList';
-import { RELATIONSHIP_TYPE_LABELS, RelationshipNode } from '../../types/relationship';
+import { RELATIONSHIP_TYPE_LABELS, RelationshipNode, getDynamicCharacter, RQS_GRADE_BADGES } from '../../types/relationship';
 import { BlurView } from 'expo-blur';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { useAppStore } from '../../store/useAppStore';
@@ -44,12 +44,15 @@ import ReAnimated, {
 const { width } = Dimensions.get('window');
 const BASE_ORBIT_SIZE = width * 1.1;
 
-// 🧊 Shared Badge Component (Same as RelationshipList)
-const BadgeIcon = ({ color, temperature }: { color: string, temperature: number }) => {
+// 🧩 4-Quadrant Character Badge
+const BadgeIcon = ({ node }: { node: RelationshipNode }) => {
+    const character = getDynamicCharacter(node.interactions || []);
     const iconSize = 14;
-    if (temperature >= 80) return <Flame color={color} size={iconSize} fill={color} />;
-    if (temperature <= 40) return <Snowflake color={color} size={iconSize} />;
-    return <Activity color={color} size={iconSize} />;
+    if (!character) return null;
+    if (character.icon === 'Zap')          return <Zap color={character.color} size={iconSize} />;
+    if (character.icon === 'Flame')        return <Flame color={character.color} size={iconSize} fill={character.color} />;
+    if (character.icon === 'CircleDashed') return <CircleDashed color={character.color} size={iconSize} />;
+    return <Leaf color={character.color} size={iconSize} />;
 };
 
 const styles = StyleSheet.create({
@@ -926,8 +929,6 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         transform: [{ scale: rippleScale3.value }],
         opacity: rippleOpacity.value * 0.4,
     }));
-    const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-    
     // Tracking new nodes for entry animation
     const prevNodeIds = useRef(new Set(relationships.map(r => r.id)));
     useEffect(() => {
@@ -942,6 +943,8 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         isFilterExpanded,
         activeSearchTag: storeActiveSearchTag
     } = orbitMapViewState;
+
+    const viewMode = orbitMapViewState.viewMode || 'map';
 
     // ⚡ Native Zoom Engine
     const zoomSharedValue = useSharedValue(zoomLevel);
@@ -960,6 +963,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
     const setSelectedFilters = (filters: string[]) => setOrbitMapViewState({ selectedFilters: filters });
     const setSortMode = (mode: 'default' | 'hot' | 'cold') => setOrbitMapViewState({ sortMode: mode as any });
     const setIsFilterExpanded = (expanded: boolean) => setOrbitMapViewState({ isFilterExpanded: expanded });
+    const setViewMode = (mode: 'map' | 'list') => setOrbitMapViewState({ viewMode: mode });
     const setActiveSearchTag = (tag: string) => setOrbitMapViewState({ activeSearchTag: tag });
 
 
@@ -1543,21 +1547,48 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                     )}
                                                 </View>
                                                 {/* Badge Icon Positioned Bottom-Right */}
-                                                <View style={{
-                                                    position: 'absolute',
-                                                    bottom: -2,
-                                                    right: -2,
-                                                    width: 26,
-                                                    height: 26,
-                                                    borderRadius: 13,
-                                                    backgroundColor: '#fff',
-                                                    borderWidth: 2,
-                                                    borderColor: dynamics.color,
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center'
-                                                }}>
-                                                    <BadgeIcon color={dynamics.color} temperature={person.temperature} />
-                                                </View>
+                                                {(() => {
+                                                    const personCharacter = getDynamicCharacter(person.history || []);
+                                                    const personRqsGrade = person.rqsResult?.grade ? RQS_GRADE_BADGES[person.rqsResult.grade] : null;
+                                                    return (
+                                                        <>
+                                                            {personCharacter && (
+                                                                <View style={{
+                                                                    position: 'absolute',
+                                                                    bottom: -2,
+                                                                    right: -2,
+                                                                    width: 26,
+                                                                    height: 26,
+                                                                    borderRadius: 13,
+                                                                    backgroundColor: personCharacter.bgColor,
+                                                                    borderWidth: 2,
+                                                                    borderColor: personCharacter.color,
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center'
+                                                                }}>
+                                                                    <BadgeIcon node={person} />
+                                                                </View>
+                                                            )}
+                                                            {personRqsGrade && (
+                                                                <View style={{
+                                                                    position: 'absolute',
+                                                                    top: -4,
+                                                                    left: -4,
+                                                                    width: 18,
+                                                                    height: 18,
+                                                                    borderRadius: 9,
+                                                                    backgroundColor: personRqsGrade.color,
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    borderWidth: 2,
+                                                                    borderColor: '#fff',
+                                                                }}>
+                                                                    <Text style={{ fontSize: 8, fontWeight: '900', color: '#fff' }}>{personRqsGrade.grade}</Text>
+                                                                </View>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
                                             </View>
 
                                             <View style={styles.infoContainer}>
@@ -1682,7 +1713,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                     <View style={[styles.listViewContainer, viewMode === 'list' ? { display: 'flex' } : { display: 'none', height: 0 }]}>
                         <RelationshipList
                             hideHeader
-                            onSelectNode={onSelectNode}
+                            onSelect={onSelectNode}
                             onPressAdd={onPressAdd}
                             selectedTab={selectedFilters?.[0] || '전체'}
                             onSelectTab={handleToggleFilter}

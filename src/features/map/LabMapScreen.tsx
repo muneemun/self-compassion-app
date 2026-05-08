@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, ScrollView } from 'react-native';
-import { Rocket, LayoutGrid, Activity, SlidersHorizontal, Info, Sparkles, ChevronRight, AlertCircle, TrendingUp, Zap, Flame, Snowflake, Skull, Shield, ArrowDown, ArrowUp, RefreshCcw } from 'lucide-react-native';
+import { Rocket, LayoutGrid, Activity, SlidersHorizontal, Info, Sparkles, ChevronRight, AlertCircle, TrendingUp, Zap, Flame, Snowflake, Skull, Shield, ArrowDown, ArrowUp, RefreshCcw, Leaf, CircleDashed } from 'lucide-react-native';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { getDynamicCharacter, RQS_GRADE_BADGES } from '../../types/relationship';
 import { SelfNode } from './SelfNode';
 import Svg, { Circle, G, Path, Defs, RadialGradient, Stop, Line } from 'react-native-svg';
 import ReAnimated, { useAnimatedStyle, withRepeat, withTiming, Easing, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
@@ -47,13 +48,19 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
             }
         });
 
-        const vampires = relationships.filter(r => (r.rqsResult?.grade === 'C'));
-        const antidotes = relationships.filter(r => (r.rqsResult?.grade === 'S'));
+        const vampires = relationships.filter(r => {
+            const char = getDynamicCharacter(r.history || []);
+            return char?.type === 'Draining' || r.rqsResult?.grade === 'C';
+        });
+        const antidotes = relationships.filter(r => {
+            const char = getDynamicCharacter(r.history || []);
+            return char?.type === 'Stable' || r.rqsResult?.grade === 'S';
+        });
 
         let energy = 85; 
         overloadedZones.forEach(z => { energy -= (zoneCounts[z] - ZONE_CAPACITY[z as keyof typeof ZONE_CAPACITY]) * 2; });
-        energy -= vampires.length * 10;
-        energy += antidotes.length * 5;
+        energy -= vampires.length * 8; // Slightly reduced penalty
+        energy += antidotes.length * 4;
         
         return {
             condition: Math.max(5, Math.min(100, energy)),
@@ -141,23 +148,41 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
                     const x = centerX + radius * Math.cos(angle) - 22;
                     const y = centerY + radius * Math.sin(angle) - 22;
                     
+                    const character = getDynamicCharacter(node.history || []);
+                    const rqsGrade = node.rqsResult?.grade ? RQS_GRADE_BADGES[node.rqsResult.grade] : null;
                     const zoneColor = ZONE_COLORS[node.zone || 3] || '#4A5D4E';
-                    const isVampire = node.rqsResult?.grade === 'C';
-                    const isAnchor = node.rqsResult?.grade === 'S';
+
+                    const renderIcon = () => {
+                        if (!character) return null;
+                        const iconSize = 10;
+                        if (character.icon === 'Zap') return <Zap color="white" size={iconSize} />;
+                        if (character.icon === 'Flame') return <Flame color="white" size={iconSize} fill="white" />;
+                        if (character.icon === 'CircleDashed') return <CircleDashed color="white" size={iconSize} />;
+                        return <Leaf color="white" size={iconSize} />;
+                    };
 
                     return (
                         <View key={node.id} style={[styles.nodeContainer, { left: x, top: y }]}>
                             <View style={[styles.avatarFrame, { borderColor: zoneColor, borderWidth: 2.5 }]}>
                                 <Image source={{ uri: node.image || 'https://via.placeholder.com/100' }} style={styles.nodeImg} />
-                                {isVampire && <View style={styles.vampireOverlay} />}
                             </View>
+                            
+                            {/* Primary character badge (bottom-right) */}
                             <View style={styles.badgeContainer}>
-                                {isVampire ? (
-                                    <View style={[styles.iconBadge, { backgroundColor: '#2C2C2C' }]}><Skull color="white" size={10} /></View>
-                                ) : isAnchor ? (
-                                    <View style={[styles.iconBadge, { backgroundColor: '#D98B73' }]}><Shield color="white" size={10} /></View>
-                                ) : null}
+                                {character && (
+                                    <View style={[styles.iconBadge, { backgroundColor: character.color }]}>
+                                        {renderIcon()}
+                                    </View>
+                                )}
                             </View>
+
+                            {/* RQS grade supplementary badge (top-left) */}
+                            {rqsGrade && (
+                                <View style={[styles.rqsBadge, { backgroundColor: rqsGrade.color }]}>
+                                    <Text style={styles.rqsBadgeText}>{rqsGrade.grade}</Text>
+                                </View>
+                            )}
+
                             <Text style={[styles.nodeLabel, { color: '#4A5D4E' }]}>{node.name}</Text>
                         </View>
                     );
@@ -189,15 +214,31 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
                        const x = (sat / 100) * (width - 80);
                        const y = ((100 - drain) / 100) * (MAP_HEIGHT - 120);
                        
-                       const isVampire = node.rqsResult?.grade === 'C';
+                       const character = getDynamicCharacter(node.history || []);
+                       const rqsGrade = node.rqsResult?.grade ? RQS_GRADE_BADGES[node.rqsResult.grade] : null;
                        const zoneColor = ZONE_COLORS[node.zone || 3] || '#4A5D4E';
 
                        return (
                            <View key={`bal-${node.id}`} style={[styles.nodeContainer, { left: x - 16, top: y - 16, position: 'absolute' }]}>
                                <View style={[styles.avatarFrame, { borderColor: zoneColor, borderWidth: 2, width: 32, height: 32, padding: 1 }]}>
                                    <Image source={{ uri: node.image || 'https://via.placeholder.com/100' }} style={{ width: 26, height: 26, borderRadius: 13 }} />
-                                   {isVampire && <View style={[styles.vampireOverlay, { width: 32, height: 32, borderRadius: 16 }]} />}
                                </View>
+
+                                {/* Mini Badges for Matrix */}
+                                {character && (
+                                    <View style={[styles.iconBadge, { position: 'absolute', bottom: -2, right: -2, width: 12, height: 12, borderRadius: 6, backgroundColor: character.color, borderWidth: 1 }]}>
+                                        {character.icon === 'Zap' && <Zap color="white" size={6} />}
+                                        {character.icon === 'Flame' && <Flame color="white" size={6} fill="white" />}
+                                        {character.icon === 'CircleDashed' && <CircleDashed color="white" size={6} />}
+                                        {character.icon === 'Leaf' && <Leaf color="white" size={6} />}
+                                    </View>
+                                )}
+                                {rqsGrade && (
+                                    <View style={[styles.rqsBadge, { position: 'absolute', top: -2, left: -2, width: 10, height: 10, borderRadius: 5, backgroundColor: rqsGrade.color, borderWidth: 1 }]}>
+                                        <Text style={{ fontSize: 5, fontWeight: '900', color: 'white' }}>{rqsGrade.grade}</Text>
+                                    </View>
+                                )}
+
                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#4A5D4E', marginTop: 2, backgroundColor: 'rgba(255,255,255,0.8)', paddingHorizontal: 4, borderRadius: 4 }}>{node.name}</Text>
                            </View>
                        );
@@ -307,5 +348,7 @@ const styles = StyleSheet.create({
     vampireOverlay: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(44, 44, 44, 0.4)' },
     badgeContainer: { position: 'absolute', bottom: -2, right: -2, zIndex: 5 },
     iconBadge: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'white' },
+    rqsBadge: { position: 'absolute', top: -2, left: -2, width: 14, height: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center', borderWidth: 1.2, borderColor: 'white', zIndex: 6 },
+    rqsBadgeText: { fontSize: 7, fontWeight: '900', color: 'white' },
     nodeLabel: { fontSize: 9, fontWeight: '900', marginTop: 4, backgroundColor: 'rgba(255,255,255,0.85)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
 });

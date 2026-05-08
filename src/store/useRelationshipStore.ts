@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { RelationshipNode, HealthMetrics } from '../types/relationship';
+import { RelationshipNode, HealthMetrics, OrbitMapViewState } from '../types/relationship';
 
 interface RelationshipState {
     relationships: RelationshipNode[];
@@ -33,13 +33,6 @@ interface RelationshipState {
     setLastAddedId: (id: string | null) => void;
 }
 
-export interface OrbitMapViewState {
-    zoomLevel: number;
-    selectedFilters: string[];
-    activeSearchTag: string;
-    sortMode: 'default' | 'hot' | 'cold';
-    isFilterExpanded: boolean;
-}
 
 // 대규모 테스트를 위한 가상 데이터 생성기
 const generateMockRelationships = (count: number): RelationshipNode[] => {
@@ -77,6 +70,7 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
     for (let i = 0; i < 5; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
         const closeness = 90 + Math.floor(Math.random() * 10);
+        const interactions = generateHistory(5, closeness);
         nodes.push({
             id: `mock-1-${i}`,
             name,
@@ -86,7 +80,9 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
             temperature: closeness,
             lastInteraction: '오늘',
             metrics: { trust: 90 + Math.random() * 10, communication: 80 + Math.random() * 20, frequency: 90 + Math.random() * 10, satisfaction: 90 + Math.random() * 10 },
-            history: generateHistory(5, closeness),
+            interactions,
+            systemLogs: [{ id: 'sys-1', date: '2024-01-01', createdAt: new Date().toISOString(), event: '관계 등록' }],
+            history: interactions,
         });
     }
 
@@ -94,6 +90,7 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
     for (let i = 0; i < 25; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
         const closeness = 70 + Math.floor(Math.random() * 20);
+        const interactions = generateHistory(3, closeness);
         nodes.push({
             id: `mock-2-${i}`,
             name,
@@ -103,7 +100,9 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
             temperature: closeness,
             lastInteraction: '며칠 전',
             metrics: { trust: 70 + Math.random() * 20, communication: 60 + Math.random() * 30, frequency: 50 + Math.random() * 40, satisfaction: 70 + Math.random() * 20 },
-            history: generateHistory(3, closeness),
+            interactions,
+            systemLogs: [{ id: 'sys-2', date: '2024-01-01', createdAt: new Date().toISOString(), event: '관계 등록' }],
+            history: interactions,
         });
     }
 
@@ -111,6 +110,7 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
     for (let i = 0; i < 40; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
         const closeness = 50 + Math.floor(Math.random() * 20);
+        const interactions = generateHistory(2, closeness);
         nodes.push({
             id: `mock-3-${i}`,
             name,
@@ -120,7 +120,9 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
             temperature: closeness,
             lastInteraction: '이번 주',
             metrics: { trust: 50 + Math.random() * 40, communication: 70 + Math.random() * 30, frequency: 60 + Math.random() * 30, satisfaction: 50 + Math.random() * 30 },
-            history: generateHistory(2, closeness),
+            interactions,
+            systemLogs: [{ id: 'sys-3', date: '2024-01-01', createdAt: new Date().toISOString(), event: '관계 등록' }],
+            history: interactions,
         });
     }
 
@@ -128,6 +130,7 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
     for (let i = 0; i < 50; i++) {
         const name = lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
         const closeness = 30 + Math.floor(Math.random() * 25);
+        const interactions = generateHistory(1, closeness);
         nodes.push({
             id: `mock-4-${i}`,
             name,
@@ -137,7 +140,9 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
             temperature: closeness,
             lastInteraction: '한 달 전',
             metrics: { trust: 30 + Math.random() * 50, communication: 30 + Math.random() * 40, frequency: 20 + Math.random() * 40, satisfaction: 30 + Math.random() * 40 },
-            history: generateHistory(1, closeness),
+            interactions,
+            systemLogs: [{ id: 'sys-4', date: '2024-01-01', createdAt: new Date().toISOString(), event: '관계 등록' }],
+            history: interactions,
         });
     }
 
@@ -154,9 +159,12 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
             temperature: closeness,
             lastInteraction: '기억 안남',
             metrics: { trust: 20 + Math.random() * 30, communication: 10 + Math.random() * 30, frequency: 5 + Math.random() * 20, satisfaction: 20 + Math.random() * 30 },
+            interactions: [],
+            systemLogs: [{ id: 'sys-5', date: '2024-01-01', createdAt: new Date().toISOString(), event: '관계 등록' }],
             history: [],
         });
     }
+
 
     return nodes;
 };
@@ -169,6 +177,7 @@ export const useRelationshipStore = create<RelationshipState>()(
             relationships: INITIAL_DATA,
 
             addRelationship: (name, type, role, phoneNumber, image) => {
+                const now = new Date().toISOString();
                 const newNode: RelationshipNode = {
                     id: Math.random().toString(36).substr(2, 9),
                     name,
@@ -180,15 +189,22 @@ export const useRelationshipStore = create<RelationshipState>()(
                     temperature: 0,
                     lastInteraction: 'Just added',
                     metrics: { trust: 0, communication: 0, frequency: 0, satisfaction: 0 },
+                    interactions: [],
+                    systemLogs: [{
+                        id: Math.random().toString(36).substr(2, 9),
+                        date: now.split('T')[0],
+                        createdAt: now,
+                        event: '관계 등록',
+                        details: '새로운 관계가 궤도에 등록되었습니다.'
+                    }],
                     history: [{
                         id: Math.random().toString(36).substr(2, 9),
-                        date: new Date().toISOString().split('T')[0],
+                        date: now.split('T')[0],
+                        createdAt: now,
                         title: '관계 등록',
-                        description: '새로운 관계가 궤도에 등록되었습니다.',
-                        closeness: 0,
+                        event: '관계 등록',
                         satisfaction: 0,
                         energyDrain: 0,
-                        createdAt: new Date().toISOString(),
                     }],
                 };
                 set((state) => ({ 
@@ -228,7 +244,6 @@ export const useRelationshipStore = create<RelationshipState>()(
                     relationships: state.relationships.map((r) => {
                         if (r.id !== id) return r;
 
-                        // 진단 로직: 지표들의 평균으로 긴밀도 산출
                         const { trust, communication, frequency, satisfaction } = r.metrics;
                         const avgTemp = Math.round((trust + communication + satisfaction) / 3);
 
@@ -241,33 +256,23 @@ export const useRelationshipStore = create<RelationshipState>()(
             },
 
             updateAnalysisResult: (id, data) => {
-                const today = new Date().toISOString().split('T')[0];
+                const now = new Date().toISOString();
                 set((state) => ({
                     relationships: state.relationships.map((r) => {
                         if (r.id !== id) return r;
 
-                        const lastHistory = r.history[r.history.length - 1];
-                        const newHistoryEntry = {
+                        const systemLogEntry = {
                             id: Math.random().toString(36).substr(2, 9),
-                            date: today,
-                            createdAt: new Date().toISOString(),
-                            closeness: data.temperature ?? (lastHistory?.closeness ?? r.temperature),
-                            satisfaction: 0, 
-                            energyDrain: 0,
-                            oxytocin: data.oxytocin ?? (lastHistory?.oxytocin ?? 50),
-                            cortisol: data.cortisol ?? (lastHistory?.cortisol ?? 50),
-                            title: data.event || '관계 분석',
-                            description: '분석을 통한 관계 상태 업데이트',
-                            event: data.event,
+                            date: now.split('T')[0],
+                            createdAt: now,
+                            event: data.event || '분석 업데이트',
+                            details: data.rqsResult ? `RQS 등급: ${data.rqsResult.grade}` : '관계 데이터 업데이트',
                         };
 
-                        const newHistory = [...r.history, newHistoryEntry].slice(-12);
-                        let newRqsHistory = r.rqsHistory || [];
-                        // If history is empty but we have an existing result, seed it
-                        if (newRqsHistory.length === 0 && r.rqsResult) {
-                            newRqsHistory = [r.rqsResult];
-                        }
+                        const newLogs = [...(r.systemLogs || []), systemLogEntry];
+                        const newHistory = [...(r.history || []), { ...systemLogEntry, title: systemLogEntry.event }];
 
+                        let newRqsHistory = r.rqsHistory || [];
                         if (data.rqsResult) {
                             const isDuplicate = newRqsHistory.some(h => h?.lastChecked === data.rqsResult?.lastChecked);
                             if (!isDuplicate) {
@@ -280,6 +285,7 @@ export const useRelationshipStore = create<RelationshipState>()(
                             temperature: data.temperature ?? r.temperature,
                             zone: data.zone ?? r.zone,
                             rqsResult: data.rqsResult ?? r.rqsResult,
+                            systemLogs: newLogs,
                             history: newHistory,
                             rqsHistory: newRqsHistory,
                         };
@@ -288,37 +294,34 @@ export const useRelationshipStore = create<RelationshipState>()(
             },
 
             addInteraction: (id, date, satisfaction, energyDrain, title, description) => {
-                const ALPHA = 0.15; // 반응성 계수 (조정 가능)
+                const ALPHA = 0.15;
                 const resonanceDelta = ALPHA * (satisfaction - energyDrain);
+                const now = new Date().toISOString();
 
                 set((state) => ({
                     relationships: state.relationships.map((r) => {
                         if (r.id !== id) return r;
                         
-                        // 기존 temperature를 긴밀도 베이스로 사용
                         const currentCloseness = r.temperature || 50;
                         const newCloseness = Math.max(0, Math.min(100, currentCloseness + resonanceDelta));
                         
+                        const newInteraction = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            date,
+                            createdAt: now,
+                            satisfaction,
+                            energyDrain,
+                            title,
+                            description,
+                            closeness: newCloseness
+                        };
+
                         return {
                             ...r,
                             lastInteraction: '방금',
                             temperature: newCloseness,
-                            history: [
-                                ...r.history,
-                                {
-                                    id: Math.random().toString(36).substr(2, 9),
-                                    date,
-                                    createdAt: new Date().toISOString(),
-                                    closeness: newCloseness,
-                                    satisfaction,
-                                    energyDrain,
-                                    title,
-                                    description,
-                                    event: title,
-                                    oxytocin: satisfaction > 70 ? 80 : 30,
-                                    cortisol: energyDrain > 70 ? 70 : 20,
-                                }
-                            ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                            interactions: [...(r.interactions || []), newInteraction],
+                            history: [...(r.history || []), newInteraction]
                         };
                     })
                 }));
@@ -328,15 +331,12 @@ export const useRelationshipStore = create<RelationshipState>()(
                 set((state) => ({
                     relationships: state.relationships.map((r) => {
                         if (r.id !== personId) return r;
+                        const updatedInteractions = (r.interactions || []).map(i => i.id === logId ? { ...i, ...updates } : i);
+                        const updatedHistory = (r.history || []).map(h => h.id === logId ? { ...h, ...updates } : h);
                         return {
                             ...r,
-                            history: r.history
-                                .map((h) => (h.id === logId ? { ...h, ...updates } : h))
-                                .sort((a, b) => {
-                                    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
-                                    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
-                                    return timeA - timeB;
-                                })
+                            interactions: updatedInteractions,
+                            history: updatedHistory
                         };
                     })
                 }));
@@ -348,11 +348,13 @@ export const useRelationshipStore = create<RelationshipState>()(
                         if (r.id !== personId) return r;
                         return {
                             ...r,
-                            history: r.history.filter((h) => h.id !== logId)
+                            interactions: (r.interactions || []).filter(i => i.id !== logId),
+                            history: (r.history || []).filter(h => h.id !== logId)
                         };
                     })
                 }));
             },
+
 
             // View State Implementation
             orbitMapViewState: {
@@ -361,6 +363,7 @@ export const useRelationshipStore = create<RelationshipState>()(
                 activeSearchTag: '전체',
                 sortMode: 'default',
                 isFilterExpanded: false,
+                viewMode: 'map',
             },
             setOrbitMapViewState: (newState) => {
                 set((state) => ({

@@ -218,9 +218,13 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
         const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
 
         relationships.forEach((node) => {
-            const lastHistory = (node.history || []).slice(-1)[0];
-            const sat = lastHistory?.satisfaction ?? 50;
-            const drain = lastHistory?.energyDrain ?? 50;
+            // [Platformization] Use pure interaction data only
+            const interactions = node.interactions || [];
+            if (interactions.length === 0) return;
+
+            const lastInteraction = interactions[interactions.length - 1];
+            const sat = lastInteraction.satisfaction ?? 50;
+            const drain = lastInteraction.energyDrain ?? 50;
             
             if (sat < 50 && drain >= 50) counts.q1++;
             else if (sat >= 50 && drain >= 50) counts.q2++;
@@ -232,60 +236,105 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             pointMap.get(key)!.push({ ...node, sat, drain });
         });
 
+
         return (
-            <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                    <View>
-                        <Text style={styles.cardTitle}>정서적 관계 지형도</Text>
-                        <Text style={styles.cardSubtitle}>전체 인맥의 관계 밸런스 조감</Text>
-                    </View>
-                </View>
-
-                <View style={styles.topographyPlot}>
-                    <View style={styles.topographyGrid}>
-                        <View style={[styles.gridCell, { backgroundColor: '#D98B7305' }]}>
-                            <Text style={styles.gridLabel}>에너지 포식자</Text>
-                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
-                        </View>
-                        <View style={[styles.gridCell, { backgroundColor: '#FFB74D05' }]}>
-                            <Text style={styles.gridLabel}>에너지 충전소</Text>
-                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
-                        </View>
-                        <View style={[styles.gridCell, { backgroundColor: '#D1D5DB10' }]}>
-                            <Text style={styles.gridLabel}>피곤한 관계</Text>
-                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
-                        </View>
-                        <View style={[styles.gridCell, { backgroundColor: '#4A5D4E05' }]}>
-                            <Text style={styles.gridLabel}>편안한 관계</Text>
-                            <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
+            <>
+                <View style={[styles.card, { paddingVertical: 24, paddingHorizontal: 16 }]}>
+                    <View style={styles.cardHeader}>
+                        <View>
+                            <Text style={styles.cardTitle}>정서적 관계 지형도</Text>
+                            <Text style={styles.cardSubtitle}>전체 인맥의 관계 밸런스 조감</Text>
                         </View>
                     </View>
 
-                    <Svg height="160" width={matrixWidth - 48} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
-                        {/* Axes */}
-                        <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
-                        <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+                        {/* Vertical Label (Left) */}
+                        <View style={{ width: 24, height: 160, justifyContent: 'center', alignItems: 'center' }}>
+                            <Text style={{ 
+                                fontSize: 8, 
+                                fontWeight: '800', 
+                                color: THEME.primary, 
+                                opacity: 0.5, 
+                                transform: [{ rotate: '-90deg' }],
+                                width: 160,
+                                textAlign: 'center'
+                            }}>
+                                낮음 ← 만족도 → 높음
+                            </Text>
+                        </View>
 
-                        {Array.from(pointMap.entries()).flatMap(([key, nodes]) => {
-                            const sat = nodes[0].sat;
-                            const drain = nodes[0].drain;
-                            const cx = 20 + (sat / 100) * 160;
-                            const cy = svgHeight - (20 + (drain / 100) * 120);
+                        <View style={{ flex: 1 }}>
+                            <View style={styles.topographyPlot}>
+                                <View style={styles.topographyGrid}>
+                                    {/* Top Row: Satisfaction High */}
+                                    <View style={[styles.gridCell, { backgroundColor: '#4A5D4E08' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#4A5D4E' }]}>편안한 사이</Text>
+                                        <Text style={[styles.gridLabelSub]}>저절로 기운이 나요</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
+                                    </View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#FFB74D08' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#FFB74D' }]}>뜨거운 사이</Text>
+                                        <Text style={[styles.gridLabelSub]}>에너지가 넘쳐나요</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
+                                    </View>
+                                    {/* Bottom Row: Satisfaction Low */}
+                                    <View style={[styles.gridCell, { backgroundColor: '#90A4AE08' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#90A4AE' }]}>평범한 사이</Text>
+                                        <Text style={[styles.gridLabelSub]}>그냥 무난한 사이예요</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
+                                    </View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#D98B7308' }]}>
+                                        <Text style={[styles.gridLabel, { color: '#D98B73' }]}>지치는 사이</Text>
+                                        <Text style={[styles.gridLabelSub]}>마음이 조금 무거워요</Text>
+                                        <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
+                                    </View>
+                                </View>
 
-                            return (
-                                <Circle
-                                    key={key}
-                                    cx={cx}
-                                    cy={cy}
-                                    r="4"
-                                    fill={ZONE_COLORS[nodes[0].zone as keyof typeof ZONE_COLORS] || THEME.primary}
-                                    stroke="white"
-                                    strokeWidth="1"
-                                    opacity={0.8}
-                                />
-                            );
-                        })}
-                    </Svg>
+                                <Svg height="160" width="100%" viewBox="0 0 200 160" style={{ position: 'absolute' }}>
+                                    {/* Central Axes Lines */}
+                                    <Line x1="0" y1="80" x2="200" y2="80" stroke={THEME.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                                    <Line x1="100" y1="0" x2="100" y2="160" stroke={THEME.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+
+                                    {/* Data Points */}
+                                    {Array.from(pointMap.entries()).flatMap(([key, nodes]) => {
+                                        const sat = nodes[0].sat;
+                                        const drain = nodes[0].drain;
+                                        const centerX = (drain / 100) * 200;
+                                        const centerY = 160 - (sat / 100) * 160;
+
+                                        return nodes.map((node, i) => {
+                                            const angle = (i * 360 / nodes.length) * (Math.PI / 180);
+                                            const offset = nodes.length > 1 ? 8 : 0;
+                                            return (
+                                                <Circle
+                                                    key={`${node.id}-${i}`}
+                                                    cx={centerX + offset * Math.cos(angle)}
+                                                    cy={centerY + offset * Math.sin(angle)}
+                                                    r="4"
+                                                    fill={ZONE_COLORS[node.zone as keyof typeof ZONE_COLORS] || THEME.primary}
+                                                    stroke="white"
+                                                    strokeWidth="1"
+                                                    opacity={0.8}
+                                                />
+                                            );
+                                        });
+                                    })}
+                                </Svg>
+                            </View>
+
+                            {/* Horizontal Label (Bottom) */}
+                            <Text style={{ 
+                                fontSize: 8, 
+                                fontWeight: '800', 
+                                color: THEME.primary, 
+                                opacity: 0.5, 
+                                textAlign: 'center',
+                                marginTop: 8
+                            }}>
+                                낮음 ← 에너지 → 높음
+                            </Text>
+                        </View>
+                    </View>
                 </View>
                 
                 <View style={styles.chartLegendRow}>
@@ -310,7 +359,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         <Text style={styles.legendLabel}>Z5</Text>
                     </View>
                 </View>
-            </View>
+            </>
         );
     };
 
@@ -715,10 +764,11 @@ const styles = StyleSheet.create({
     popupConfirmText: { color: 'white', fontSize: 16, fontWeight: '700' },
     
     // New Matrix & History Styles
-    topographyPlot: { position: 'relative', height: 160, width: '100%', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
+    topographyPlot: { position: 'relative', height: 160, width: '100%', marginVertical: 12 },
     topographyGrid: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', flexWrap: 'wrap' },
     gridCell: { width: '50%', height: '50%', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.02)' },
-    gridLabel: { fontSize: 10, fontWeight: '800', color: THEME.primary, opacity: 0.2, textTransform: 'uppercase' },
+    gridLabel: { fontSize: 10, fontWeight: '900', color: THEME.primary, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.5 },
+    gridLabelSub: { fontSize: 8, fontWeight: '600', color: THEME.primary, opacity: 0.35, marginTop: 2 },
     historyItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     historyDateBox: {
         minWidth: 52,

@@ -71,7 +71,6 @@ function App() {
   const [isViewingNotifications, setIsViewingNotifications] = useState(false);
   const [isViewingInteractionHistory, setIsViewingInteractionHistory] = useState(false);
   const [isViewingDetailedMap, setIsViewingDetailedMap] = useState(false);
-  const [isViewingRelationshipList, setIsViewingRelationshipList] = useState(false);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [pendingRelationship, setPendingRelationship] = useState<{
     name: string;
@@ -87,7 +86,7 @@ function App() {
   const setHasCompletedOnboarding = useAppStore(state => state.setHasCompletedOnboarding);
   // ✅ Reactive subscription — NOT getState() snapshot
   const relationships = useRelationshipStore(state => state.relationships);
-  const { addRelationship, updateAnalysisResult } = useRelationshipStore();
+  const { addRelationship, updateAnalysisResult, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
 
   // [DEV] 강제 데이터 초기화
   useEffect(() => {
@@ -129,7 +128,10 @@ function App() {
       if (isViewingNotifications) { setIsViewingNotifications(false); return true; }
       if (isAddingRelationship) { setIsAddingRelationship(false); return true; }
       if (selectedNodeId) { setSelectedNodeId(null); return true; }
-      if (isViewingRelationshipList) { setIsViewingRelationshipList(false); return true; }
+      if (orbitMapViewState.viewMode === 'list') { 
+        setOrbitMapViewState({ viewMode: 'map' }); 
+        return true; 
+      }
 
       // If we are not on the main 'map' tab, go back to 'map'
       if (activeTab !== 'map') {
@@ -155,7 +157,7 @@ function App() {
     isDiagnosing, isManagingProfile, isViewingReport, isViewingDetailedMap, 
     isViewingInteractionHistory, isViewingDataManagement, isViewingProfileEdit, 
     isViewingReminders, isViewingNotifications, isAddingRelationship, 
-    selectedNodeId, isViewingRelationshipList, activeTab
+    selectedNodeId, orbitMapViewState.viewMode, activeTab
   ]);
 
   // 온보딩 완료 직후 relationships가 0명이면 1회만 자동으로 인맥 추가 화면 표시
@@ -305,29 +307,19 @@ function App() {
                   <>
                     <View style={styles.tabView}>
                       <View style={activeTab === 'map' ? styles.tabActive : styles.tabHidden}>
-                        {isViewingRelationshipList ? (
-                          <RelationshipList 
-                            onBack={() => setIsViewingRelationshipList(false)} 
-                            onSelect={(id) => { 
-                              setSelectedNodeId(id); 
-                              setIsViewingRelationshipList(false); 
-                            }} 
-                          />
-                        ) : (
-                          <MainOrbitMap
-                            onSelectNode={(id: string) => setSelectedNodeId(id)}
-                            onPressAdd={() => setIsAddingRelationship(true)}
-                            onDiagnose={(id, mode) => {
-                              setSelectedNodeId(id);
-                              setDiagnosisMode(mode);
-                              setIsDiagnosing(true);
-                            }}
-                            onRecordLog={(id) => {
-                              setSelectedNodeId(id);
-                              setAutoOpenLog(true);
-                            }}
-                          />
-                        )}
+                        <MainOrbitMap
+                          onSelectNode={(id: string) => setSelectedNodeId(id)}
+                          onPressAdd={() => setIsAddingRelationship(true)}
+                          onDiagnose={(id, mode) => {
+                            setSelectedNodeId(id);
+                            setDiagnosisMode(mode);
+                            setIsDiagnosing(true);
+                          }}
+                          onRecordLog={(id) => {
+                            setSelectedNodeId(id);
+                            setAutoOpenLog(true);
+                          }}
+                        />
                       </View>
                       <View style={activeTab === 'insight' ? styles.tabActive : styles.tabHidden}>
                         <EgoReflectionDashboard
@@ -382,10 +374,10 @@ function App() {
                           style={styles.navItem}
                           onPress={() => {
                             if (activeTab === 'map') {
-                              setIsViewingRelationshipList(!isViewingRelationshipList);
+                              const currentMode = orbitMapViewState.viewMode || 'map';
+                              setOrbitMapViewState({ viewMode: currentMode === 'map' ? 'list' : 'map' });
                             } else {
                               setActiveTab('map');
-                              setIsViewingRelationshipList(false);
                             }
                           }}
                         >

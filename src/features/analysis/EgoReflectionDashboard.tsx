@@ -179,9 +179,9 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             sub: '인맥 궤도의 다면적 통찰',
             info: '단순한 선호도를 넘어, 관계가 당신의 심리에 미치는 실제적인 영향(회복/소모/점유)을 분석합니다.',
             details: [
-                { label: '영혼의 배터리', desc: '당신의 정서 에너지를 채워주는 가장 핵심적인 지지자들입니다.' },
-                { label: '에너지 포식자', desc: '가장 많은 정적 에너지를 요구하거나 당신을 지치게 하는 주의 대상입니다.' },
-                { label: '일상의 중력', desc: '감정적 깊이와 상관없이 당신의 일상을 실제적으로 가장 많이 차지하는 점유층입니다.' }
+                { label: '나의 비타민', desc: '함께 있으면 저절로 기운이 나는 소중한 친구들이에요.' },
+                { label: '주의가 필요해', desc: '만나고 나면 기운이 조금 빠질 수 있는 친구들이에요.' },
+                { label: '자주 만난 사이', desc: '내 하루를 가장 많이 함께하는 단짝들이에요.' }
             ]
         }
     };
@@ -721,27 +721,27 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                                 <View style={[styles.lensIconCircle, { backgroundColor: '#D4AF37' }]}>
                                     <Battery size={16} color="white" />
                                 </View>
-                                <Text style={styles.lensLabel}>영혼의 배터리</Text>
+                                <Text style={styles.lensLabel}>나의 비타민</Text>
                                 <Text style={styles.lensValue}>{lensData.recovery?.name || '공석'}</Text>
-                                <Text style={styles.lensSub}>회복률 1위</Text>
+                                <Text style={styles.lensSub}>기운 회복 1위</Text>
                             </View>
 
                             <View style={[styles.lensCard, { backgroundColor: '#FDF7F5' }]}>
                                 <View style={[styles.lensIconCircle, { backgroundColor: '#D98B73' }]}>
                                     <Zap size={16} color="white" />
                                 </View>
-                                <Text style={styles.lensLabel}>에너지 포식자</Text>
+                                <Text style={styles.lensLabel}>주의가 필요해</Text>
                                 <Text style={styles.lensValue}>{lensData.drain?.name || '공석'}</Text>
-                                <Text style={styles.lensSub}>주의 요망</Text>
+                                <Text style={styles.lensSub}>기운 소모 1위</Text>
                             </View>
 
                             <View style={[styles.lensCard, { backgroundColor: '#F5F7F8' }]}>
                                 <View style={[styles.lensIconCircle, { backgroundColor: colors.primary }]}>
                                     <History size={16} color="white" />
                                 </View>
-                                <Text style={styles.lensLabel}>일상의 중력</Text>
-                                <Text style={styles.lensValue}>{lensData.frequency?.name || '공석'}</Text>
-                                <Text style={styles.lensSub}>최다 점유자</Text>
+                                <Text style={styles.lensLabel}>자주 만난 사이</Text>
+                                <Text style={styles.lensValue}>{lensData.frequency?.name || '기록부족'}</Text>
+                                <Text style={styles.lensSub}>교감 횟수 1위</Text>
                             </View>
                         </View>
                     </View>
