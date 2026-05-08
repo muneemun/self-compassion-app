@@ -407,9 +407,9 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                 }
                             }}
                         >
-                            <View style={[styles.historyDateBox, isSelfTime && { backgroundColor: 'rgba(74,140,140,0.12)' }]}>
+                            <View style={[styles.historyDateBox, isSelfTime && { backgroundColor: 'rgba(74,140,140,0.12)', borderColor: 'rgba(74,140,140,0.2)' }]}>
                                 <Text style={[styles.historyDateText, isSelfTime && { color: '#4A8C8C' }]}>{getRelativeTime(h.createdAt)}</Text>
-                                <Text style={{ fontSize: 9, color: isSelfTime ? '#4A8C8C' : colors.primary, opacity: 0.4, marginTop: 2 }}>{timeStr}</Text>
+                                <Text style={[styles.historyTimeText, isSelfTime && { color: '#4A8C8C' }]}>{timeStr}</Text>
                             </View>
                             <View style={styles.historyContent}>
                                 <View style={styles.historyMainRow}>
@@ -720,8 +720,19 @@ const styles = StyleSheet.create({
     gridCell: { width: '50%', height: '50%', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.02)' },
     gridLabel: { fontSize: 10, fontWeight: '800', color: THEME.primary, opacity: 0.2, textTransform: 'uppercase' },
     historyItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    historyDateBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F5F7F6', alignItems: 'center', justifyContent: 'center' },
-    historyDateText: { fontSize: 11, fontWeight: '800', color: THEME.primary, opacity: 0.5 },
+    historyDateBox: {
+        minWidth: 52,
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        borderRadius: 10,
+        backgroundColor: '#F5F7F6',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    historyDateText: { fontSize: 10, fontWeight: '800', color: THEME.primary, opacity: 0.6 },
+    historyTimeText: { fontSize: 9, color: THEME.primary, opacity: 0.35, marginTop: 2, fontWeight: '500' },
     historyContent: { flex: 1, gap: 2 },
     historyMainRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     historyNodeName: { fontSize: 14, fontWeight: '800', color: THEME.primary },
