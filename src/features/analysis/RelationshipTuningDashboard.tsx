@@ -74,10 +74,11 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const [autoOpenLog, setAutoOpenLog] = useState(false);
 
     const getMetrics = (r: RelationshipNode) => {
-        const lastHistory = (r.history || []).slice(-1)[0];
-        const sat = lastHistory?.satisfaction ?? (r.metrics?.satisfaction || 50);
-        const drain = lastHistory?.energyDrain ?? 50;
-        const count = (r.history || []).length;
+        const logs = r.interactions || [];
+        const lastLog = logs.slice(-1)[0];
+        const sat = lastLog?.satisfaction ?? (r.metrics?.satisfaction || 50);
+        const drain = lastLog?.energyDrain ?? 50;
+        const count = logs.length;
         
         let freqScore = count * 10;
         if (r.lastInteraction?.includes('방금') || r.lastInteraction?.includes('분 전')) freqScore += 50;
@@ -843,20 +844,20 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 <View style={styles.topographyGrid}>
                                     {/* Top Row: Satisfaction High */}
                                     <View style={[styles.gridCell, { backgroundColor: '#4A5D4E08' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#4A5D4E' }]}>편안한 사이</Text>
+                                        <Text style={[styles.gridLabel, { color: '#4A5D4E' }]}>✨ 나의 비타민</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
                                     </View>
                                     <View style={[styles.gridCell, { backgroundColor: '#FFB74D08' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#FFB74D' }]}>뜨거운 사이</Text>
+                                        <Text style={[styles.gridLabel, { color: '#FFB74D' }]}>성장의 자극</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
                                     </View>
                                     {/* Bottom Row: Satisfaction Low */}
                                     <View style={[styles.gridCell, { backgroundColor: '#90A4AE08' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#90A4AE' }]}>평범한 사이</Text>
+                                        <Text style={[styles.gridLabel, { color: '#90A4AE' }]}>일상의 중력</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
                                     </View>
                                     <View style={[styles.gridCell, { backgroundColor: '#D98B7308' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#D98B73' }]}>지치는 사이</Text>
+                                        <Text style={[styles.gridLabel, { color: '#D98B73' }]}>⚠️ 주의가 필요해</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
                                     </View>
                                 </View>

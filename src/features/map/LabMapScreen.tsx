@@ -49,11 +49,11 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
         });
 
         const vampires = relationships.filter(r => {
-            const char = getDynamicCharacter(r.history || []);
+            const char = getDynamicCharacter(r.interactions || []);
             return char?.type === 'Draining' || r.rqsResult?.grade === 'C';
         });
         const antidotes = relationships.filter(r => {
-            const char = getDynamicCharacter(r.history || []);
+            const char = getDynamicCharacter(r.interactions || []);
             return char?.type === 'Stable' || r.rqsResult?.grade === 'S';
         });
 
@@ -148,7 +148,7 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
                     const x = centerX + radius * Math.cos(angle) - 22;
                     const y = centerY + radius * Math.sin(angle) - 22;
                     
-                    const character = getDynamicCharacter(node.history || []);
+                    const character = getDynamicCharacter(node.interactions || []);
                     const rqsGrade = node.rqsResult?.grade ? RQS_GRADE_BADGES[node.rqsResult.grade] : null;
                     const zoneColor = ZONE_COLORS[node.zone || 3] || '#4A5D4E';
 
@@ -197,24 +197,25 @@ export const LabMapScreen = ({ onBack }: { onBack?: () => void }) => {
     const renderBalanceView = () => {
         return (
             <View style={styles.mapArea}>
-               <View style={{ padding: 20, paddingBottom: 0 }}>
-                   <Text style={{ fontSize: 16, fontWeight: '800', color: '#4A5D4E' }}>정서 밸런스 매트릭스</Text>
-                   <Text style={{ fontSize: 12, color: '#8C968D', marginTop: 4 }}>X축: 만족도 | Y축: 안정감(소모도 역순)</Text>
-               </View>
+                <View style={{ padding: 20, paddingBottom: 0 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#4A5D4E' }}>정서 밸런스 매트릭스</Text>
+                    <Text style={{ fontSize: 12, color: '#8C968D', marginTop: 4 }}>교감의 만족도와 에너지 소모를 분석합니다.</Text>
+                </View>
                <View style={{ flex: 1, margin: 20, borderWidth: 1, borderColor: '#EBE5D9', borderRadius: 16, backgroundColor: 'white', overflow: 'hidden' }}>
                    {/* 십자선 배경 */}
                    <View style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: '#EBE5D9' }} />
                    <View style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, backgroundColor: '#EBE5D9' }} />
                    
                    {relationships.map(node => {
-                       const lastHistory = (node.history || []).slice(-1)[0];
-                       const sat = lastHistory?.satisfaction || node.temperature || 50;
-                       const drain = lastHistory?.energyDrain || 50;
-                       
-                       const x = (sat / 100) * (width - 80);
-                       const y = ((100 - drain) / 100) * (MAP_HEIGHT - 120);
-                       
-                       const character = getDynamicCharacter(node.history || []);
+                        const logs = node.interactions || [];
+                        const lastLog = logs.slice(-1)[0];
+                        const sat = lastLog?.satisfaction || node.temperature || 50;
+                        const drain = lastLog?.energyDrain || 50;
+                        
+                        const x = (sat / 100) * (width - 80);
+                        const y = ((100 - drain) / 100) * (MAP_HEIGHT - 120);
+                        
+                        const character = getDynamicCharacter(node.interactions || []);
                        const rqsGrade = node.rqsResult?.grade ? RQS_GRADE_BADGES[node.rqsResult.grade] : null;
                        const zoneColor = ZONE_COLORS[node.zone || 3] || '#4A5D4E';
 

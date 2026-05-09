@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useRelationshipStore } from '../store/useRelationshipStore';
 import { useSelfTimeStore } from '../store/useSelfTimeStore';
 import { useAppStore } from '../store/useAppStore';
@@ -8,14 +9,72 @@ import { Alert, Platform } from 'react-native';
 
 export const BackupService = {
   /**
+   * 이미지를 썸네일 크기로 압축하고 Base64로 변환합니다.
+   */
+  async processImageForBackup(uri: string): Promise<string | null> {
+    try {
+      if (!uri || uri.startsWith('http')) return null;
+
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 300 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      
+      return result.base64 || null;
+    } catch (e) {
+      console.warn('Image processing failed for:', uri, e);
+      return null;
+    }
+  },
+
+  /**
+   * Base64 데이터를 로컬 파일로 저장하고 URI를 반환합니다.
+   */
+  async restoreImageFromBackup(base64: string, id: string): Promise<string | null> {
+    try {
+      const folderUri = `${FileSystem.documentDirectory}avatars/`;
+      const fileUri = `${folderUri}${id}_${Date.now()}.jpg`;
+
+      // 폴더 생성
+      const folderInfo = await FileSystem.getInfoAsync(folderUri);
+      if (!folderInfo.exists) {
+        await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
+      }
+
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: 'base64',
+      });
+
+      return fileUri;
+    } catch (e) {
+      console.error('Image restoration failed:', e);
+      return null;
+    }
+  },
+
+  /**
    * 현재 앱의 모든 데이터(인맥, 나와의 시간, 프로필)를 JSON 파일로 내보냅니다.
    */
   async exportData() {
     try {
+      const originalRelationships = useRelationshipStore.getState().relationships;
+      
+      // 이미지 포함 고도화 작업
+      const processedRelationships = await Promise.all(
+        originalRelationships.map(async (rel) => {
+          if (rel.image && !rel.image.startsWith('http')) {
+            const base64 = await this.processImageForBackup(rel.image);
+            return { ...rel, imageBase64: base64 };
+          }
+          return rel;
+        })
+      );
+
       const data = {
-        version: '1.1.0',
+        version: '1.2.0',
         timestamp: new Date().toISOString(),
-        relationships: useRelationshipStore.getState().relationships,
+        relationships: processedRelationships,
         selfTimeEntries: useSelfTimeStore.getState().entries,
         userProfile: useAppStore.getState().userProfile,
       };
@@ -45,8 +104,10 @@ export const BackupService = {
 
       // 모바일 환경 처리: 파일 저장
 
-      const fileUri = FileSystem.documentDirectory + filename;
-      await FileSystem.writeAsStringAsync(fileUri, jsonString);
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+      await FileSystem.writeAsStringAsync(fileUri, jsonString, {
+        encoding: 'utf8'
+      });
 
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
@@ -101,11 +162,24 @@ export const BackupService = {
         throw new Error('Missing relationships data');
       }
 
-      const confirmRestore = () => {
+      const confirmRestore = async () => {
         try {
+          // 이미지 데이터 복원 처리
+          const restoredRelationships = await Promise.all(
+            data.relationships.map(async (rel: any) => {
+              if (rel.imageBase64) {
+                const localUri = await this.restoreImageFromBackup(rel.imageBase64, rel.id);
+                if (localUri) {
+                  return { ...rel, image: localUri, imageBase64: undefined };
+                }
+              }
+              return rel;
+            })
+          );
+
           // 각 스토어의 상태를 직접 업데이트
           useRelationshipStore.setState({ 
-              relationships: data.relationships,
+              relationships: restoredRelationships,
               lastAddedId: null 
           });
           
@@ -117,7 +191,7 @@ export const BackupService = {
               useAppStore.setState({ userProfile: data.userProfile });
           }
           
-          Alert.alert('복원 완료', '성공적으로 데이터를 복원했습니다.');
+          Alert.alert('복원 완료', '이미지를 포함한 모든 데이터가 성공적으로 복원되었습니다.');
         } catch (updateError) {
           console.error('Store update failed:', updateError);
           Alert.alert('복원 오류', '데이터 적용 중 문제가 발생했습니다.');

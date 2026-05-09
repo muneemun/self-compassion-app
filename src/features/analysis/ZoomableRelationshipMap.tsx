@@ -19,19 +19,29 @@ import { ZoomIn, ZoomOut, Maximize } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const MAP_SIZE = 800;
+const ZONE_COLORS: Record<number, string> = {
+    1: '#FFB74D',
+    2: '#D98B73',
+    3: '#4A5D4E',
+    4: '#90A4AE',
+    5: '#D1D5DB'
+};
 
-export const ZoomableRelationshipMap: React.FC<{ onClose: () => void; onSelectNode?: (id: string) => void }> = ({ onClose, onSelectNode }) => {
+export const ZoomableRelationshipMap: React.FC<{ onClose?: () => void; onSelectNode?: (id: string) => void }> = ({ onClose, onSelectNode }) => {
     const colors = useColors();
     const relationships = useRelationshipStore(state => state.relationships);
 
+    const initialTranslateX = (width / 2) - (MAP_SIZE / 2);
+    const initialTranslateY = (height / 2) - (MAP_SIZE / 2) - 60; // Offset for header/footer
+
     const scale = useSharedValue(1);
     const savedScale = useSharedValue(1);
-    const translateX = useSharedValue(0);
-    const translateY = useSharedValue(0);
-    const savedTranslateX = useSharedValue(0);
-    const savedTranslateY = useSharedValue(0);
+    const translateX = useSharedValue(initialTranslateX);
+    const translateY = useSharedValue(initialTranslateY);
+    const savedTranslateX = useSharedValue(initialTranslateX);
+    const savedTranslateY = useSharedValue(initialTranslateY);
 
     const pinchGesture = Gesture.Pinch()
         .onUpdate((e) => {
@@ -65,44 +75,51 @@ export const ZoomableRelationshipMap: React.FC<{ onClose: () => void; onSelectNo
 
     const points = useMemo(() => {
         const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
-        const data = relationships.map(node => {
-            const lastHistory = (node.history || []).slice(-1)[0];
-            const prevHistory = (node.history || []).slice(-2, -1)[0];
-            const sat = lastHistory?.satisfaction ?? 50;
-            const drain = lastHistory?.energyDrain ?? 50;
-            const prevDrain = prevHistory?.energyDrain ?? drain;
+        const data = relationships
+            .filter(node => (node.interactions || []).length > 0)
+            .map(node => {
+                const logs = node.interactions || [];
+                const lastLog = logs.slice(-1)[0];
+                const prevLog = logs.slice(-2, -1)[0];
+                
+                const sat = lastLog?.satisfaction ?? 50;
+                const drain = lastLog?.energyDrain ?? 50;
+                const prevDrain = prevLog?.energyDrain ?? drain;
 
-            if (sat < 50 && drain >= 50) counts.q1++;
-            else if (sat >= 50 && drain >= 50) counts.q2++;
-            else if (sat < 50 && drain < 50) counts.q3++;
-            else if (sat >= 50 && drain < 50) counts.q4++;
+                // Sync with Tuning Dashboard Logic: 
+                // Q1: Low Sat, High Drain | Q2: High Sat, High Drain
+                // Q3: Low Sat, Low Drain  | Q4: High Sat, Low Drain
+                if (sat < 50 && drain >= 50) counts.q1++;
+                else if (sat >= 50 && drain >= 50) counts.q2++;
+                else if (sat < 50 && drain < 50) counts.q3++;
+                else if (sat >= 50 && drain < 50) counts.q4++;
 
-            let daysSince = -1;
-            if (lastHistory?.createdAt) {
-                const diff = new Date().getTime() - new Date(lastHistory.createdAt).getTime();
-                daysSince = Math.floor(diff / (1000 * 60 * 60 * 24));
-            }
+                let daysSince = -1;
+                if (lastLog?.createdAt) {
+                    const diff = new Date().getTime() - new Date(lastLog.createdAt).getTime();
+                    daysSince = Math.floor(diff / (1000 * 60 * 60 * 24));
+                }
 
-            return {
-                id: node.id,
-                name: node.name,
-                x: 100 + (sat / 100) * (MAP_SIZE - 200),
-                y: MAP_SIZE - (100 + (drain / 100) * (MAP_SIZE - 200)),
-                color: node.zone === 1 ? '#FFB74D' : node.zone === 2 ? '#D98B73' : node.zone === 3 ? '#4A5D4E' : '#90A4AE',
-                sat,
-                drain,
-                energyShift: drain > prevDrain ? 'up' : drain < prevDrain ? 'down' : 'stable',
-                daysSince,
-                zone: node.zone
-            };
-        });
+                return {
+                    id: node.id,
+                    name: node.name,
+                    // X = Energy Drain, Y = Satisfaction (Synced with Tuning)
+                    x: 100 + (drain / 100) * (MAP_SIZE - 200),
+                    y: MAP_SIZE - (100 + (sat / 100) * (MAP_SIZE - 200)),
+                    color: ZONE_COLORS[node.zone as keyof typeof ZONE_COLORS] || '#90A4AE',
+                    sat,
+                    drain,
+                    energyShift: drain > prevDrain ? 'up' : drain < prevDrain ? 'down' : 'stable',
+                    daysSince,
+                    zone: node.zone
+                };
+            });
         return { data, counts };
     }, [relationships]);
 
     return (
-        <GestureHandlerRootView style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
-                <View style={styles.guideTextContainer}>
+        <View style={styles.container}>
+            <View style={styles.guideTextContainer}>
                     <Text style={styles.guideText}>두 손가락으로 확대/축소하거나 드래그하여 이동하세요</Text>
                 </View>
 
@@ -114,10 +131,14 @@ export const ZoomableRelationshipMap: React.FC<{ onClose: () => void; onSelectNo
                                 <Line x1="0" y1={MAP_SIZE / 2} x2={MAP_SIZE} y2={MAP_SIZE / 2} stroke={colors.primary} strokeWidth="2" opacity="0.1" />
                                 <Line x1={MAP_SIZE / 2} y1="0" x2={MAP_SIZE / 2} y2={MAP_SIZE} stroke={colors.primary} strokeWidth="2" opacity="0.1" />
                                 
-                                <SvgText x={MAP_SIZE - 250} y={150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08">에너지 충전소</SvgText>
-                                <SvgText x="250" y={150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08" textAnchor="end">에너지 포식자</SvgText>
-                                <SvgText x="250" y={MAP_SIZE - 150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08" textAnchor="end">피곤한 관계</SvgText>
-                                <SvgText x={MAP_SIZE - 250} y={MAP_SIZE - 150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08">편안한 관계</SvgText>
+                                <SvgText x={MAP_SIZE - 250} y={150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08">성장의 자극</SvgText>
+                                <SvgText x="250" y={150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08" textAnchor="end">✨ 나의 비타민</SvgText>
+                                <SvgText x="250" y={MAP_SIZE - 150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08" textAnchor="end">일상의 중력</SvgText>
+                                <SvgText x={MAP_SIZE - 250} y={MAP_SIZE - 150} fontSize="32" fontWeight="900" fill={colors.primary} opacity="0.08">⚠️ 주의가 필요해</SvgText>
+
+                                {/* Axis Labels */}
+                                <SvgText x={MAP_SIZE / 2} y={MAP_SIZE - 20} fontSize="14" fontWeight="800" fill={colors.primary} opacity="0.4" textAnchor="middle">낮음 ← 에너지 소모 → 높음</SvgText>
+                                <SvgText x={20} y={MAP_SIZE / 2} fontSize="14" fontWeight="800" fill={colors.primary} opacity="0.4" textAnchor="middle" transform={`rotate(-90, 20, ${MAP_SIZE / 2})`}>낮음 ← 관계 만족도 → 높음</SvgText>
 
                                 {points.data.map((p) => {
                                     return (
@@ -129,23 +150,41 @@ export const ZoomableRelationshipMap: React.FC<{ onClose: () => void; onSelectNo
                                                 </SvgText>
                                             )}
                                             
+                                            {/* Node Circle */}
                                             <Circle 
                                                 cx={p.x} 
                                                 cy={p.y} 
-                                                r={14} 
+                                                r="12" 
                                                 fill={p.color} 
-                                                stroke="white" 
-                                                strokeWidth="3" 
+                                                opacity="0.9"
+                                                stroke="white"
+                                                strokeWidth="2"
                                                 onPress={() => onSelectNode?.(p.id)} 
                                             />
                                             
+                                            {/* Node Name - Horizontal Layout */}
+                                            <SvgText 
+                                                x={p.x + 18} 
+                                                y={p.y + 5} 
+                                                fontSize="14" 
+                                                fontWeight="800" 
+                                                fill="#4A5D4E"
+                                                stroke="white"
+                                                strokeWidth="0.5"
+                                            >
+                                                {p.name}
+                                            </SvgText>
+
                                             <G pointerEvents="none">
-                                                <SvgText x={p.x} y={p.y + 30} fontSize="14" fontWeight="900" fill={colors.primary} textAnchor="middle">{p.name}</SvgText>
-                                                <SvgText x={p.x} y={p.y + 46} fontSize="10" fontWeight="700" fill={colors.primary} opacity="0.4" textAnchor="middle">
-                                                    {`${p.sat} / ${p.drain}`}
-                                                </SvgText>
                                                 {p.daysSince >= 0 && (
-                                                    <SvgText x={p.x} y={p.y + 58} fontSize="9" fontWeight="800" fill={p.daysSince > 14 ? '#D98B73' : '#8C968D'} textAnchor="middle">
+                                                    <SvgText 
+                                                        x={p.x + 18} 
+                                                        y={p.y + 18} 
+                                                        fontSize="10" 
+                                                        fontWeight="700" 
+                                                        fill={p.daysSince > 14 ? '#D98B73' : '#8C968D'} 
+                                                        textAnchor="start"
+                                                    >
                                                         {`D+${p.daysSince}`}
                                                     </SvgText>
                                                 )}
@@ -162,20 +201,16 @@ export const ZoomableRelationshipMap: React.FC<{ onClose: () => void; onSelectNo
                     <View style={styles.legendContainer}>
                         <View style={styles.legendGrid}>
                             <View style={styles.legendItem}>
-                                <View style={[styles.legendDot, { backgroundColor: '#D98B73' }]} />
-                                <Text style={styles.legendText}>{`포식자 ${points.counts.q1}`}</Text>
+                                <Text style={styles.legendText}>{`✨ 나의 비타민 ${points.counts.q4}`}</Text>
                             </View>
                             <View style={styles.legendItem}>
-                                <View style={[styles.legendDot, { backgroundColor: '#FFB74D' }]} />
-                                <Text style={styles.legendText}>{`충전소 ${points.counts.q2}`}</Text>
+                                <Text style={styles.legendText}>{`⚡️ 성장 자극 ${points.counts.q2}`}</Text>
                             </View>
                             <View style={styles.legendItem}>
-                                <View style={[styles.legendDot, { backgroundColor: '#D1D5DB' }]} />
-                                <Text style={styles.legendText}>{`피곤함 ${points.counts.q3}`}</Text>
+                                <Text style={styles.legendText}>{`🧱 일상의 중력 ${points.counts.q3}`}</Text>
                             </View>
                             <View style={styles.legendItem}>
-                                <View style={[styles.legendDot, { backgroundColor: '#4A5D4E' }]} />
-                                <Text style={styles.legendText}>{`편안함 ${points.counts.q4}`}</Text>
+                                <Text style={styles.legendText}>{`⚠️ 주의 필요 ${points.counts.q1}`}</Text>
                             </View>
                         </View>
                     </View>
@@ -190,11 +225,11 @@ export const ZoomableRelationshipMap: React.FC<{ onClose: () => void; onSelectNo
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.zoomBtn} onPress={() => { 
                                 scale.value = withSpring(1);
-                                translateX.value = withSpring(0);
-                                translateY.value = withSpring(0);
+                                translateX.value = withSpring(initialTranslateX);
+                                translateY.value = withSpring(initialTranslateY);
                                 savedScale.value = 1;
-                                savedTranslateX.value = 0;
-                                savedTranslateY.value = 0;
+                                savedTranslateX.value = initialTranslateX;
+                                savedTranslateY.value = initialTranslateY;
                             }}>
                                 <Maximize size={20} color={colors.primary} />
                             </TouchableOpacity>
@@ -203,9 +238,8 @@ export const ZoomableRelationshipMap: React.FC<{ onClose: () => void; onSelectNo
                             </TouchableOpacity>
                         </View>
                     </View>
-                </View>
-            </SafeAreaView>
-        </GestureHandlerRootView>
+            </View>
+        </View>
     );
 };
 
@@ -215,7 +249,15 @@ const styles = StyleSheet.create({
     guideTextContainer: { paddingVertical: 12, alignItems: 'center', backgroundColor: 'rgba(74,93,78,0.02)' },
     guideText: { fontSize: 11, fontWeight: '700', color: '#8C968D', opacity: 0.8 },
     mapWrapper: { flex: 1, overflow: 'hidden' },
-    mapContainer: { width: MAP_SIZE, height: MAP_SIZE, alignItems: 'center', justifyContent: 'center' },
+    mapContainer: { 
+        width: MAP_SIZE, 
+        height: MAP_SIZE, 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#FAF8F4', // Subtle background for the map itself
+        borderWidth: 1,
+        borderColor: 'rgba(74,93,78,0.05)',
+    },
     footer: { padding: 24, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)', backgroundColor: '#fff' },
     legendContainer: { marginBottom: 20 },
     legendGrid: { 

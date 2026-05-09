@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -177,10 +178,11 @@ function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <ColorLockProvider>
-        <View style={styles.root}>
-          <StatusBar style="dark" />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ColorLockProvider>
+          <View style={styles.root}>
+            <StatusBar style="dark" />
 
           {!hasCompletedOnboarding ? (
             <OnboardingScreen />
@@ -446,9 +448,10 @@ function App() {
           )}
           <SelfTimeCheckInModal />
           <RelationshipLogModal />
-        </View>
-      </ColorLockProvider>
-    </SafeAreaProvider>
+          </View>
+        </ColorLockProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
