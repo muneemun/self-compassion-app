@@ -19,7 +19,7 @@ import { AppHeader } from '../../components/AppHeader';
 import {
     Search, Plus, LocateFixed, LayoutGrid, List,
     ChevronDown, ChevronUp, HeartPulse, X, ChevronRight,
-    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Leaf, CircleDashed, Activity
+    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Leaf, CircleDashed, Activity, Snowflake
 } from 'lucide-react-native';
 import { RelationshipList } from '../relationships/RelationshipList';
 import { RELATIONSHIP_TYPE_LABELS, RelationshipNode, getDynamicCharacter, RQS_GRADE_BADGES } from '../../types/relationship';
