@@ -12,6 +12,28 @@
 
 ---
 
+## 🛡️ Safe-Step Protocol (철칙: 개발 안정성 가이드)
+
+프로젝트의 복잡도가 높아짐에 따라 런타임 에러와 구문 오류를 원천 차단하기 위해 아래 지침을 반드시 준수한다.
+
+### 1. 방어적 프로그래밍 (Defensive Programming)
+*   **Zero-Access Assumption**: 모든 외부 데이터(Store, Props 등)는 언제든 `undefined` 또는 `null`일 수 있다고 가정한다.
+*   **Safe Access**: 배열 접근 시 기본값(`|| []`)을 지정하고, 객체 참조 시 옵셔널 체이닝(`?.`)을 필수적으로 사용한다.
+    *   *Bad*: `data.filter(...)`
+    *   *Good*: `(data || []).filter(...)`
+
+### 2. 원자적 구현 (Atomic Implementation)
+*   **Single-Hook Edit**: 한 번의 수정 시 오직 하나의 훅(`useMemo`, `useEffect` 등) 또는 하나의 논리적 단위만 추가/수정한다.
+*   **Hook Integrity**: 훅을 중첩하거나(Nested Hooks), 조건문 내에서 호출하는 등 리액트의 기본 규칙을 절대 위반하지 않는다.
+
+### 3. 수정 후 즉시 검증 (Post-Edit Audit)
+*   코드를 수정한 직후에는 반드시 `view_file` 등을 통해 수정된 영역의 괄호(`{}`, `()`) 닫힘 상태와 구문의 무결성을 육안으로 재검증한다.
+
+### 4. 로직의 분리 (Logic Decoupling)
+*   컴포넌트 내에 10라인 이상의 복잡한 계산 로직이나 분석 엔진이 들어갈 경우, 반드시 별도의 유틸리티 함수나 커스텀 훅으로 분리하여 가독성을 확보한다.
+
+---
+
 ## 2. Tech Stack (기술 스택)
 * **Framework:** React Native (Expo)
 * **Language:** TypeScript

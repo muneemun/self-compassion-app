@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo, memo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import {
     View,
     Text,
@@ -10,7 +10,9 @@ import {
     PanResponder,
     ScrollView,
     TextInput,
-    Easing as RNEasing
+    Easing as RNEasing,
+    Keyboard,
+    LayoutAnimation
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HubLayout } from '../../layouts/BaseLayout';
@@ -33,13 +35,21 @@ import ReAnimated, {
     useAnimatedStyle,
     withSpring,
     useSharedValue,
+    useDerivedValue,
     withTiming,
     withRepeat,
     Easing,
     SharedValue,
     withSequence,
-    withDelay
+    withDelay,
+    interpolateColor,
+    interpolate
 } from 'react-native-reanimated';
+
+// 🧩 Modular Optimized Hooks & Constants
+import { useOrbitEngine } from './hooks/useOrbitEngine';
+import { useOrbitAtmosphere, ATMOSPHERE_THEMES, AtmosphereState } from './hooks/useOrbitAtmosphere';
+import { ZONE_FILTERS, getDynamicTabs } from './constants';
 
 const { width } = Dimensions.get('window');
 const BASE_ORBIT_SIZE = width * 1.1;
@@ -681,45 +691,34 @@ const UserNode = memo(({
         };
     });
 
-    // Pulse Animation
-    const pulseAnim = useRef(new RNAnimated.Value(0)).current;
+    // 💓 Performance Optimized Pulse Animation (Fully on UI Thread)
+    const pulseAnim = useSharedValue(0);
 
     useEffect(() => {
         if (zoomLevel <= 1.5) {
-            pulseAnim.setValue(0);
+            pulseAnim.value = 0;
             return;
         }
 
         const duration = node.temperature > 80 ? 3000 : node.temperature > 50 ? 2000 : 1500;
 
-        const animation = RNAnimated.loop(
-            RNAnimated.sequence([
-                RNAnimated.timing(pulseAnim, {
-                    toValue: 1,
-                    duration: duration,
-                    easing: RNEasing.inOut(RNEasing.sin),
-                    useNativeDriver: true,
-                }),
-                RNAnimated.timing(pulseAnim, {
-                    toValue: 0,
-                    duration: duration,
-                    easing: RNEasing.inOut(RNEasing.sin),
-                    useNativeDriver: true,
-                }),
-            ])
+        pulseAnim.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }),
+                withTiming(0, { duration, easing: Easing.inOut(Easing.sin) })
+            ),
+            -1,
+            true
         );
-        animation.start();
-        return () => animation.stop();
-    }, [node.temperature, zoomLevel, pulseAnim]);
+    }, [node.temperature, zoomLevel]);
 
-    const pulseScale = pulseAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [1, 1.2],
-    });
-
-    const pulseOpacity = pulseAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0.3, 0.05],
+    const auraAnimatedStyle = useAnimatedStyle(() => {
+        const scale = 1 + pulseAnim.value * 0.2;
+        const opacity = 0.3 - pulseAnim.value * 0.25;
+        return {
+            transform: [{ scale }],
+            opacity
+        };
     });
 
     const renderContent = () => {
@@ -780,16 +779,15 @@ const UserNode = memo(({
         return (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                 <View style={{ alignItems: 'center', justifyContent: 'center', width: avatarSize + 8, height: avatarSize + 8 }}>
-                    <RNAnimated.View style={[
+                    <ReAnimated.View style={[
                         styles.avatarAura,
                         {
                             width: avatarSize + 8,
                             height: avatarSize + 8,
                             borderRadius: (avatarSize + 8) / 2,
                             backgroundColor: accentColor,
-                            transform: [{ scale: pulseScale }],
-                            opacity: pulseOpacity,
-                        }
+                        },
+                        auraAnimatedStyle
                     ]} />
 
                     <View style={{ zIndex: 10, alignItems: 'center', justifyContent: 'center' }}>
@@ -855,7 +853,89 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
     const colors = useColors();
     const { relationships, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
     const { userProfile, interactionFeedback, setInteractionFeedback, cognitiveFeedback, setCognitiveFeedback } = useAppStore();
-    
+
+    // ── 🌌 Atmosphere Engine v2 ────────────────────────────────────
+    const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('NORMAL');
+    const atmosphereBgProgress = useSharedValue(0);
+    const mistProgress = useSharedValue(0);
+    const waveProgress = useSharedValue(0);
+
+    // ── Layer A: 즉각 반응 플래시 ────────────────────────────────
+    const flashProgress = useSharedValue(0);   // 0→자동 소멸
+    const [eventText, setEventText] = useState<string>('');
+    const [atmSystemMsg, setAtmSystemMsg] = useState<string | null>(null);
+
+    // ── 📰 News Ticker & Long Press Popup State ──────────────────
+    const [showStatusPopup, setShowStatusPopup] = useState(false);
+    const [isStatusPillExpanded, setIsStatusPillExpanded] = useState(true);
+
+    const { ambient: currentTheme, immediate: immediateTheme, immediateChanged } =
+        useOrbitAtmosphere(relationships, setAtmSystemMsg);
+
+    const prevAmbientStateRef = useRef(currentTheme.state);
+
+    // ── Layer B: 누적 상태 변화 → 배경 애니메이션 ────────────────
+    useEffect(() => {
+        if (prevAmbientStateRef.current === currentTheme.state) return;
+        prevAmbientStateRef.current = currentTheme.state;
+        setAtmosphereState(currentTheme.state);
+
+        atmosphereBgProgress.value = 0;
+        atmosphereBgProgress.value = withTiming(1, {
+            duration: currentTheme.transitionDuration,
+            easing: Easing.inOut(Easing.quad)
+        });
+        mistProgress.value = withTiming(
+            currentTheme.mistEnabled ? 1 : 0,
+            { duration: currentTheme.transitionDuration * 1.5 }
+        );
+        if (currentTheme.waveEnabled) {
+            waveProgress.value = 0;
+            waveProgress.value = withRepeat(
+                withSequence(
+                    withTiming(1, { duration: 1200, easing: Easing.out(Easing.quad) }),
+                    withTiming(0, { duration: 600 })
+                ), -1, false
+            );
+        } else {
+            waveProgress.value = withTiming(0, { duration: 600 });
+        }
+    }, [currentTheme.state]);
+
+    // ── Layer A: 새 체크인 입력시 플래시 + 이벤트 텍스트 표시 ────────
+    useEffect(() => {
+        if (!immediateChanged) return;
+        setEventText(immediateTheme.eventText);
+        setIsStatusPillExpanded(true); // 새 이벤트 발생 시 상태창 자동으로 열기
+        // 플래시: 빠르게 나타났다가 4초 후 자동 소멸
+        flashProgress.value = 0.8;
+        flashProgress.value = withDelay(600, withTiming(0, { duration: 3500, easing: Easing.out(Easing.quad) }));
+    }, [immediateTheme.state, immediateChanged]);
+
+    // (티커 애니메이션 삭제됨)
+
+    // 환경 Animated Styles
+    const atmosphereBackgroundStyle = useAnimatedStyle(() => {
+        const bgColor = interpolateColor(
+            atmosphereBgProgress.value,
+            [0, 1],
+            [ATMOSPHERE_THEMES.NORMAL.backgroundColor, currentTheme.backgroundColor]
+        );
+        return { backgroundColor: bgColor };
+    });
+    const mistStyle = useAnimatedStyle(() => ({ opacity: mistProgress.value }));
+    const waveStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: 1 + waveProgress.value * 3.5 }],
+        opacity: interpolate(waveProgress.value, [0, 0.15, 1], [0, 0.6, 0]),
+    }));
+    // Layer A 플래시 스타일
+    const flashStyle = useAnimatedStyle(() => ({
+        opacity: flashProgress.value,
+    }));
+
+    // ── 판마스크 ─────────────────────────────────────────────
+    const MASK_DEPTH = 56;
+
     // Feedback animations
     const feedbackOpacity = useSharedValue(0);
     const rippleScale1 = useSharedValue(0);
@@ -1012,23 +1092,15 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         zoomAnim.value = withTiming(zoomLevel, { duration: 300 });
     }, [zoomLevel]);
 
-    const zoneFilters = [
-        { id: 'z1', label: '핵심 그룹', zone: 1, color: '#FFB74D' },
-        { id: 'z2', label: '정서적 공유 그룹', zone: 2, color: '#D98B73' },
-        { id: 'z3', label: '기능적 협력 관계', zone: 3, color: '#4A5D4E' },
-        { id: 'z4', label: '단순 인지 관계', zone: 4, color: '#90A4AE' },
-        { id: 'z5', label: '배경 소음(외부 환경)', zone: 5, color: '#D1D5DB' },
-    ];
-
-    const uniqueTypes = Array.from(new Set((relationships || []).map(r => r && ((r.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r.type)).filter(Boolean))) as string[];
-    const dynamicTabs = ['전체', ...zoneFilters.map(z => z.label), ...uniqueTypes];
+    const zoneFilters = ZONE_FILTERS;
+    const dynamicTabs = useMemo(() => getDynamicTabs(relationships), [relationships]);
 
     const zoomLevelRef = useRef(zoomLevel);
     useEffect(() => {
         zoomLevelRef.current = zoomLevel;
     }, [zoomLevel]);
 
-    const handleToggleFilter = (tab: string) => {
+    const handleToggleFilter = useCallback((tab: string) => {
         if (!tab) return;
         if (tab === '전체') {
             setSelectedFilters(['전체']);
@@ -1043,101 +1115,52 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
             newFilters.push(tab);
         }
         setSelectedFilters(newFilters);
-    };
+    }, [selectedFilters]);
 
-    const filteredRelationships = (selectedFilters.includes('전체')
-        ? relationships
-        : relationships.filter(r => {
-            if (!r) return false;
-            const rType = (r.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r.type;
-            const zoneMatch = zoneFilters.find(zf => zf.zone === r.zone);
-            const rZoneLabel = zoneMatch ? zoneMatch.label : (r.zone ? `Zone ${r.zone}` : '');
-            return (rType && selectedFilters.includes(rType)) || (rZoneLabel && selectedFilters.includes(rZoneLabel));
-        })) || [];
+    // ⚡ Optimized Core Engine Integration
+    const [systemMessage, setSystemMessage] = useState<string | null>(null);
+    const atmosphere = useOrbitAtmosphere(relationships, setSystemMessage);
+    const { positionedNodes, filteredCount } = useOrbitEngine({
+        relationships,
+        viewState: orbitMapViewState,
+        currentOrbitSize: BASE_ORBIT_SIZE
+    });
 
-    // 🌀 Smart Orbit Engine: Collision Avoidance through Multi-layer Geometric Distribution
-    const distributedNodes = useMemo(() => {
-        const zoneGroups: { [key: number]: RelationshipNode[] } = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+    const distributedNodes = positionedNodes;
+    const filteredRelationships = positionedNodes.map(pn => pn.node);
 
-        if (filteredRelationships) {
-            filteredRelationships.forEach(node => {
-                if (node && node.zone && zoneGroups[node.zone]) {
-                    zoneGroups[node.zone].push(node);
-                }
-            });
+    const handleSelectPerson = useCallback((person: RelationshipNode | 'self') => {
+        Keyboard.dismiss();
+        
+        if (person === 'self') {
+            useAppStore.getState().setSelfTimeModalOpen(true);
+            setTimeout(() => setIsSearchModalVisible(false), 500);
+            return;
         }
 
-        const positionedNodes: Array<{ node: RelationshipNode; radius: number; angle: number }> = [];
-        let startAngleOffset = 0; // Cumulative offset for cross-zone spiral flow
+        if (searchMode === 'navigation') {
+            setIsSearchModalVisible(false);
+            onSelectNode(person.id);
+        } else if (searchMode === 'action') {
+            useAppStore.getState().setRelationshipLogModalOpen(true, person.id);
+            setTimeout(() => setIsSearchModalVisible(false), 500);
+        } else {
+            setSelectedTarget(person);
+            setIsActionVisible(true);
+        }
+    }, [searchMode, onSelectNode]);
 
-        Object.keys(zoneGroups).sort().forEach(zoneStr => {
-            const zone = parseInt(zoneStr);
-            const nodes = zoneGroups[zone];
-            if (nodes.length === 0) return;
+    const handleAction = useCallback((type: 'LOG' | 'ZONE' | 'RQS') => {
+        if (!selectedTarget) return;
+        setIsSearchModalVisible(false);
+        if (type === 'LOG') {
+            onRecordLog(selectedTarget.id);
+        } else {
+            onDiagnose(selectedTarget.id, type);
+        }
+    }, [selectedTarget, onRecordLog, onDiagnose]);
 
-            // 1. Sort nodes within the zone based on sortMode
-            // For Z-index: items later in array render ON TOP.
-            let sortedNodes = [...nodes];
-            if (sortMode === 'default') {
-                sortedNodes.sort((a, b) => b.id.localeCompare(a.id)); // ID order reversed for consistent layering
-            } else if (sortMode === 'hot') {
-                // Hot Mode: High temp near Self (Inner) -> High temp at start of array
-                sortedNodes.sort((a, b) => b.temperature - a.temperature);
-            } else if (sortMode === 'cold') {
-                // Cold Mode: Low temp near Self (Inner) -> Low temp at start of array
-                sortedNodes.sort((a, b) => a.temperature - b.temperature);
-            }
-
-            const baseCircleRadius = (currentOrbitSize * (zone + 0.5)) / 7; // Spread orbits further out
-            const zoneWidth = currentOrbitSize / 8; // Wider zone for more breathing room
-
-            sortedNodes.forEach((node, idx) => {
-                const progress = idx / sortedNodes.length;
-
-                // If sorting is on, use a spiral line arrangement inside the zone
-                // If default, use a more balanced distribution
-                let angle, radius;
-
-                if (sortMode !== 'default') {
-                    // Swirl Line within Zone
-                    angle = (startAngleOffset + progress * 360) % 360;
-                    // Spiral radius: slightly sloped from inner to outer edge of the zone
-                    const innerToOuterOffset = (progress - 0.5) * (zoneWidth * 0.6);
-                    radius = baseCircleRadius + innerToOuterOffset;
-                } else {
-                    // Balanced Distribution with Golden Angle Jittering to prevent overlap
-                    const maxPerLayer = zone <= 2 ? 5 : (zone === 3 ? 10 : 15);
-                    const numLayers = Math.ceil(sortedNodes.length / maxPerLayer);
-                    const layerIdx = idx % numLayers;
-                    const idxInLayer = Math.floor(idx / numLayers);
-                    const totalInThisLayer = Math.ceil(sortedNodes.length / numLayers);
-
-                    // Add subtle random jitter based on node ID to keep overlaps consistent
-                    const jitterSeed = parseInt(node.id.slice(-2), 16) || 0;
-                    const jitterRadius = (jitterSeed % 10 - 5) * 4;
-                    const jitterAngle = (jitterSeed % 20 - 10);
-
-                    const layerOffset = numLayers > 1
-                        ? (layerIdx - (numLayers - 1) / 2) * (zoneWidth / (numLayers + 0.2))
-                        : 0;
-                    radius = baseCircleRadius + layerOffset + jitterRadius;
-
-                    const baseAngle = (idxInLayer * (360 / totalInThisLayer));
-                    const staggerOffset = layerIdx * (360 / (numLayers * 2.5));
-                    angle = (baseAngle + staggerOffset + startAngleOffset + jitterAngle) % 360;
-                }
-
-                positionedNodes.push({ node, radius, angle });
-            });
-
-            // Adjust next zone start angle to continue the spiral feeling
-            startAngleOffset = (startAngleOffset + 45) % 360;
-        });
-
-        return positionedNodes;
-    }, [filteredRelationships, currentOrbitSize, sortMode]);
-
-    const cycleSortMode = () => {
+    const cycleSortMode = useCallback(() => {
         const modes: Array<'default' | 'hot' | 'cold'> = ['default', 'hot', 'cold'];
         const nextIndex = (modes.indexOf(sortMode) + 1) % modes.length;
         const nextMode = modes[nextIndex];
@@ -1153,7 +1176,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                 universeRotation.value = 0; // 회전 완료 후 0으로 리셋하여 정위치 보정
             }
         });
-    };
+    }, [sortMode, universeRotation]);
 
     // 🧬 Hoisted Animated Styles for Center Node (Self) to prevent white screen
     const selfHaloSizeStyle = useAnimatedStyle(() => {
@@ -1332,12 +1355,12 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
         })
     ).current;
 
-    const handleRecenter = () => {
+    const handleRecenter = useCallback(() => {
         panX.value = withSpring(0, { damping: 20, stiffness: 80 });
         panY.value = withSpring(-120, { damping: 20, stiffness: 80 });
         universeRotation.value = withSpring(0, { damping: 20, stiffness: 80 });
         setIsMoved(false);
-    };
+    }, [panX, panY, universeRotation]);
 
     const renderHeader = () => (
         <AppHeader
@@ -1399,40 +1422,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
             return matchesQuery && (rTypeLabel === activeSearchTag || rZoneLabel === activeSearchTag);
         });
 
-        const handleSelectPerson = (person: RelationshipNode | 'self') => {
-            if (person === 'self') {
-                setIsSearchModalVisible(false);
-                // Ensure search modal is closed before opening self-time modal
-                setTimeout(() => {
-                    useAppStore.getState().setSelfTimeModalOpen(true);
-                }, 100);
-                return;
-            }
-
-            if (searchMode === 'navigation') {
-                setIsSearchModalVisible(false);
-                onSelectNode(person.id);
-            } else if (searchMode === 'action') {
-                setIsSearchModalVisible(false);
-                // Directly open the check-in modal for the selected person
-                setTimeout(() => {
-                    useAppStore.getState().setRelationshipLogModalOpen(true, person.id);
-                }, 100);
-            } else {
-                setSelectedTarget(person);
-                setIsActionVisible(true);
-            }
-        };
-
-        const handleAction = (type: 'LOG' | 'ZONE' | 'RQS') => {
-            if (!selectedTarget) return;
-            setIsSearchModalVisible(false);
-            if (type === 'LOG') {
-                onRecordLog(selectedTarget.id);
-            } else {
-                onDiagnose(selectedTarget.id, type);
-            }
-        };
+        // handleSelectPerson and handleAction are now hoisted to main component
 
         return (
             <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: colors.background }]}>
@@ -1723,23 +1713,80 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                         />
                     </View>
 
-                    {/* Map Mode View */}
-                    <View style={[styles.orbitCanvas, viewMode === 'map' ? { display: 'flex' } : { display: 'none' }]} {...panResponder.panHandlers}>
+                    {/* 🌌 Map Mode View — Atmosphere-Aware Canvas */}
+                    <View
+                        style={[styles.orbitCanvas, viewMode === 'map' ? { display: 'flex' } : { display: 'none' }]}
+                        {...panResponder.panHandlers}
+                    >
+                        {/* ━━ [Atmosphere Layer 1] 동적 배경색 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                        <ReAnimated.View
+                            pointerEvents="none"
+                            style={[StyleSheet.absoluteFill, atmosphereBackgroundStyle]}
+                        />
+
+                        {/* ━━ [Atmosphere Layer 2] 연무(Mist) 레이어 — pointerEvents=none 으로 터치 무간섭 ━ */}
+                        {currentTheme.mistEnabled && (
+                            <ReAnimated.View
+                                pointerEvents="none"
+                                style={[
+                                    StyleSheet.absoluteFill,
+                                    { zIndex: 2 },
+                                    mistStyle
+                                ]}
+                            >
+                                {/* 움직이는 연무 구름 레이어 (3개 중첩으로 웨이브 효과) */}
+                                {[0, 1, 2].map(idx => (
+                                    <ReAnimated.View
+                                        key={idx}
+                                        style={[
+                                            StyleSheet.absoluteFill,
+                                            {
+                                                backgroundColor: currentTheme.mistColor,
+                                                opacity: 0.6 - idx * 0.15,
+                                            }
+                                        ]}
+                                    />
+                                ))}
+                            </ReAnimated.View>
+                        )}
+
+                        {/* ━━ [Atmosphere Layer 3] 에너지 파동(Wave) ━━━━━━━━━━━━━━━━━━━━━ */}
+                        {currentTheme.waveEnabled && (
+                            <View
+                                pointerEvents="none"
+                                style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 3 }]}
+                            >
+                                <ReAnimated.View
+                                    style={[
+                                        {
+                                            width: 200,
+                                            height: 200,
+                                            borderRadius: 100,
+                                            borderWidth: 3,
+                                            borderColor: currentTheme.waveColor,
+                                        },
+                                        waveStyle
+                                    ]}
+                                />
+                            </View>
+                        )}
+
+                        {/* ━━ [Orbit Canvas] 기존 캐리어 그대로 유지 ━━━━━━━━━━━━━━━━━━━━ */}
                         <ReAnimated.View style={[
                             styles.animatedCanvas,
                             canvasAnimatedStyle
                         ]}>
                             {/* Rings and Zones with shading */}
-                            {[1, 2, 3, 4, 5].map((level) => (
+                                {useMemo(() => [1, 2, 3, 4, 5].map((level) => (
                                 <OrbitRing
                                     key={level}
                                     level={level}
                                     colors={colors}
                                     zoomSharedValue={zoomSharedValue}
                                 />
-                            ))}
+                            )), [colors, zoomSharedValue])}
 
-                            {distributedNodes.map(({ node, radius, angle }) => {
+                            {useMemo(() => distributedNodes.map(({ node, radius, angle }) => {
                                 const isNew = useRelationshipStore.getState().lastAddedId === node.id;
                                 return (
                                     <UserNode
@@ -1754,7 +1801,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                         isNew={isNew}
                                     />
                                 );
-                            })}
+                            }), [distributedNodes, zoomLevel, zoomSharedValue, relationships.length, onSelectNode])}
 
                             {(() => {
                                 const centerSize = 60 + zoomLevel * 12;
@@ -1764,6 +1811,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                         style={{ alignItems: 'center', justifyContent: 'center' }}
                                         activeOpacity={0.8}
                                         onPress={() => useAppStore.getState().setSelfTimeModalOpen(true)}
+                                        onLongPress={() => setShowStatusPopup(true)}
                                     >
                                         {/* Solar Amber Heartbeat Glow (Soft & Filled) */}
                                         <ReAnimated.View style={[
@@ -1861,6 +1909,61 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                         </ReAnimated.View>
                     </View>
 
+                    {/* ━━ 🎭 Universal Gradient Mask System ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                         모든 대기 상태에서 상/하단 경계를 앱 기본 컬러로 부드럽게 연결.
+                         pointerEvents=none 으로 터치 완전 무간섭.
+                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                    {viewMode === 'map' && (
+                        <>
+                            {/* 상단 마스크: 헤더 아래 → 지도 시작점 */}
+                            <View
+                                pointerEvents="none"
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: MASK_DEPTH,
+                                    zIndex: 5,
+                                    // React Native LinearGradient 없이 Svg로 구현
+                                }}
+                            >
+                                <Svg width="100%" height={MASK_DEPTH} preserveAspectRatio="none">
+                                    <Defs>
+                                        <LinearGradient id="topMask" x1="0" y1="0" x2="0" y2="1">
+                                            <Stop offset="0" stopColor="#FCF9F2" stopOpacity="1" />
+                                            <Stop offset="1" stopColor="#FCF9F2" stopOpacity="0" />
+                                        </LinearGradient>
+                                    </Defs>
+                                    <Rect width="100%" height={MASK_DEPTH} fill="url(#topMask)" />
+                                </Svg>
+                            </View>
+
+                            {/* 하단 마스크: 지도 끝점 → 탭바 위 */}
+                            <View
+                                pointerEvents="none"
+                                style={{
+                                    position: 'absolute',
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: MASK_DEPTH,
+                                    zIndex: 5,
+                                }}
+                            >
+                                <Svg width="100%" height={MASK_DEPTH} preserveAspectRatio="none">
+                                    <Defs>
+                                        <LinearGradient id="bottomMask" x1="0" y1="0" x2="0" y2="1">
+                                            <Stop offset="0" stopColor="#FCF9F2" stopOpacity="0" />
+                                            <Stop offset="1" stopColor="#FCF9F2" stopOpacity="1" />
+                                        </LinearGradient>
+                                    </Defs>
+                                    <Rect width="100%" height={MASK_DEPTH} fill="url(#bottomMask)" />
+                                </Svg>
+                            </View>
+                        </>
+                    )}
+
                     {/* System Feedback Message Overlay (Used for both SELF_CARE and INTERACTION) */}
                     {(cognitiveFeedback.type === 'SELF_CARE' || cognitiveFeedback.type === 'INTERACTION') ? (
                         <ReAnimated.View 
@@ -1892,20 +1995,78 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
                     {/* Floating Map Controls (Only visible in Map Mode) */}
                     <View style={[styles.mapOverlayControls, viewMode === 'map' ? { display: 'flex' } : { display: 'none' }]} pointerEvents="box-none">
-                        <View style={styles.statusOverlay} pointerEvents="none">
-                            <Text style={[styles.statusInfo, { color: colors.primary, marginBottom: 8, fontSize: 10, opacity: 0.6 }]}>
-                                {zoomLevel === 1 ? 'UNIVERSE MODE' :
-                                    zoomLevel === 2 ? 'GALAXY MODE' :
-                                        zoomLevel === 3 ? 'CONSTELLATION MODE' :
-                                            zoomLevel === 4 ? 'STAR CLUSTER MODE' : 'ORBIT FOCUS MODE'}
-                                {sortMode !== 'default' && ` • ${sortMode.toUpperCase()} FIRST`}
-                            </Text>
-                            <Text style={[styles.statusInfo, { color: colors.primary }]}>
-                                {selectedFilters.includes('전체')
-                                    ? `${relationships.length}명의 모든 관계가 공명 중입니다`
-                                    : `${selectedFilters.join(', ')} 그룹 ${filteredRelationships.length}명이 공명 중입니다`}
-                            </Text>
+                        {/* ━━ [Atmosphere Layer A] 즉각 반응 플래시 ━━━━━━━━━━━━━━━━━━━━━━ */}
+                        <ReAnimated.View
+                            pointerEvents="none"
+                            style={[
+                                StyleSheet.absoluteFill,
+                                { backgroundColor: immediateTheme.flashColor, zIndex: 10 },
+                                flashStyle
+                            ]}
+                        />
+
+                        {/* ━━ [Unified Status Pill] 통합 상태창 ━━━━━━━━━━━━━━━━━━━━ */}
+                        <View style={{ position: 'absolute', bottom: 240, alignSelf: 'center', zIndex: 700 }} pointerEvents="box-none">
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                onPress={() => {
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                    setIsStatusPillExpanded(!isStatusPillExpanded);
+                                }}
+                                style={{
+                                    backgroundColor: 'rgba(255,255,255,0.9)',
+                                    paddingHorizontal: 20,
+                                    paddingVertical: isStatusPillExpanded ? 16 : 10,
+                                    borderRadius: 30,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.08,
+                                    shadowRadius: 12,
+                                    elevation: 5,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(255,255,255,1)',
+                                    maxWidth: width * 0.85
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
+                                        {selectedFilters.includes('전체')
+                                            ? `${relationships.length}명의 관계가 함께하고 있어요`
+                                            : `${selectedFilters.join(', ')} 그룹 ${filteredRelationships.length}명과 연결 중`}
+                                    </Text>
+                                    <ChevronUp size={16} color={colors.gray[400]} style={{ transform: [{ rotate: isStatusPillExpanded ? '180deg' : '0deg' }] }} />
+                                </View>
+                                
+                                {isStatusPillExpanded && (
+                                    <View style={{ marginTop: 10, alignItems: 'center' }}>
+                                        {eventText ? <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>💭 {eventText}</Text> : null}
+                                        <Text style={{ color: colors.primary, opacity: 0.8, fontSize: 12, fontWeight: '500', textAlign: 'center', lineHeight: 18 }}>
+                                            {currentTheme.ambientText}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
                         </View>
+
+                        {/* ━━ [Long Press Popup] 롱프레스 상태 팝업 ━━━━━━━━━━━━━━━━━━━━ */}
+                        {showStatusPopup && (
+                            <TouchableOpacity 
+                                style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.3)' }]} 
+                                activeOpacity={1} 
+                                onPress={() => setShowStatusPopup(false)}
+                            >
+                                <View style={{ backgroundColor: colors.white, padding: 24, borderRadius: 16, maxWidth: '80%', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15, elevation: 5 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 12 }}>현재 관계 대기 상태</Text>
+                                    {eventText ? (
+                                        <Text style={{ fontSize: 14, color: '#FF9800', marginBottom: 8, textAlign: 'center', fontWeight: '600' }}>💭 {eventText}</Text>
+                                    ) : null}
+                                    <Text style={{ fontSize: 14, color: colors.gray[500], textAlign: 'center', lineHeight: 20 }}>🌌 {currentTheme.ambientText}</Text>
+                                    <Text style={{ fontSize: 11, color: colors.gray[300], marginTop: 16 }}>화면을 터치하여 닫기</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )}
 
                         <View style={styles.rightControls}>
                             <BlurView
