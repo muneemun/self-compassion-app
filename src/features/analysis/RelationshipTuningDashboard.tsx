@@ -102,7 +102,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         if (lens === 'Positive') return `만족 ${sat} · 소모 ${drain}`;
         if (lens === 'Negative') return `소모 ${drain} · 만족 ${sat}`;
         if (lens === 'Frequency') return `${count}회 교류 · ${r.lastInteraction || '기록 없음'}`;
-        return `${r.temperature || 50}%`;
+        return `${Math.round(r.temperature || 50)}%`;
     };
 
     const getFilteredRelationships = (lens: string) => {
@@ -573,7 +573,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 </View>
                                 <View style={{ alignItems: 'flex-end', minWidth: 24 }}>
                                     <Text style={{ fontSize: 12, fontWeight: '800', color: (r.temperature || 0) > 70 ? colors.accent : colors.primary, marginBottom: 2 }}>
-                                        {r.temperature || 0}%
+                                        {Math.round(r.temperature || 0)}%
                                     </Text>
                                 </View>
                                 <View style={[
@@ -1094,7 +1094,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                         <Text style={[styles.anchorBadgeText, { color: themeColor }]}>NO. 1</Text>
                                     </View>
                                     <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
-                                        {selectedLens !== 'None' ? getLensDisplay(anchor, selectedLens) : `${anchor.temperature || 0}%`}
+                                        {selectedLens !== 'None' ? getLensDisplay(anchor, selectedLens) : `${Math.round(anchor.temperature || 0)}%`}
                                     </Text>
                                 </View>
                                 <View style={styles.anchorMain}>
@@ -1156,7 +1156,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                                 <View style={styles.squadNameRow}>
                                                     <Text style={[styles.squadName, { color: colors.primary }]}>{r.name}</Text>
                                                     <Text style={{ fontSize: 12, color: themeColor, fontWeight: '800' }}>
-                                                        {selectedLens !== 'None' ? getLensDisplay(r, selectedLens) : `${r.temperature || 0}%`}
+                                                        {selectedLens !== 'None' ? getLensDisplay(r, selectedLens) : `${Math.round(r.temperature || 0)}%`}
                                                     </Text>
                                                 </View>
                                                 <View style={styles.squadPersonaRow}>

@@ -1604,7 +1604,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                     />
                                                 </View>
                                                 <Text style={[styles.tempText, { color: (person.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
-                                                    {person.temperature || 0}°
+                                                    {Math.round(person.temperature || 0)}°
                                                 </Text>
                                             </View>
                                         </TouchableOpacity>

@@ -482,7 +482,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                         {isSelfTime ? '회복' : (h.title?.includes('초기') || h.title?.includes('등록') ? '상태' : '교감')}
                                     </Text>
                                     <Text style={[styles.miniMetricValue, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
-                                        {h.title?.includes('초기') || h.title?.includes('등록') ? '준거' : (h.satisfaction || 50) + '%'}
+                                        {h.title?.includes('초기') || h.title?.includes('등록') ? '준거' : Math.round(h.satisfaction || 50) + '%'}
                                     </Text>
                                 </View>
                                 {!(h.title?.includes('초기') || h.title?.includes('등록')) && (
