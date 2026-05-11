@@ -715,17 +715,49 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                             <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
                                             
                                             {/* Data Points */}
-                                            {(node.history || []).slice(-10).map((h, i) => (
-                                                <Circle 
-                                                    key={i}
-                                                    cx={20 + ((h.satisfaction || 0) / 100) * 160}
-                                                    cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
-                                                    r={i === (node.history?.length || 0) - 1 ? 5 : 3}
-                                                    fill={i === (node.history?.length || 0) - 1 ? colors.accent : colors.primary}
-                                                    opacity={0.6}
-                                                />
-                                            ))}
+                                            {(node.history || []).slice(-10).map((h, i, arr) => {
+                                                const isLatest = i === arr.length - 1;
+                                                const isRecent = i >= arr.length - 3;
+                                                const zoneColor = getZoneGuide(node.zone).color;
+                                                
+                                                return (
+                                                    <React.Fragment key={i}>
+                                                        {isLatest && (
+                                                            <Circle 
+                                                                cx={20 + ((h.satisfaction || 0) / 100) * 160}
+                                                                cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
+                                                                r={8}
+                                                                fill={zoneColor}
+                                                                opacity={0.15}
+                                                            />
+                                                        )}
+                                                        <Circle 
+                                                            cx={20 + ((h.satisfaction || 0) / 100) * 160}
+                                                            cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
+                                                            r={isLatest ? 5 : 3}
+                                                            fill={isLatest ? zoneColor : (isRecent ? '#9CA3AF' : '#E5E7EB')}
+                                                            opacity={isLatest ? 1 : 0.6}
+                                                        />
+                                                    </React.Fragment>
+                                                );
+                                            })}
                                         </Svg>
+                                    </View>
+                                    
+                                    {/* 🗺️ Legend for Topography */}
+                                    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 12, paddingBottom: 8 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getZoneGuide(node.zone).color }} />
+                                            <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.6 }}>현재 위치</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#9CA3AF' }} />
+                                            <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.6 }}>최근 흐름</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E5E7EB' }} />
+                                            <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.6 }}>과거 기록</Text>
+                                        </View>
                                     </View>
                                     <Text style={styles.topographyDesc}>
                                         {dynamicCharacter ? `현재 이 관계는 '${dynamicCharacter.label}' 기후에 머물러 있습니다. ${dynamicCharacter.desc}.` : '교류 데이터가 쌓이면 정밀한 기후 분석이 제공됩니다.'}
