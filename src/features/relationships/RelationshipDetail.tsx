@@ -100,9 +100,10 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     const trendText = useMemo(() => {
         if (!historyData || historyData.length < 2) return 'Start';
-        const last = (historyData[historyData.length - 1] as any).closeness ?? historyData[historyData.length - 1].temperature;
-        const prev = (historyData[historyData.length - 2] as any).closeness ?? historyData[historyData.length - 2].temperature;
+        const last = (historyData[historyData.length - 1] as any)?.closeness ?? historyData[historyData.length - 1]?.temperature ?? 0;
+        const prev = (historyData[historyData.length - 2] as any)?.closeness ?? historyData[historyData.length - 2]?.temperature ?? 0;
         const diff = Math.round(last - prev);
+        if (isNaN(diff)) return '0%';
         return diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : '0%';
     }, [historyData]);
 
@@ -112,7 +113,9 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     const climateTrend = useMemo(() => {
         if (!node || !node.history || node.history.length < 1) return null;
 
-        const sorted = [...node.history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sorted = [...node.history].filter(h => h && h.date).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        if (sorted.length === 0) return null;
+        
         const lastEntry = sorted[sorted.length - 1];
         const eventTitle = lastEntry.title || lastEntry.event || '';
 
@@ -140,12 +143,17 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
         }
 
         // 일반 체크인 데이터 분석 (기존 로직 유지)
-        if (node.history.length < 2) return null;
+        if (sorted.length < 2) return null;
         
         const recent = sorted.slice(-3); 
         const previous = sorted.length > 3 ? sorted.slice(-6, -3) : sorted.slice(0, 1);
 
-        const calcAvg = (list: any[], key: string) => list.reduce((sum, h) => sum + (h[key] || 0), 0) / list.length;
+        const calcAvg = (list: any[], key: string) => {
+            if (!list || list.length === 0) return 0;
+            const validItems = list.filter(item => item && typeof item[key] === 'number');
+            if (validItems.length === 0) return 0;
+            return validItems.reduce((sum, h) => sum + (h[key] || 0), 0) / validItems.length;
+        };
 
         const recentSat = calcAvg(recent, 'satisfaction');
         const prevSat = calcAvg(previous, 'satisfaction');
@@ -175,13 +183,18 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
             B: { name: 'Neutral', color: '#8A9A8D', desc: '적절한 사회적 거리를 유지 중인 중립 관계입니다.' },
             C: { name: 'Vampire', color: '#2C2C2C', desc: '에너지 소모가 큰 관계입니다. 정서적 경계가 필요합니다.' },
         };
-        return { ...grades[grade], score: totalScore, areas: areaScores };
+        const baseGrade = grades[grade] || grades['B']; // Fallback to B if unknown
+        return { 
+            ...baseGrade, 
+            score: totalScore ?? 0, 
+            areas: areaScores || { safety: 2, vitality: 2, growth: 2, reciprocity: 2 } // Fallback to neutral scores
+        };
     };
 
     const rqs = getRQSData();
-    const stability = rqs ? Math.round((rqs.areas.safety / 4) * 100) : Math.round(node.metrics.trust);
-    const oxytocin = rqs ? Math.round((rqs.areas.vitality + rqs.areas.reciprocity) / 8 * 100) : 85;
-    const cortisol = rqs ? Math.round((4 - rqs.areas.safety) / 4 * 100) : 32;
+    const stability = (rqs && rqs.areas) ? Math.round((rqs.areas.safety / 4) * 100) : (node.metrics ? Math.round(node.metrics.trust) : 0);
+    const oxytocin = (rqs && rqs.areas) ? Math.round((rqs.areas.vitality + rqs.areas.reciprocity) / 8 * 100) : 85;
+    const cortisol = (rqs && rqs.areas) ? Math.round((4 - rqs.areas.safety) / 4 * 100) : 32;
 
     // 🌀 Calculate Dynamics (Active Interaction State)
     const dynamics = useMemo(() => {
@@ -716,24 +729,28 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                             
                                             {/* Data Points */}
                                             {(node.history || []).slice(-10).map((h, i, arr) => {
+                                                if (!h) return null;
                                                 const isLatest = i === arr.length - 1;
                                                 const isRecent = i >= arr.length - 3;
-                                                const zoneColor = getZoneGuide(node.zone).color;
+                                                const zoneColor = getZoneGuide(node.zone).color || '#4A5D4E';
+                                                
+                                                const satValue = typeof h.satisfaction === 'number' ? h.satisfaction : 50;
+                                                const drainValue = typeof h.energyDrain === 'number' ? h.energyDrain : 50;
                                                 
                                                 return (
                                                     <React.Fragment key={i}>
                                                         {isLatest && (
                                                             <Circle 
-                                                                cx={20 + ((h.satisfaction || 0) / 100) * 160}
-                                                                cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
+                                                                cx={20 + (satValue / 100) * 160}
+                                                                cy={160 - (20 + (drainValue / 100) * 120)}
                                                                 r={8}
                                                                 fill={zoneColor}
                                                                 opacity={0.15}
                                                             />
                                                         )}
                                                         <Circle 
-                                                            cx={20 + ((h.satisfaction || 0) / 100) * 160}
-                                                            cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
+                                                            cx={20 + (satValue / 100) * 160}
+                                                            cy={160 - (20 + (drainValue / 100) * 120)}
                                                             r={isLatest ? 5 : 3}
                                                             fill={isLatest ? zoneColor : (isRecent ? '#9CA3AF' : '#E5E7EB')}
                                                             opacity={isLatest ? 1 : 0.6}
@@ -844,6 +861,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                             // 1. 수정 가능한 체크인 데이터 여부 확인
                                             const isSystemLog = title.includes('초기') || 
                                                                title.includes('등록') || 
+                                                               title.includes('추가') || 
                                                                title.includes('반영') || 
                                                                title.includes('진단') || 
                                                                title.includes('재설정') ||
@@ -864,6 +882,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                                 const isTuning = title.includes('조율') || title.includes('반영');
                                                 const isInitialOrSystem = title.includes('초기') || 
                                                                          title.includes('등록') || 
+                                                                         title.includes('추가') || 
                                                                          title.includes('진단') || 
                                                                          title.includes('재설정') ||
                                                                          title.includes('업데이트');

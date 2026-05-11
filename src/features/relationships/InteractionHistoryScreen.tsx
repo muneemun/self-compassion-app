@@ -96,6 +96,7 @@ export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBa
                     const title = item.title || item.event || '';
                     const isSystemLog = title.includes('초기') || 
                                       title.includes('등록') || 
+                                      title.includes('추가') || 
                                       title.includes('반영') || 
                                       title.includes('진단') || 
                                       title.includes('재설정') ||

@@ -274,7 +274,9 @@ export const useOrbitAtmosphere = (
         () => computeImmediateState(relationships),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [relationships.map(r => {
-            const last = r.interactions?.[r.interactions.length - 1];
+            const last = r.interactions && r.interactions.length > 0 
+                ? r.interactions[r.interactions.length - 1] 
+                : null;
             return last?.id ?? '';
         }).join(',')]
     );

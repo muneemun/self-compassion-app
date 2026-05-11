@@ -452,10 +452,11 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                 // 시스템 로그 및 초기 데이터는 수정 불가 (팝업 없음)
                                 const isSystemLog = title.includes('초기') || 
                                                   title.includes('등록') || 
+                                                  title.includes('추가') || 
                                                   title.includes('반영') || 
                                                   title.includes('진단') || 
-                                                  title.includes('재설정') ||
-                                                  title.includes('조율') ||
+                                                  title.includes('재설정') || 
+                                                  title.includes('조율') || 
                                                   title.includes('업데이트');
                                 
                                 if (isSystemLog) return;
@@ -490,6 +491,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                     const title = h.title || '';
                                     const isInitialOrSystem = title.includes('초기') || 
                                                              title.includes('등록') || 
+                                                             title.includes('추가') || 
                                                              title.includes('진단') || 
                                                              title.includes('재설정') ||
                                                              title.includes('업데이트');
@@ -515,10 +517,11 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                     const title = h.title || '';
                                     const isSystemLog = title.includes('초기') || 
                                                       title.includes('등록') || 
+                                                      title.includes('추가') || 
                                                       title.includes('반영') || 
                                                       title.includes('진단') || 
-                                                      title.includes('재설정') ||
-                                                      title.includes('조율') ||
+                                                      title.includes('재설정') || 
+                                                      title.includes('조율') || 
                                                       title.includes('업데이트');
                                     return !isSystemLog ? (
                                         <Edit3 size={12} color={colors.primary} opacity={0.3} style={{ marginTop: 4 }} />
