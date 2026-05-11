@@ -108,8 +108,15 @@ export const useSelfHealthData = (period: PeriodType) => {
                 totalOxytocinSum += (h.oxytocin || 50);
                 totalCortisolSum += (h.cortisol || 20);
 
-                if ((h.closeness || h.temperature || 0) >= 60) positiveCount++;
-                if ((h.closeness || h.temperature || 0) <= 40 || (h.cortisol || 0) >= 60) challengingCount++;
+                // 라벨 및 카운트 판단 기준: 상호작용의 질 (만족도 vs 에너지 소모)
+                const isPositive = h.isSelfTime ? true : ((h.satisfaction || 0) >= (h.energyDrain || 0));
+                if (isPositive) positiveCount++;
+                else challengingCount++;
+
+                // 만약 코르티솔(스트레스) 반응이 매우 높으면 별도로 소모 카운트에 추가 고려 (선택 사항)
+                if (!h.isSelfTime && (h.cortisol || 0) >= 70 && isPositive) {
+                    // 긍정이더라도 스트레스가 너무 높으면 소모적으로도 집계할 수 있음 (현재는 단순화)
+                }
             }
 
             if (h.isSelfTime) {

@@ -71,12 +71,21 @@ export const BackupService = {
         })
       );
 
+      // 사용자 프로필 이미지 포함 처리
+      const originalProfile = useAppStore.getState().userProfile;
+      let processedProfile = originalProfile;
+      
+      if (originalProfile && originalProfile.avatar && !originalProfile.avatar.startsWith('http')) {
+        const base64 = await this.processImageForBackup(originalProfile.avatar);
+        processedProfile = { ...originalProfile, avatarBase64: base64 };
+      }
+
       const data = {
-        version: '1.2.0',
+        version: '1.2.1',
         timestamp: new Date().toISOString(),
         relationships: processedRelationships,
         selfTimeEntries: useSelfTimeStore.getState().entries,
-        userProfile: useAppStore.getState().userProfile,
+        userProfile: processedProfile,
       };
 
       let jsonString;
@@ -188,7 +197,17 @@ export const BackupService = {
           }
           
           if (data.userProfile) {
-              useAppStore.setState({ userProfile: data.userProfile });
+              let restoredProfile = data.userProfile;
+              
+              // 사용자 프로필 이미지 데이터 복원
+              if (restoredProfile.avatarBase64) {
+                const localUri = await this.restoreImageFromBackup(restoredProfile.avatarBase64, 'user_avatar');
+                if (localUri) {
+                  restoredProfile = { ...restoredProfile, avatar: localUri, avatarBase64: undefined };
+                }
+              }
+              
+              useAppStore.setState({ userProfile: restoredProfile });
           }
           
           Alert.alert('복원 완료', '이미지를 포함한 모든 데이터가 성공적으로 복원되었습니다.');

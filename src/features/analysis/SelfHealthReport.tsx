@@ -377,7 +377,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                 title: h.title || h.event || '교류',
                 satisfaction: h.satisfaction,
                 energyDrain: h.energyDrain,
-                temperature: h.temperature ?? node.temperature,
+                closeness: h.closeness ?? node.temperature,
             }))
         );
 
@@ -438,8 +438,10 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     const dateStr = new Date(h.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
                     const timeStr = new Date(h.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
                     const isSelfTime = h.type === 'selfTime';
-                    const badgeColor = isSelfTime ? '#4A8C8C' : ((h.temperature || 0) >= 60 ? colors.accent : '#8C968D');
-                    const badgeLabel = isSelfTime ? '나만의시간' : ((h.temperature || 0) >= 60 ? '긍정' : '소모');
+                    // 교류 활동의 라벨은 '현재 친밀도'가 아닌 '활동 자체의 질(만족도 vs 에너지 소모)'로 결정
+                    const isPositive = isSelfTime ? true : ((h.satisfaction || 0) >= (h.energyDrain || 0));
+                    const badgeColor = isSelfTime ? '#4A8C8C' : (isPositive ? colors.accent : '#8C968D');
+                    const badgeLabel = isSelfTime ? '나만의시간' : (isPositive ? '긍정' : '소모');
 
                     return (
                         <TouchableOpacity
