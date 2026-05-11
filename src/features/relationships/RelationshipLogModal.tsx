@@ -243,7 +243,7 @@ export const RelationshipLogModal = () => {
                                             <Heart size={16} color={colors.accent} fill={colors.accent} />
                                             <Text style={[styles.metricLabel, { color: colors.primary }]}>정서적 충족감</Text>
                                         </View>
-                                        <Text style={[styles.metricValue, { color: colors.accent }]}>{newLog.satisfaction}%</Text>
+                                        <Text style={[styles.metricValue, { color: colors.accent }]}>{Math.round(newLog.satisfaction || 0)}%</Text>
                                     </View>
                                     <MetricSlider 
                                         value={newLog.satisfaction}
@@ -263,7 +263,7 @@ export const RelationshipLogModal = () => {
                                             <Zap size={16} color="#90A4AE" fill="#90A4AE" />
                                             <Text style={[styles.metricLabel, { color: colors.primary }]}>신체적 에너지 소모</Text>
                                         </View>
-                                        <Text style={[styles.metricValue, { color: '#90A4AE' }]}>{newLog.energyDrain}%</Text>
+                                        <Text style={[styles.metricValue, { color: '#90A4AE' }]}>{Math.round(newLog.energyDrain || 0)}%</Text>
                                     </View>
                                     <MetricSlider 
                                         value={newLog.energyDrain}

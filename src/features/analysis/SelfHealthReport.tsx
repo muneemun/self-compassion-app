@@ -448,8 +448,17 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                             key={`${h.type}-${h.id}-${i}`}
                             style={[styles.historyItem, { marginBottom: 16 }]}
                             onPress={() => {
-                                const isInitial = h.title?.includes('초기') || h.title?.includes('등록');
-                                if (isInitial) return; // 초기 데이터는 수정 불가
+                                const title = h.title || '';
+                                // 시스템 로그 및 초기 데이터는 수정 불가 (팝업 없음)
+                                const isSystemLog = title.includes('초기') || 
+                                                  title.includes('등록') || 
+                                                  title.includes('반영') || 
+                                                  title.includes('진단') || 
+                                                  title.includes('재설정') ||
+                                                  title.includes('조율') ||
+                                                  title.includes('업데이트');
+                                
+                                if (isSystemLog) return;
 
                                 if (isSelfTime) {
                                     useAppStore.setState({ editingLogId: h.id, isSelfTimeModalOpen: true });
@@ -477,17 +486,44 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                 <Text style={styles.historyTopic} numberOfLines={1}>{h.title}</Text>
                             </View>
                             <View style={styles.historyMetrics}>
-                                <View style={[styles.miniMetric, { backgroundColor: isSelfTime ? 'rgba(74,140,140,0.1)' : 'rgba(217,139,115,0.1)' }]}>
-                                    <Text style={[styles.miniMetricLabel, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
-                                        {isSelfTime ? '회복' : (h.title?.includes('초기') || h.title?.includes('등록') ? '상태' : '교감')}
-                                    </Text>
-                                    <Text style={[styles.miniMetricValue, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
-                                        {h.title?.includes('초기') || h.title?.includes('등록') ? '준거' : Math.round(h.satisfaction || 50) + '%'}
-                                    </Text>
-                                </View>
-                                {!(h.title?.includes('초기') || h.title?.includes('등록')) && (
-                                    <Edit3 size={12} color={colors.primary} opacity={0.3} style={{ marginTop: 4 }} />
-                                )}
+                                {(() => {
+                                    const title = h.title || '';
+                                    const isInitialOrSystem = title.includes('초기') || 
+                                                             title.includes('등록') || 
+                                                             title.includes('진단') || 
+                                                             title.includes('재설정') ||
+                                                             title.includes('업데이트');
+                                    
+                                    // 조율이나 체크인이 아닌 순수 시스템 로그는 수치 미표시
+                                    const showPercentage = !isInitialOrSystem;
+                                    const isSystemLog = isInitialOrSystem || title.includes('조율') || title.includes('반영');
+
+                                    if (!showPercentage) return null;
+
+                                    return (
+                                        <View style={[styles.miniMetric, { backgroundColor: isSelfTime ? 'rgba(74,140,140,0.1)' : 'rgba(217,139,115,0.1)' }]}>
+                                            <Text style={[styles.miniMetricLabel, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
+                                                {isSelfTime ? '회복' : '교감'}
+                                            </Text>
+                                            <Text style={[styles.miniMetricValue, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
+                                                {Math.round(h.satisfaction || (h as any).closeness || h.temperature || 0)}%
+                                            </Text>
+                                        </View>
+                                    );
+                                })()}
+                                {(() => {
+                                    const title = h.title || '';
+                                    const isSystemLog = title.includes('초기') || 
+                                                      title.includes('등록') || 
+                                                      title.includes('반영') || 
+                                                      title.includes('진단') || 
+                                                      title.includes('재설정') ||
+                                                      title.includes('조율') ||
+                                                      title.includes('업데이트');
+                                    return !isSystemLog ? (
+                                        <Edit3 size={12} color={colors.primary} opacity={0.3} style={{ marginTop: 4 }} />
+                                    ) : null;
+                                })()}
                             </View>
                         </TouchableOpacity>
                     );

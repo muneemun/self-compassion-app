@@ -93,8 +93,15 @@ export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBa
             <TouchableOpacity 
                 activeOpacity={0.7}
                 onPress={() => {
-                    const isInitial = item.title?.includes('초기') || item.title?.includes('등록');
-                    if (isInitial) return;
+                    const title = item.title || item.event || '';
+                    const isSystemLog = title.includes('초기') || 
+                                      title.includes('등록') || 
+                                      title.includes('반영') || 
+                                      title.includes('진단') || 
+                                      title.includes('재설정') ||
+                                      title.includes('조율') ||
+                                      title.includes('업데이트');
+                    if (isSystemLog) return;
 
                     if (isSelfTime) {
                         useAppStore.setState({ editingLogId: item.id, isSelfTimeModalOpen: true });
@@ -135,12 +142,25 @@ export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBa
                             <Clock size={12} color="#999" />
                             <Text style={styles.timeText}>{new Date(item.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                         </View>
-                        <View style={styles.metricRow}>
-                            <Heart size={12} color={displayColor} />
-                            <Text style={[styles.metricText, { color: displayColor }]}>
-                                {item.title?.includes('초기') || item.title?.includes('등록') ? '준거 설정' : `${item.satisfaction || item.temperature || 50}%`}
-                            </Text>
-                        </View>
+                        {(() => {
+                            const title = item.title || '';
+                            const isInitialOrSystem = title.includes('초기') || 
+                                                     title.includes('등록') || 
+                                                     title.includes('진단') || 
+                                                     title.includes('재설정') ||
+                                                     title.includes('업데이트');
+                            
+                            if (isInitialOrSystem) return null;
+
+                            return (
+                                <View style={styles.metricRow}>
+                                    <Heart size={12} color={displayColor} />
+                                    <Text style={[styles.metricText, { color: displayColor }]}>
+                                        {`${Math.round(item.satisfaction || item.temperature || 0)}%`}
+                                    </Text>
+                                </View>
+                            );
+                        })()}
                     </View>
                 </View>
             </TouchableOpacity>

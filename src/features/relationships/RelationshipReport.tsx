@@ -584,7 +584,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                                             <Text style={[styles.logEventText, { color: colors.primary }]}>{item.event || "일반 상호작용"}</Text>
                                             <View style={styles.logIndicatorRow}>
                                                 <View style={[styles.miniIndicator, { backgroundColor: colors.accent + '10' }]}>
-                                                    <Text style={[styles.miniIndicatorText, { color: colors.accent }]}>{item.temperature}%</Text>
+                                                    <Text style={[styles.miniIndicatorText, { color: colors.accent }]}>{Math.round(item.temperature || 0)}%</Text>
                                                 </View>
                                                 {item.oxytocin && (
                                                     <Heart size={10} color="#4CAF50" fill="#4CAF50" />

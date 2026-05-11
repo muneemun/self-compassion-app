@@ -86,7 +86,7 @@ const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect
                     />
                 </View>
                 <Text style={[styles.tempText, { color: (node.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
-                    {(node.temperature || 0)}%
+                    {Math.round(node.temperature || 0)}%
                 </Text>
             </View>
         </TouchableOpacity>

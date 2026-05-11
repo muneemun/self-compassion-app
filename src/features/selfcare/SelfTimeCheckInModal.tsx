@@ -277,7 +277,7 @@ export const SelfTimeCheckInModal = () => {
                 <View style={styles.sliderRow}>
                     <Text style={styles.sliderLabel}>신체적 에너지 소모량</Text>
                     <Text style={[styles.sliderValue, { color: THEME.primary }]}>
-                        {physicalEnergy < 30 ? '가벼움' : physicalEnergy < 70 ? '적당함' : '방전됨'} ({physicalEnergy}%)
+                        {physicalEnergy < 30 ? '가벼움' : physicalEnergy < 70 ? '적당함' : '방전됨'} ({Math.round(physicalEnergy || 0)}%)
                     </Text>
                 </View>
                 <CustomSlider
@@ -297,7 +297,7 @@ export const SelfTimeCheckInModal = () => {
                 <View style={styles.sliderRow}>
                     <Text style={styles.sliderLabel}>정서적 충족감 (만족도)</Text>
                     <Text style={[styles.sliderValue, { color: THEME.secondary }]}>
-                        {emotionalSatisfaction < 30 ? '아쉬움' : emotionalSatisfaction < 70 ? '무난함' : '완벽함'} ({emotionalSatisfaction}%)
+                        {emotionalSatisfaction < 30 ? '아쉬움' : emotionalSatisfaction < 70 ? '무난함' : '완벽함'} ({Math.round(emotionalSatisfaction || 0)}%)
                     </Text>
                 </View>
                 <CustomSlider

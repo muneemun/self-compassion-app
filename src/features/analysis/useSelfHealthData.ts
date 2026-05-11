@@ -101,12 +101,12 @@ export const useSelfHealthData = (period: PeriodType) => {
                     slots[slotIdx].interactionCount += 1;
                 }
                 const totalCount = slots[slotIdx].interactionCount + slots[slotIdx].selfTimeCount;
-                slots[slotIdx].totalTemp += (h.closeness || h.temperature || 50);
-                slots[slotIdx].totalOxytocin += (h.oxytocin || 50);
-                slots[slotIdx].totalCortisol += (h.cortisol || 20);
+                slots[slotIdx].totalTemp += (h.closeness || h.temperature || 0);
+                slots[slotIdx].totalOxytocin += (h.oxytocin || 0);
+                slots[slotIdx].totalCortisol += (h.cortisol || 0);
 
-                totalOxytocinSum += (h.oxytocin || 50);
-                totalCortisolSum += (h.cortisol || 20);
+                totalOxytocinSum += (h.oxytocin || 0);
+                totalCortisolSum += (h.cortisol || 0);
 
                 // 라벨 및 카운트 판단 기준: 상호작용의 질 (만족도 vs 에너지 소모)
                 const isPositive = h.isSelfTime ? true : ((h.satisfaction || 0) >= (h.energyDrain || 0));
@@ -177,8 +177,8 @@ export const useSelfHealthData = (period: PeriodType) => {
             },
             pulsePoints,
             energyTotal: {
-                avgOxytocin: allHistory.length > 0 ? Math.round(totalOxytocinSum / allHistory.length) : 50,
-                avgCortisol: allHistory.length > 0 ? Math.round(totalCortisolSum / allHistory.length) : 20,
+                avgOxytocin: allHistory.length > 0 ? Math.round(totalOxytocinSum / allHistory.length) : 0,
+                avgCortisol: allHistory.length > 0 ? Math.round(totalCortisolSum / allHistory.length) : 0,
             },
             selfTimeStats: {
                 totalRestoreMinutes,

@@ -1603,9 +1603,15 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                         ]}
                                                     />
                                                 </View>
-                                                <Text style={[styles.tempText, { color: (person.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
-                                                    {Math.round(person.temperature || 0)}°
-                                                </Text>
+                                                {(() => {
+                                                    const hasData = (person.interactions && person.interactions.length > 0) || 
+                                                                    (person.history && person.history.some(h => h.title?.includes('조율') || h.title?.includes('반영')));
+                                                    return (
+                                                        <Text style={[styles.tempText, { color: (person.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
+                                                            {hasData ? `${Math.round(person.temperature || 0)}°` : '---'}
+                                                        </Text>
+                                                    );
+                                                })()}
                                             </View>
                                         </TouchableOpacity>
                                     );

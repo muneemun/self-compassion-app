@@ -102,7 +102,10 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
         if (lens === 'Positive') return `만족 ${sat} · 소모 ${drain}`;
         if (lens === 'Negative') return `소모 ${drain} · 만족 ${sat}`;
         if (lens === 'Frequency') return `${count}회 교류 · ${r.lastInteraction || '기록 없음'}`;
-        return `${Math.round(r.temperature || 50)}%`;
+        const hasData = (r.interactions && r.interactions.length > 0) || 
+                        (r.history && r.history.some(h => h.title?.includes('조율') || h.title?.includes('반영')));
+        if (!hasData) return '---';
+        return `${Math.round(r.temperature || 0)}%`;
     };
 
     const getFilteredRelationships = (lens: string) => {
@@ -1196,31 +1199,44 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         participants={tournamentParticipants}
                         onComplete={(winners) => {
                             // 📈 우선순위에 따른 정서 긴밀도 가중치 반영
-                            const isNegative = selectedLens === 'Negative';
-
                             winners.forEach((id, index) => {
                                 const node = relationships.find(r => r.id === id);
                                 if (node) {
                                     let weight = 0;
-                                    if (isNegative) {
-                                        // 에너지 디톡스 가중치 (점진적 하향)
-                                        if (index === 0) weight = -5;
-                                        else if (index === 1) weight = -3;
-                                        else if (index === 2) weight = -1;
+                                    let satDelta = 0;
+                                    let drainDelta = 0;
+                                    let eventName = '집중 조율 반영';
+
+                                    if (selectedLens === 'Negative') {
+                                        // ⚠️ 주의가 필요해 (에너지 디톡스)
+                                        eventName = '에너지 디톡스 반영';
+                                        if (index === 0) { weight = -5; satDelta = -12; drainDelta = 12; }
+                                        else if (index === 1) { weight = -3; satDelta = -8; drainDelta = 8; }
+                                        else if (index === 2) { weight = -1; satDelta = -5; drainDelta = 5; }
+                                    } else if (selectedLens === 'Frequency') {
+                                        // ⚠️ 자주 만난 사이 (효율성 조율)
+                                        eventName = '관계 효율성 조율';
+                                        if (index === 0) { weight = 5; satDelta = 3; drainDelta = -12; }
+                                        else if (index === 1) { weight = 3; satDelta = 2; drainDelta = -8; }
+                                        else if (index === 2) { weight = 1; satDelta = 1; drainDelta = -5; }
                                     } else {
-                                        // 일반 조율 가중치
-                                        if (index === 0) weight = 7;
-                                        else if (index === 1) weight = 4;
-                                        else if (index === 2) weight = 2;
+                                        // ⚠️ 나의 비타민 (집중 조율)
+                                        eventName = '집중 조율 반영';
+                                        if (index === 0) { weight = 7; satDelta = 12; drainDelta = -8; }
+                                        else if (index === 1) { weight = 4; satDelta = 8; drainDelta = -5; }
+                                        else if (index === 2) { weight = 2; satDelta = 5; drainDelta = -3; }
                                     }
 
-                                    if (weight !== 0) {
-                                        const currentTemp = node.temperature || 50;
-                                        const newTemp = Math.max(0, Math.min(100, currentTemp + weight));
+                                    if (weight !== 0 || satDelta !== 0) {
+                                        const currentTemp = node.temperature || 0;
+                                        const currentSat = node.metrics?.satisfaction || 50;
+                                        const currentDrain = node.metrics?.energyDrain || 50;
 
                                         updateDiagnosisResult(id, {
-                                            temperature: newTemp,
-                                            event: isNegative ? '에너지 디톡스 반영' : '집중 조율 반영'
+                                            temperature: Math.max(0, Math.min(100, currentTemp + weight)),
+                                            satisfaction: Math.max(0, Math.min(100, currentSat + satDelta)),
+                                            energyDrain: Math.max(0, Math.min(100, currentDrain + drainDelta)),
+                                            event: eventName
                                         });
                                     }
                                 }
@@ -1368,7 +1384,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                                     />
                                                 </View>
                                                 <Text style={[styles.zoneValue, { color: statusColor, fontWeight: isImbalanced ? '900' : '700' }]}>
-                                                    {actual}%
+                                                    {Math.round(actual)}%
                                                 </Text>
                                             </View>
                                             <Text style={styles.zoneTarget}>목표: {info.targetMin}-{info.targetMax}%</Text>

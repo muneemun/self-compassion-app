@@ -191,26 +191,38 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
     const handleAnswer = (isYes: boolean) => {
         if (isYes) {
             const target = CHECKLIST[currentStep].targetZone;
-            const temp = target === 1 ? 98 : target === 2 ? 85 : target === 3 ? 60 : target === 4 ? 30 : 5;
             setFinalZone(target);
 
-            updateAnalysisResult(relationshipId, {
+            // ⚠️ [Fix] 관계 층위 재설정(ZONE) 시에는 온도를 강제로 변경하지 않음
+            // 단, 신규 등록(pendingData) 시에만 기본 온도를 설정
+            const updateData: any = {
                 zone: target,
-                temperature: temp,
                 event: '관계 층위 재설정'
-            });
+            };
 
+            if (!foundNode) {
+                updateData.temperature = target === 1 ? 95 : target === 2 ? 80 : target === 3 ? 50 : target === 4 ? 30 : 10;
+                updateData.event = '초기 진단 완료';
+            }
+
+            updateAnalysisResult(relationshipId, updateData);
             startTransition('ANIMATION');
         } else {
             if (currentStep < CHECKLIST.length - 1) {
                 transitionQuestion();
             } else {
                 setFinalZone(5);
-                updateAnalysisResult(relationshipId, {
+                const updateData: any = {
                     zone: 5,
-                    temperature: 0,
                     event: '관계 층위 재설정'
-                });
+                };
+
+                if (!foundNode) {
+                    updateData.temperature = 0;
+                    updateData.event = '초기 진단 완료';
+                }
+
+                updateAnalysisResult(relationshipId, updateData);
                 startTransition('ANIMATION');
             }
         }

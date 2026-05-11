@@ -302,7 +302,7 @@ export const useRelationshipStore = create<RelationshipState>()(
                     relationships: state.relationships.map((r) => {
                         if (r.id !== id) return r;
                         
-                        const currentCloseness = r.temperature || 50;
+                        const currentCloseness = r.temperature || 0;
                         const newCloseness = Math.max(0, Math.min(100, currentCloseness + resonanceDelta));
                         
                         const newInteraction = {
