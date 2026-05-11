@@ -1604,11 +1604,23 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                                                     />
                                                 </View>
                                                 {(() => {
-                                                    const hasData = (person.interactions && person.interactions.length > 0) || 
-                                                                    (person.history && person.history.some(h => h.title?.includes('조율') || h.title?.includes('반영')));
+                                                    const validHistory = (person.history || []).filter(h => h && h.date);
+                                                    const validInteractions = (person.interactions || []).filter(i => i && i.date);
+                                                    
+                                                    // '진단', '등록', '재설정' 등 시스템 로그 제외하고 실제 교류가 있는지 확인
+                                                    const hasRealData = validInteractions.length > 0 || 
+                                                                       validHistory.some(h => {
+                                                                           const title = h.title || h.event || '';
+                                                                           return !title.includes('등록') && 
+                                                                                  !title.includes('진단') && 
+                                                                                  !title.includes('재설정') &&
+                                                                                  !title.includes('추가') &&
+                                                                                  !title.includes('업데이트');
+                                                                       });
+
                                                     return (
                                                         <Text style={[styles.tempText, { color: (person.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
-                                                            {hasData ? `${Math.round(person.temperature || 0)}°` : '---'}
+                                                            {hasRealData ? `${Math.round(person.temperature || 0)}°` : '---'}
                                                         </Text>
                                                     );
                                                 })()}

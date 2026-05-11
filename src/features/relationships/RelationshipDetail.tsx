@@ -602,19 +602,6 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             </View>
 
                             <View style={styles.svgContainer}>
-                                <Svg height="100" width={width - 88} viewBox="0 0 300 100">
-                                    <Defs>
-                                        <LinearGradient id="gradientGraph" x1="0" y1="0" x2="0" y2="1">
-                                            <Stop offset="0" stopColor={colors.accent} stopOpacity="0.2" />
-                                            <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
-                                        </LinearGradient>
-                                    </Defs>
-                                    <Line x1="0" y1="0" x2="300" y2="0" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="4 4" opacity="0.1" />
-                                    <Line x1="0" y1="50" x2="300" y2="50" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="4 4" opacity="0.1" />
-                                    <Line x1="0" y1="100" x2="300" y2="100" stroke={colors.primary} strokeWidth="0.5" opacity="0.1" />
-
-                                    {graphPaths ? (
-                                        <>
                                             <Path
                                                 d={graphPaths.fillPath}
                                                 fill="url(#gradientGraph)"
@@ -753,15 +740,48 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                         <TouchableOpacity 
                                             key={idx} 
                                             style={[styles.timelineItem, { marginBottom: 16 }]}
-                                            onPress={() => setRelationshipLogModalOpen(true, relationshipId, item.id)}
+                                            onPress={() => {
+                                                const title = item.title || item.event || '';
+                                                // 1. 수정 가능한 체크인 데이터 여부 확인
+                                                const isSystemLog = title.includes('초기') || 
+                                                                   title.includes('등록') || 
+                                                                   title.includes('추가') || 
+                                                                   title.includes('반영') || 
+                                                                   title.includes('진단') || 
+                                                                   title.includes('재설정') ||
+                                                                   title.includes('조율') ||
+                                                                   title.includes('업데이트');
+                                                
+                                                // 시스템 로그가 아닌 경우에만 수정 팝업 오픈
+                                                if (!isSystemLog) {
+                                                    setRelationshipLogModalOpen(true, relationshipId, item.id);
+                                                }
+                                            }}
                                         >
                                             {(() => {
+                                                const title = item.title || item.event || '';
                                                 const closeness = (item as any).closeness ?? item.temperature ?? 0;
+                                                
+                                                // 2. 수치(%) 표시 여부 결정 (체크인 또는 조율 결과인 경우만 표시)
+                                                const isInitialOrSystem = title.includes('초기') || 
+                                                                         title.includes('등록') || 
+                                                                         title.includes('추가') || 
+                                                                         title.includes('진단') || 
+                                                                         title.includes('재설정') ||
+                                                                         title.includes('업데이트');
+                                                
+                                                // 조율이나 체크인이 아닌 순수 시스템 로그는 수치 미표시
+                                                const showPercentage = !isInitialOrSystem;
+
                                                 return (
                                                     <>
                                                         <View style={[styles.timelineDot, { backgroundColor: closeness >= 60 ? colors.accent : colors.primary, borderColor: colors.white }]} />
                                                         <Text style={[styles.timelineTime, { color: colors.primary, opacity: 0.5 }]}>
-                                                            {item.date}   <Text style={{ color: colors.accent, fontWeight: '800', opacity: 1 }}>{closeness >= 80 ? '🔥' : closeness >= 60 ? '☀️' : closeness >= 40 ? '☁️' : '❄️'} {Math.round(closeness)}%</Text>
+                                                            {item.date}   {showPercentage && (
+                                                                <Text style={{ color: colors.accent, fontWeight: '800', opacity: 1 }}>
+                                                                    {closeness >= 80 ? '🔥' : closeness >= 60 ? '☀️' : closeness >= 40 ? '☁️' : '❄️'} {Math.round(closeness)}%
+                                                                </Text>
+                                                            )}
                                                         </Text>
                                                     </>
                                                 );
