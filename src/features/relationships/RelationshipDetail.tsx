@@ -86,10 +86,16 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     const graphPaths = useMemo(() => {
         if (!historyData || historyData.length < 2) return null;
 
-        const points = historyData.map((d, i) => ({
-            x: i * (300 / (historyData.length - 1)),
-            y: 100 - (d.closeness ?? d.temperature ?? 0)
-        }));
+        const points = historyData.map((d, i) => {
+            const tempValue = Number(d.closeness ?? d.temperature ?? 50);
+            const safeY = isNaN(tempValue) ? 50 : Math.max(0, Math.min(100, tempValue));
+            return {
+                x: i * (300 / (historyData.length - 1)),
+                y: 100 - safeY
+            };
+        });
+
+        if (points.some(p => isNaN(p.x) || isNaN(p.y))) return null;
 
         let path = `M ${points[0].x} ${points[0].y}`;
         for (let i = 0; i < points.length - 1; i++) {
@@ -652,43 +658,81 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         <View style={styles.sectionHeader}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                 <Text style={[styles.sectionTitle, { color: colors.primary }]}>정서 지형도 (Climate Map)</Text>
-                                <TouchableOpacity onPress={() => Alert.alert('정서 지형도', '교류의 만족도와 에너지 소모량을 기준으로 분석한 관계의 기후입니다.')}>
+                                <TouchableOpacity onPress={() => Alert.alert('정서 지형도', '교류의 만족도와 에너지 소모량을 기준으로 분석한 관계의 기후입니다.\n\n• 과거 기록: 연한 회색\n• 최근 흐름: 진한 회색\n• 현재 위치: 고유 컬러')}>
                                     <Info size={16} color={colors.primary} opacity={0.6} />
                                 </TouchableOpacity>
                             </View>
-                            <Text style={{ fontSize: 12, color: colors.textMuted }}>최근 30일 기준</Text>
+                            <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.4 }}>최근 30일 기준</Text>
                         </View>
                         
                         <View style={[styles.topographyCard, { backgroundColor: colors.white }]}>
-                            <View style={styles.topographyPlot}>
-                                <View style={styles.topographyGrid}>
-                                    <View style={[styles.gridCell, { backgroundColor: colors.primary + '05' }]}><Text style={styles.gridLabel}>고출력</Text></View>
-                                    <View style={[styles.gridCell, { backgroundColor: colors.accent + '05' }]}><Text style={styles.gridLabel}>충전</Text></View>
-                                    <View style={[styles.gridCell, { backgroundColor: '#8C968D10' }]}><Text style={styles.gridLabel}>소모</Text></View>
-                                    <View style={[styles.gridCell, { backgroundColor: '#90A4AE10' }]}><Text style={styles.gridLabel}>안정</Text></View>
+                            {safeHistory.length > 0 ? (
+                                <>
+                                    <View style={styles.topographyPlot}>
+                                        <View style={styles.topographyGrid}>
+                                            <View style={[styles.gridCell, { backgroundColor: '#FFB74D08' }]}><Text style={[styles.gridLabel, { color: '#FFB74D' }]}>고출력</Text></View>
+                                            <View style={[styles.gridCell, { backgroundColor: '#D98B7308' }]}><Text style={[styles.gridLabel, { color: '#D98B73' }]}>충전</Text></View>
+                                            <View style={[styles.gridCell, { backgroundColor: '#4A5D4E08' }]}><Text style={[styles.gridLabel, { color: '#4A5D4E' }]}>소모</Text></View>
+                                            <View style={[styles.gridCell, { backgroundColor: '#90A4AE08' }]}><Text style={[styles.gridLabel, { color: '#90A4AE' }]}>안정</Text></View>
+                                        </View>
+                                        
+                                        <Svg height="160" width={width - 88} viewBox="0 0 200 160">
+                                            {/* Axes */}
+                                            <Line x1="10" y1="80" x2="190" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.2" />
+                                            <Line x1="100" y1="10" x2="100" y2="150" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.2" />
+                                            
+                                            {/* Data Points (3-tier) */}
+                                            {safeHistory.slice(-10).map((h, i, arr) => {
+                                                const isLatest = i === arr.length - 1;
+                                                const isRecent = i >= arr.length - 3;
+                                                const x = 20 + ((h.satisfaction || 0) / 100) * 160;
+                                                const y = 160 - (20 + ((h.energyDrain || 0) / 100) * 120);
+                                                const zoneColor = getZoneGuide(node.zone).color;
+
+                                                return (
+                                                    <React.Fragment key={i}>
+                                                        {isLatest && (
+                                                            <Circle cx={x} cy={y} r={8} fill={zoneColor} opacity={0.15} />
+                                                        )}
+                                                        <Circle 
+                                                            cx={x} cy={y} 
+                                                            r={isLatest ? 5 : 3} 
+                                                            fill={isLatest ? zoneColor : (isRecent ? '#9CA3AF' : '#E5E7EB')} 
+                                                        />
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </Svg>
+                                    </View>
+
+                                    {/* Map Legend */}
+                                    <View style={styles.mapLegendRow}>
+                                        <View style={styles.mapLegendItem}>
+                                            <View style={[styles.mapLegendDot, { backgroundColor: getZoneGuide(node.zone).color }]} />
+                                            <Text style={styles.mapLegendText}>현재 위치</Text>
+                                        </View>
+                                        <View style={styles.mapLegendItem}>
+                                            <View style={[styles.mapLegendDot, { backgroundColor: '#9CA3AF' }]} />
+                                            <Text style={styles.mapLegendText}>최근 흐름</Text>
+                                        </View>
+                                        <View style={styles.mapLegendItem}>
+                                            <View style={[styles.mapLegendDot, { backgroundColor: '#E5E7EB' }]} />
+                                            <Text style={styles.mapLegendText}>과거 기록</Text>
+                                        </View>
+                                    </View>
+
+                                    <Text style={styles.topographyDesc}>
+                                        {dynamicCharacter ? `현재 이 관계는 '${dynamicCharacter.label}' 기후에 머물러 있습니다. ${dynamicCharacter.desc}.` : '교류 데이터가 쌓이면 정밀한 기후 분석이 제공됩니다.'}
+                                    </Text>
+                                </>
+                            ) : (
+                                <View style={{ height: 200, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                                    <Heart size={32} color={colors.primary} opacity={0.1} style={{ marginBottom: 12 }} />
+                                    <Text style={{ fontSize: 13, color: colors.primary, opacity: 0.5, textAlign: 'center', lineHeight: 20 }}>
+                                        기록된 상호작용이 없습니다.{"\n"}첫 체크인을 입력하면 정서 지형도가 활성화됩니다.
+                                    </Text>
                                 </View>
-                                
-                                <Svg height="160" width={width - 88} viewBox="0 0 200 160">
-                                    {/* Axes */}
-                                    <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
-                                    <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
-                                    
-                                    {/* Data Points */}
-                                    {(node.history || []).slice(-10).map((h, i) => (
-                                        <Circle 
-                                            key={i}
-                                            cx={20 + ((h.satisfaction || 0) / 100) * 160}
-                                            cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
-                                            r={i === (node.history?.length || 0) - 1 ? 5 : 3}
-                                            fill={i === (node.history?.length || 0) - 1 ? colors.accent : colors.primary}
-                                            opacity={0.6}
-                                        />
-                                    ))}
-                                </Svg>
-                            </View>
-                            <Text style={styles.topographyDesc}>
-                                {dynamicCharacter ? `현재 이 관계는 '${dynamicCharacter.label}' 기후에 머물러 있습니다. ${dynamicCharacter.desc}.` : '교류 데이터가 쌓이면 정밀한 기후 분석이 제공됩니다.'}
-                            </Text>
+                            )}
                         </View>
                     </View>
 
@@ -1748,23 +1792,43 @@ const styles = StyleSheet.create({
     gridCell: {
         width: '50%',
         height: '50%',
-        justifyContent: 'center',
-        alignItems: 'center',
+        padding: 10,
     },
     gridLabel: {
+        fontSize: 9,
+        fontWeight: '900',
+        opacity: 0.8,
+    },
+    mapLegendRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 16,
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    mapLegendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    mapLegendDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    mapLegendText: {
         fontSize: 10,
         fontWeight: '700',
-        color: 'rgba(74, 93, 78, 0.2)',
-        letterSpacing: 1,
+        color: '#9CA3AF',
     },
     topographyDesc: {
         fontSize: 13,
-        color: '#8C968D',
-        lineHeight: 18,
-        marginTop: 16,
-        textAlign: 'center',
-        fontWeight: '500',
-    }
+        lineHeight: 20,
+        fontWeight: '600',
+        color: '#4A5D4E',
+        opacity: 0.8,
+        marginTop: 12,
+    },
 });
 
 // TemperatureSlider removed as it's now handled by the global RelationshipLogModal
