@@ -576,7 +576,18 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 </View>
                                 <View style={{ alignItems: 'flex-end', minWidth: 24 }}>
                                     <Text style={{ fontSize: 12, fontWeight: '800', color: (r.temperature || 0) > 70 ? colors.accent : colors.primary, marginBottom: 2 }}>
-                                        {Math.round(r.temperature || 0)}%
+                                        {(() => {
+                                            const hasRealData = (r.interactions && r.interactions.length > 0) || 
+                                                               (r.history && r.history.some(h => {
+                                                                   const title = h.title || h.event || '';
+                                                                   return !title.includes('등록') && 
+                                                                          !title.includes('진단') && 
+                                                                          !title.includes('재설정') &&
+                                                                          !title.includes('추가') &&
+                                                                          !title.includes('업데이트');
+                                                               }));
+                                            return hasRealData ? `${Math.round(r.temperature || 0)}%` : '---';
+                                        })()}
                                     </Text>
                                 </View>
                                 <View style={[

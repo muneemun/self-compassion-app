@@ -86,7 +86,18 @@ const RelationshipCard = ({ node, onSelect }: { node: RelationshipNode, onSelect
                     />
                 </View>
                 <Text style={[styles.tempText, { color: (node.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
-                    {Math.round(node.temperature || 0)}%
+                    {(() => {
+                        const hasRealData = (node.interactions && node.interactions.length > 0) || 
+                                           (node.history && node.history.some(h => {
+                                               const title = h.title || h.event || '';
+                                               return !title.includes('등록') && 
+                                                      !title.includes('진단') && 
+                                                      !title.includes('재설정') &&
+                                                      !title.includes('추가') &&
+                                                      !title.includes('업데이트');
+                                           }));
+                        return hasRealData ? `${Math.round(node.temperature || 0)}%` : '---';
+                    })()}
                 </Text>
             </View>
         </TouchableOpacity>
