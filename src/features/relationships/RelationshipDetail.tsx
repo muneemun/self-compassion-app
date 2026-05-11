@@ -610,10 +610,10 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             <View style={styles.svgContainer}>
                                 <Svg height="100" width="300" viewBox="0 0 300 100" preserveAspectRatio="none">
                                     <Defs>
-                                        <SvgLinearGradient id="gradientGraph" x1="0" y1="0" x2="0" y2="1">
+                                        <LinearGradient id="gradientGraph" x1="0" y1="0" x2="0" y2="1">
                                             <Stop offset="0" stopColor={colors.accent} stopOpacity="0.3" />
                                             <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
-                                        </SvgLinearGradient>
+                                        </LinearGradient>
                                     </Defs>
                                     {graphPaths ? (
                                         <>
