@@ -26,8 +26,12 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     const node = useRelationshipStore(state => state.relationships.find(r => r.id === relationshipId));
     const addInteraction = useRelationshipStore(state => state.addInteraction);
     
+    // 🧬 Sanitized Data (Crucial for Legacy Support)
+    const safeHistory = useMemo(() => (node?.history || []).filter(h => h && h.date), [node?.history]);
+    const safeInteractions = useMemo(() => (node?.interactions || []).filter(i => i && i.date), [node?.interactions]);
+
     // 🧬 Dynamic Character Calculation
-    const dynamicCharacter = useMemo(() => node ? getDynamicCharacter(node.history || []) : null, [node?.history]);
+    const dynamicCharacter = useMemo(() => node ? getDynamicCharacter(safeHistory) : null, [safeHistory]);
 
     if (!node) return null;
 
@@ -51,9 +55,9 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     // Graph Data Logic
     const historyData = useMemo(() => {
-        if (!node || !node.history || node.history.length === 0) return null;
+        if (safeHistory.length === 0) return null;
 
-        const sorted = [...node.history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sorted = [...safeHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         // 2개 미만이면 바로 리턴
         if (sorted.length < 2) return sorted;
 
@@ -77,7 +81,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
         if (filtered.length === 0) return sorted.slice(-1);
         return filtered;
-    }, [node?.history, graphPeriod]);
+    }, [safeHistory, graphPeriod]);
 
     const graphPaths = useMemo(() => {
         if (!historyData || historyData.length < 2) return null;
@@ -100,8 +104,8 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     const trendText = useMemo(() => {
         if (!historyData || historyData.length < 2) return 'Start';
-        const last = (historyData[historyData.length - 1] as any)?.closeness ?? historyData[historyData.length - 1]?.temperature ?? 0;
-        const prev = (historyData[historyData.length - 2] as any)?.closeness ?? historyData[historyData.length - 2]?.temperature ?? 0;
+        const last = (historyData[historyData.length - 1] as any).closeness ?? historyData[historyData.length - 1].temperature ?? 0;
+        const prev = (historyData[historyData.length - 2] as any).closeness ?? historyData[historyData.length - 2].temperature ?? 0;
         const diff = Math.round(last - prev);
         if (isNaN(diff)) return '0%';
         return diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : '0%';
@@ -111,48 +115,15 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
 
     // AI Analysis Logic
     const climateTrend = useMemo(() => {
-        if (!node || !node.history || node.history.length < 1) return null;
+        if (safeHistory.length < 2) return null;
 
-        const sorted = [...node.history].filter(h => h && h.date).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        if (sorted.length === 0) return null;
-        
-        const lastEntry = sorted[sorted.length - 1];
-        const eventTitle = lastEntry.title || lastEntry.event || '';
-
-        // 🎯 토너먼트(조율) 결과에 따른 전용 메타인지 리포트 생성
-        if (eventTitle.includes('집중 조율') || eventTitle.includes('비타민')) {
-            return {
-                type: 'TOURNAMENT',
-                category: 'VITAMIN',
-                message: `최근 '나의 비타민' 점검을 통해 긍정적 교감 지수가 상향 기록되었습니다. 현재 이 관계는 시스템에서 정서적 활력이 가장 높은 구간으로 분류되어 있습니다.`
-            };
-        }
-        if (eventTitle.includes('에너지 디톡스') || eventTitle.includes('주의가 필요해')) {
-            return {
-                type: 'TOURNAMENT',
-                category: 'DETOX',
-                message: `'주의가 필요해' 점검 결과, 이 관계에서 발생하는 에너지 소모 지표가 높게 측정되었습니다. 현재 이 관계는 정서적 과부하 방지를 위한 관찰 대상으로 등록되었습니다.`
-            };
-        }
-        if (eventTitle.includes('관계 효율성') || eventTitle.includes('자주 만난 사이')) {
-            return {
-                type: 'TOURNAMENT',
-                category: 'FREQUENCY',
-                message: `'자주 만난 사이' 정리에 따라 교류의 효율성이 개선된 것으로 분석됩니다. 잦은 만남에도 에너지를 일정하게 유지할 수 있는 안정적인 궤도에 머물러 있습니다.`
-            };
-        }
-
-        // 일반 체크인 데이터 분석 (기존 로직 유지)
-        if (sorted.length < 2) return null;
-        
+        const sorted = [...safeHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         const recent = sorted.slice(-3); 
         const previous = sorted.length > 3 ? sorted.slice(-6, -3) : sorted.slice(0, 1);
 
         const calcAvg = (list: any[], key: string) => {
             if (!list || list.length === 0) return 0;
-            const validItems = list.filter(item => item && typeof item[key] === 'number');
-            if (validItems.length === 0) return 0;
-            return validItems.reduce((sum, h) => sum + (h[key] || 0), 0) / validItems.length;
+            return list.reduce((sum, h) => sum + (h[key] || 0), 0) / list.length;
         };
 
         const recentSat = calcAvg(recent, 'satisfaction');
@@ -164,13 +135,12 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
         const drainDiff = recentDrain - prevDrain;
 
         return {
-            type: 'CHECKIN',
             satTrend: satDiff > 5 ? 'up' : satDiff < -5 ? 'down' : 'stable',
             drainTrend: drainDiff > 5 ? 'up' : drainDiff < -5 ? 'down' : 'stable',
             satDiff: Math.round(Math.abs(satDiff)),
             drainDiff: Math.round(Math.abs(drainDiff))
         };
-    }, [node?.history]);
+    }, [safeHistory]);
 
     if (!node) return null;
 
@@ -183,18 +153,13 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
             B: { name: 'Neutral', color: '#8A9A8D', desc: '적절한 사회적 거리를 유지 중인 중립 관계입니다.' },
             C: { name: 'Vampire', color: '#2C2C2C', desc: '에너지 소모가 큰 관계입니다. 정서적 경계가 필요합니다.' },
         };
-        const baseGrade = grades[grade] || grades['B']; // Fallback to B if unknown
-        return { 
-            ...baseGrade, 
-            score: totalScore ?? 0, 
-            areas: areaScores || { safety: 2, vitality: 2, growth: 2, reciprocity: 2 } // Fallback to neutral scores
-        };
+        return { ...grades[grade], score: totalScore, areas: areaScores };
     };
 
     const rqs = getRQSData();
-    const stability = (rqs && rqs.areas) ? Math.round((rqs.areas.safety / 4) * 100) : (node.metrics ? Math.round(node.metrics.trust) : 0);
-    const oxytocin = (rqs && rqs.areas) ? Math.round((rqs.areas.vitality + rqs.areas.reciprocity) / 8 * 100) : 85;
-    const cortisol = (rqs && rqs.areas) ? Math.round((4 - rqs.areas.safety) / 4 * 100) : 32;
+    const stability = rqs ? Math.round((rqs.areas.safety / 4) * 100) : Math.round(node.metrics.trust);
+    const oxytocin = rqs ? Math.round((rqs.areas.vitality + rqs.areas.reciprocity) / 8 * 100) : 85;
+    const cortisol = rqs ? Math.round((4 - rqs.areas.safety) / 4 * 100) : 32;
 
     // 🌀 Calculate Dynamics (Active Interaction State)
     const dynamics = useMemo(() => {
@@ -289,12 +254,12 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
     };
 
     const renderHistoryChart = () => {
-        if (!node.history || node.history.length < 2) return null;
+        if (safeHistory.length < 2) return null;
 
         const chartHeight = 120;
         const chartWidth = width - 80; // Adjust for some padding
         const maxVal = 100;
-        const data = node.history.slice(-5); // 최근 5개만
+        const data = safeHistory.slice(-5); // 최근 5개만
         const stepX = chartWidth / (data.length - 1);
 
         const getPath = (key: 'temperature' | 'oxytocin' | 'cortisol') => {
@@ -564,7 +529,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             <View style={styles.statHeaderRow}>
                                 <Text style={[styles.statLabel, { color: colors.primary, opacity: 0.4 }]}>안정성</Text>
                             </View>
-                            <Text style={[styles.statValue, { color: colors.primary }]}>{Math.round(stability || 0)}%</Text>
+                            <Text style={[styles.statValue, { color: colors.primary }]}>{stability}%</Text>
                             <View style={[styles.miniStatusBadge, { backgroundColor: getMetricStatus('stability', stability).color + '1A' }]}>
                                 <Text style={[styles.miniStatusText, { color: getMetricStatus('stability', stability).color }]}>
                                     {getMetricStatus('stability', stability).label}
@@ -589,7 +554,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                 </View>
                             </View>
                             <View style={styles.statContentRow}>
-                                <Text style={[styles.statValue, { color: colors.primary }]}>{Math.round(node.temperature)}%</Text>
+                                <Text style={[styles.statValue, { color: colors.primary }]}>{node.temperature}%</Text>
                                 <Heart size={14} color={node.temperature > 80 ? "#FF5252" : "#999"} fill={node.temperature > 80 ? "#FF5252" : "transparent"} />
                             </View>
                             <View style={[styles.miniStatusBadge, { backgroundColor: getMetricStatus('intimacy', node.temperature).color + '1A' }]}>
@@ -622,7 +587,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                 <View>
                                     <Text style={[styles.graphLabel, { color: colors.primary, opacity: 0.6 }]}>현재 긴밀도</Text>
                                     <View style={styles.graphValueRow}>
-                                        <Text style={[styles.graphMainValue, { color: colors.primary }]}>{Math.round(node.temperature)}%</Text>
+                                        <Text style={[styles.graphMainValue, { color: colors.primary }]}>{node.temperature}%</Text>
                                         <View style={styles.trendBadge}>
                                             <Text style={styles.trendText}>{trendText}</Text>
                                         </View>
@@ -637,50 +602,46 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             </View>
 
                             <View style={styles.svgContainer}>
-                                {historyData && historyData.length >= 2 ? (
-                                    <>
-                                        <Svg height="100" width={width - 88} viewBox="0 0 300 100">
-                                            <Defs>
-                                                <LinearGradient id="gradientGraph" x1="0" y1="0" x2="0" y2="1">
-                                                    <Stop offset="0" stopColor={colors.accent} stopOpacity="0.2" />
-                                                    <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
-                                                </LinearGradient>
-                                            </Defs>
-                                            <Line x1="0" y1="0" x2="300" y2="0" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="4 4" opacity="0.1" />
-                                            <Line x1="0" y1="50" x2="300" y2="50" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="4 4" opacity="0.1" />
-                                            <Line x1="0" y1="100" x2="300" y2="100" stroke={colors.primary} strokeWidth="0.5" opacity="0.1" />
+                                <Svg height="100" width={width - 88} viewBox="0 0 300 100">
+                                    <Defs>
+                                        <LinearGradient id="gradientGraph" x1="0" y1="0" x2="0" y2="1">
+                                            <Stop offset="0" stopColor={colors.accent} stopOpacity="0.2" />
+                                            <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
+                                        </LinearGradient>
+                                    </Defs>
+                                    <Line x1="0" y1="0" x2="300" y2="0" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="4 4" opacity="0.1" />
+                                    <Line x1="0" y1="50" x2="300" y2="50" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="4 4" opacity="0.1" />
+                                    <Line x1="0" y1="100" x2="300" y2="100" stroke={colors.primary} strokeWidth="0.5" opacity="0.1" />
 
-                                            {graphPaths ? (
-                                                <>
-                                                    <Path
-                                                        d={graphPaths.fillPath}
-                                                        fill="url(#gradientGraph)"
-                                                    />
-                                                    <Path
-                                                        d={graphPaths.path}
-                                                        stroke={colors.accent}
-                                                        strokeWidth="3"
-                                                        fill="none"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    />
-                                                    {graphPaths.points.map((p, i) => (
-                                                        <Circle key={i} cx={p.x} cy={p.y} r="3" fill={colors.white} stroke={colors.accent} strokeWidth="2" />
-                                                    ))}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Line x1="0" y1={100 - node.temperature} x2="300" y2={100 - node.temperature} stroke={colors.accent} strokeWidth="1" strokeDasharray="5 5" opacity="0.3" />
-                                                    <Circle cx="150" cy={100 - node.temperature} r="5" fill={colors.accent} />
-                                                </>
-                                            )}
-                                        </Svg>
-                                    </>
-                                ) : (
-                                    <View style={{ height: 100, alignItems: 'center', justifyContent: 'center' }}>
-                                        <Heart size={24} color={colors.primary} opacity={0.1} style={{ marginBottom: 8 }} />
-                                        <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.5, textAlign: 'center' }}>
-                                            정기적으로 체크인 데이터를 입력하면{"\n"}긴밀도 변화 추이 그래프가 활성화됩니다.
+                                    {graphPaths ? (
+                                        <>
+                                            <Path
+                                                d={graphPaths.fillPath}
+                                                fill="url(#gradientGraph)"
+                                            />
+                                            <Path
+                                                d={graphPaths.path}
+                                                stroke={colors.accent}
+                                                strokeWidth="3"
+                                                fill="none"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                            {graphPaths.points.map((p, i) => (
+                                                <Circle key={i} cx={p.x} cy={p.y} r="3" fill={colors.white} stroke={colors.accent} strokeWidth="2" />
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Line x1="0" y1={100 - node.temperature} x2="300" y2={100 - node.temperature} stroke={colors.accent} strokeWidth="1" strokeDasharray="5 5" opacity="0.3" />
+                                            <Circle cx="150" cy={100 - node.temperature} r="5" fill={colors.accent} />
+                                        </>
+                                    )}
+                                </Svg>
+                                {!graphPaths && (
+                                    <View style={{ position: 'absolute', bottom: 10, width: '100%', alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.5, backgroundColor: (colors.white as string) + 'CC', paddingHorizontal: 8, borderRadius: 4 }}>
+                                            데이터가 누적되면 그래프가 활성화됩니다
                                         </Text>
                                     </View>
                                 )}
@@ -712,124 +673,60 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         </View>
                         
                         <View style={[styles.topographyCard, { backgroundColor: colors.white }]}>
-                            {node.interactions && node.interactions.length >= 1 ? (
-                                <>
-                                    <View style={styles.topographyPlot}>
-                                        <View style={styles.topographyGrid}>
-                                            <View style={[styles.gridCell, { backgroundColor: colors.primary + '05' }]}><Text style={styles.gridLabel}>고출력</Text></View>
-                                            <View style={[styles.gridCell, { backgroundColor: colors.accent + '05' }]}><Text style={styles.gridLabel}>충전</Text></View>
-                                            <View style={[styles.gridCell, { backgroundColor: '#8C968D10' }]}><Text style={styles.gridLabel}>소모</Text></View>
-                                            <View style={[styles.gridCell, { backgroundColor: '#90A4AE10' }]}><Text style={styles.gridLabel}>안정</Text></View>
-                                        </View>
-                                        
-                                        <Svg height="160" width={width - 88} viewBox="0 0 200 160">
-                                            {/* Axes */}
-                                            <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
-                                            <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
-                                            
-                                            {/* Data Points */}
-                                            {(node.history || []).slice(-10).map((h, i, arr) => {
-                                                if (!h) return null;
-                                                const isLatest = i === arr.length - 1;
-                                                const isRecent = i >= arr.length - 3;
-                                                const zoneColor = getZoneGuide(node.zone).color || '#4A5D4E';
-                                                
-                                                const satValue = typeof h.satisfaction === 'number' ? h.satisfaction : 50;
-                                                const drainValue = typeof h.energyDrain === 'number' ? h.energyDrain : 50;
-                                                
-                                                return (
-                                                    <React.Fragment key={i}>
-                                                        {isLatest && (
-                                                            <Circle 
-                                                                cx={20 + (satValue / 100) * 160}
-                                                                cy={160 - (20 + (drainValue / 100) * 120)}
-                                                                r={8}
-                                                                fill={zoneColor}
-                                                                opacity={0.15}
-                                                            />
-                                                        )}
-                                                        <Circle 
-                                                            cx={20 + (satValue / 100) * 160}
-                                                            cy={160 - (20 + (drainValue / 100) * 120)}
-                                                            r={isLatest ? 5 : 3}
-                                                            fill={isLatest ? zoneColor : (isRecent ? '#9CA3AF' : '#E5E7EB')}
-                                                            opacity={isLatest ? 1 : 0.6}
-                                                        />
-                                                    </React.Fragment>
-                                                );
-                                            })}
-                                        </Svg>
-                                    </View>
-                                    
-                                    {/* 🗺️ Legend for Topography */}
-                                    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 12, paddingBottom: 8 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getZoneGuide(node.zone).color }} />
-                                            <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.6 }}>현재 위치</Text>
-                                        </View>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#9CA3AF' }} />
-                                            <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.6 }}>최근 흐름</Text>
-                                        </View>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E5E7EB' }} />
-                                            <Text style={{ fontSize: 11, color: colors.primary, opacity: 0.6 }}>과거 기록</Text>
-                                        </View>
-                                    </View>
-                                    <Text style={styles.topographyDesc}>
-                                        {dynamicCharacter ? `현재 이 관계는 '${dynamicCharacter.label}' 기후에 머물러 있습니다. ${dynamicCharacter.desc}.` : '교류 데이터가 쌓이면 정밀한 기후 분석이 제공됩니다.'}
-                                    </Text>
-                                </>
-                            ) : (
-                                <View style={{ height: 160, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                                    <Leaf size={32} color={colors.primary} opacity={0.1} style={{ marginBottom: 12 }} />
-                                    <Text style={{ fontSize: 13, color: colors.primary, opacity: 0.5, textAlign: 'center', lineHeight: 20 }}>
-                                        정서 지형도는 실제 체크인 데이터를 기반으로 분석됩니다.{"\n"}'정서적 체크인'을 통해 데이터를 입력해 주세요.
-                                    </Text>
+                            <View style={styles.topographyPlot}>
+                                <View style={styles.topographyGrid}>
+                                    <View style={[styles.gridCell, { backgroundColor: colors.primary + '05' }]}><Text style={styles.gridLabel}>고출력</Text></View>
+                                    <View style={[styles.gridCell, { backgroundColor: colors.accent + '05' }]}><Text style={styles.gridLabel}>충전</Text></View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#8C968D10' }]}><Text style={styles.gridLabel}>소모</Text></View>
+                                    <View style={[styles.gridCell, { backgroundColor: '#90A4AE10' }]}><Text style={styles.gridLabel}>안정</Text></View>
                                 </View>
-                            )}
+                                
+                                <Svg height="160" width={width - 88} viewBox="0 0 200 160">
+                                    {/* Axes */}
+                                    <Line x1="20" y1="80" x2="180" y2="80" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                                    <Line x1="100" y1="20" x2="100" y2="140" stroke={colors.primary} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                                    
+                                    {/* Data Points */}
+                                    {(node.history || []).slice(-10).map((h, i) => (
+                                        <Circle 
+                                            key={i}
+                                            cx={20 + ((h.satisfaction || 0) / 100) * 160}
+                                            cy={160 - (20 + ((h.energyDrain || 0) / 100) * 120)}
+                                            r={i === (node.history?.length || 0) - 1 ? 5 : 3}
+                                            fill={i === (node.history?.length || 0) - 1 ? colors.accent : colors.primary}
+                                            opacity={0.6}
+                                        />
+                                    ))}
+                                </Svg>
+                            </View>
+                            <Text style={styles.topographyDesc}>
+                                {dynamicCharacter ? `현재 이 관계는 '${dynamicCharacter.label}' 기후에 머물러 있습니다. ${dynamicCharacter.desc}.` : '교류 데이터가 쌓이면 정밀한 기후 분석이 제공됩니다.'}
+                            </Text>
                         </View>
                     </View>
 
                     {/* 🕵️ Climate Trend Observation (v1.1) */}
                     {climateTrend && (
                         <View style={styles.section}>
-                        <View style={[styles.graphCard, { backgroundColor: colors.white, paddingVertical: 20 }]}>
-                            {node.interactions && node.interactions.length >= 2 || (climateTrend as any)?.type === 'TOURNAMENT' ? (
-                                <>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                                        <Activity size={18} color={colors.accent} />
-                                        <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.primary }]}>기후 변화 목격 (Observation)</Text>
-                                    </View>
-                                    <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 22, opacity: 0.8 }}>
-                                        {(climateTrend as any)?.type === 'TOURNAMENT' ? (
-                                            (climateTrend as any).message
-                                        ) : (
-                                            <>
-                                                {climateTrend.satTrend === 'up' 
-                                                    ? `최근 교류의 만족도가 이전보다 ${climateTrend.satDiff}% 상승했습니다. 정서적으로 더 깊게 충전되고 있는 기류가 보입니다.`
-                                                    : climateTrend.satTrend === 'down'
-                                                        ? `최근 만족도가 ${climateTrend.satDiff}% 하락하는 추세입니다. 관계 기후가 조금씩 건조해지고 있음을 목격합니다.`
-                                                        : `관계의 만족도가 일정한 수준을 유지하며 안정적인 기류를 형성하고 있습니다.`}
-                                                {'\n'}
-                                                {climateTrend.drainTrend === 'up'
-                                                    ? `주의: 정서적 소모량이 ${climateTrend.drainDiff}% 증가했습니다. 현재 시스템이 과부하 상태로 이동하고 있을 가능성이 있습니다.`
-                                                    : climateTrend.drainTrend === 'down'
-                                                        ? `긍정적 변화: 소모량이 ${climateTrend.drainDiff}% 감소했습니다. 상호작용의 효율이 개선되고 있는 지점입니다.`
-                                                        : `에너지 소모 패턴에 큰 변화 없이 일정한 궤도를 유지 중입니다.`}
-                                            </>
-                                        )}
-                                    </Text>
-                                </>
-                            ) : (
-                                <View style={{ alignItems: 'center', padding: 10 }}>
-                                    <Zap size={24} color={colors.accent} opacity={0.1} style={{ marginBottom: 8 }} />
-                                    <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.5, textAlign: 'center' }}>
-                                        데이터 분석을 위한 관측 정보가 부족합니다.{"\n"}더 많은 체크인을 기록해 주세요.
-                                    </Text>
+                            <View style={[styles.graphCard, { backgroundColor: colors.white, paddingVertical: 20 }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                    <Activity size={18} color={colors.accent} />
+                                    <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.primary }]}>기후 변화 목격 (Observation)</Text>
                                 </View>
-                            )}
-                        </View>
+                                <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 22, opacity: 0.8 }}>
+                                    {climateTrend.satTrend === 'up' 
+                                        ? `최근 교류의 만족도가 이전보다 ${climateTrend.satDiff}% 상승했습니다. 정서적으로 더 깊게 충전되고 있는 기류가 보입니다.`
+                                        : climateTrend.satTrend === 'down'
+                                            ? `최근 만족도가 ${climateTrend.satDiff}% 하락하는 추세입니다. 관계 기후가 조금씩 건조해지고 있음을 목격합니다.`
+                                            : `관계의 만족도가 일정한 수준을 유지하며 안정적인 기류를 형성하고 있습니다.`}
+                                    {'\n'}
+                                    {climateTrend.drainTrend === 'up'
+                                        ? `주의: 정서적 소모량이 ${climateTrend.drainDiff}% 증가했습니다. 현재 시스템이 과부하 상태로 이동하고 있을 가능성이 있습니다.`
+                                        : climateTrend.drainTrend === 'down'
+                                            ? `긍정적 변화: 소모량이 ${climateTrend.drainDiff}% 감소했습니다. 상호작용의 효율이 개선되고 있는 지점입니다.`
+                                            : `에너지 소모 패턴에 큰 변화 없이 일정한 궤도를 유지 중입니다.`}
+                                </Text>
+                            </View>
                         </View>
                     )}
 
@@ -848,57 +745,23 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         <View style={[styles.timelineCard, { backgroundColor: colors.white + '99' }]}>
                             <View style={[styles.timelineTrack, { backgroundColor: colors.primary + '1A' }]} />
 
-                            {node.history && node.history.length > 0 ? (
-                                [...node.history]
+                            {safeHistory.length > 0 ? (
+                                [...safeHistory]
                                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                     .slice(0, 5)
                                     .map((item, idx) => (
                                         <TouchableOpacity 
                                             key={idx} 
                                             style={[styles.timelineItem, { marginBottom: 16 }]}
-                                            onPress={() => {
-                                            const title = item.title || '';
-                                            // 1. 수정 가능한 체크인 데이터 여부 확인
-                                            const isSystemLog = title.includes('초기') || 
-                                                               title.includes('등록') || 
-                                                               title.includes('추가') || 
-                                                               title.includes('반영') || 
-                                                               title.includes('진단') || 
-                                                               title.includes('재설정') ||
-                                                               title.includes('조율') ||
-                                                               title.includes('업데이트');
-                                            
-                                            // 시스템 로그가 아닌 경우에만 수정 팝업 오픈
-                                            if (!isSystemLog) {
-                                                setRelationshipLogModalOpen(true, relationshipId, item.id);
-                                            }
-                                        }}
+                                            onPress={() => setRelationshipLogModalOpen(true, relationshipId, item.id)}
                                         >
                                             {(() => {
-                                                const title = item.title || '';
                                                 const closeness = (item as any).closeness ?? item.temperature ?? 0;
-                                                
-                                                // 2. 수치(%) 표시 여부 결정 (체크인 또는 조율 결과인 경우만 표시)
-                                                const isTuning = title.includes('조율') || title.includes('반영');
-                                                const isInitialOrSystem = title.includes('초기') || 
-                                                                         title.includes('등록') || 
-                                                                         title.includes('추가') || 
-                                                                         title.includes('진단') || 
-                                                                         title.includes('재설정') ||
-                                                                         title.includes('업데이트');
-                                                
-                                                // 조율이나 체크인이 아닌 순수 시스템 로그는 수치 미표시
-                                                const showPercentage = !isInitialOrSystem;
-
                                                 return (
                                                     <>
                                                         <View style={[styles.timelineDot, { backgroundColor: closeness >= 60 ? colors.accent : colors.primary, borderColor: colors.white }]} />
                                                         <Text style={[styles.timelineTime, { color: colors.primary, opacity: 0.5 }]}>
-                                                            {item.date}   {showPercentage && (
-                                                                <Text style={{ color: colors.accent, fontWeight: '800', opacity: 1 }}>
-                                                                    {closeness >= 80 ? '🔥' : closeness >= 60 ? '☀️' : closeness >= 40 ? '☁️' : '❄️'} {Math.round(closeness)}%
-                                                                </Text>
-                                                            )}
+                                                            {item.date}   <Text style={{ color: colors.accent, fontWeight: '800', opacity: 1 }}>{closeness >= 80 ? '🔥' : closeness >= 60 ? '☀️' : closeness >= 40 ? '☁️' : '❄️'} {Math.round(closeness)}%</Text>
                                                         </Text>
                                                     </>
                                                 );
