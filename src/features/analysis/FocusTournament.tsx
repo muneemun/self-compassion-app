@@ -9,6 +9,7 @@ import {
     Image,
     Easing,
     ScrollView,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Pause, Heart, ChevronRight, ChevronLeft, Brain, Shield, Zap, Sparkles, TrendingUp, UserCheck, MessageCircle, Trophy, Crown, Medal, History, Users, HeartPulse, AlertTriangle, CloudRain } from 'lucide-react-native';

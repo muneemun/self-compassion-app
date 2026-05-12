@@ -44,7 +44,7 @@ interface RelationshipTuningDashboardProps {
 
 export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardProps> = ({ onBack, onSelectNode, onGoToReport, onViewDetailedMap }) => {
     const colors = useColors();
-    const { relationships, updateDiagnosisResult } = useRelationshipStore();
+    const { relationships, updateAnalysisResult } = useRelationshipStore();
     const setSelfTimeModalOpen = useAppStore(state => state.setSelfTimeModalOpen);
 
     // 🕹️ Selection State for Manual Tuning
@@ -1243,7 +1243,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                         const currentSat = node.metrics?.satisfaction || 50;
                                         const currentDrain = node.metrics?.energyDrain || 50;
 
-                                        updateDiagnosisResult(id, {
+                                        updateAnalysisResult(id, {
                                             temperature: Math.max(0, Math.min(100, currentTemp + weight)),
                                             satisfaction: Math.max(0, Math.min(100, currentSat + satDelta)),
                                             energyDrain: Math.max(0, Math.min(100, currentDrain + drainDelta)),

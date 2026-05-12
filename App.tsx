@@ -208,8 +208,8 @@ function App() {
                       }}
                       onViewReport={() => setIsViewingReport(true)}
                       onComplete={(result) => {
-                        // 진단 완료 시 실제 프로필 추가 후 → 맵으로 복귀
                         if (pendingRelationship) {
+                          // 진단 완료 시 실제 프로필 추가 후 → 맵으로 복귀
                           const newId = addRelationship(
                             pendingRelationship.name,
                             pendingRelationship.type as any,
@@ -230,6 +230,13 @@ function App() {
                           setSelectedNodeId(null);
                           setIsDiagnosing(false);
                           setIsAddingRelationship(false);
+                        } else if (result?.zone && selectedNodeId) {
+                          // ✅ 기존 관계 오빗존 재설정 완료 처리
+                          updateAnalysisResult(selectedNodeId, {
+                            zone: result.zone,
+                            event: '오빗존 재설정'
+                          });
+                          setIsDiagnosing(false);
                         }
                       }}
                     />
