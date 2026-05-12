@@ -233,7 +233,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         </View>
     );
 
-    const renderEnergyDistribution = () => {
+    const renderEnergyChart = () => {
         const radius = 80;
         const innerGuideRadius = 60;
         const circumference = 2 * Math.PI * radius;
@@ -245,7 +245,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             <View style={styles.chartSection}>
                 <View style={styles.sectionHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>마음 에너지 점유율</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>관계 에너지 분포</Text>
                         <TouchableOpacity onPress={() => setActivePopup('energy')}>
                             <Info size={16} color={colors.primary} opacity={0.4} />
                         </TouchableOpacity>
@@ -253,6 +253,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                 </View>
 
                 <View style={styles.chartContainer}>
+                    {/* SVG와 텍스트를 감싸는 래퍼 뷰 */}
                     <View style={styles.chartWrapper}>
                         <Svg width={radius * 2.5} height={radius * 2.5} viewBox={`0 0 ${radius * 2.5} ${radius * 2.5}`}>
                             <Defs>
@@ -274,6 +275,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                                 strokeOpacity="0.3"
                             />
 
+                            {/* Zone Chart Rendering */}
                             {(() => {
                                 let cumulativeActual = 0;
                                 let cumulativeTarget = 0;
@@ -308,6 +310,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
 
                                 return (
                                     <>
+                                        {/* Layer 1: Base Chart (All Zones) */}
                                         {chartSegments.map((segment) => (
                                             <React.Fragment key={segment.key}>
                                                 <Circle
@@ -337,6 +340,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                                             </React.Fragment>
                                         ))}
 
+                                        {/* Layer 2: Highlight Overlay (Selected Zone Only) */}
                                         {(() => {
                                             const selectedSegment = chartSegments.find(s => s.key === selectedZone);
                                             if (!selectedSegment) return null;
@@ -366,12 +370,12 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                                 {energyData[selectedZone]}%
                             </Text>
                             {(() => {
-                                const val = energyData[selectedZone];
-                                const { targetMin, targetMax } = ZONE_INFO[selectedZone];
-                                let label = '균형';
-                                let statusColor = '#4A5D4E';
-                                if (val < targetMin) { label = '결핍'; statusColor = '#90A4AE'; }
-                                else if (val > targetMax) { label = '편중'; statusColor = '#D98B73'; }
+                                const count = zoneCounts[selectedZone];
+                                const { capacity, minCapacity } = ZONE_INFO[selectedZone];
+                                let label = '건강';
+                                let statusColor = colors.accent;
+                                if (count < minCapacity) { label = '부족'; statusColor = '#90A4AE'; }
+                                else if (count > capacity) { label = '초과'; statusColor = '#D98B73'; }
                                 return (
                                     <Text style={[styles.chartStatus, { color: statusColor }]}>{label}</Text>
                                 );
@@ -380,103 +384,94 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                     </View>
                     {renderLegend()}
                 </View>
-            </View>
-        );
-    };
 
-    const renderNetworkDensity = () => {
-        const count = zoneCounts[selectedZone];
-        const { capacity, minCapacity, targetMin, targetMax } = ZONE_INFO[selectedZone];
-        const val = energyData[selectedZone];
-        
-        // Gauge percentage calculations (maxing out at 150% of capacity for visual overfill)
-        const gaugeMax = capacity * 1.5;
-        const fillPercentage = gaugeMax > 0 ? Math.min(100, (count / gaugeMax) * 100) : 0;
-        const capacityPercentage = gaugeMax > 0 ? (capacity / gaugeMax) * 100 : 0;
-
-        return (
-            <View style={[styles.chartSection, { marginTop: 8 }]}>
-                <View style={styles.sectionHeader}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>궤도 밀집도 점검</Text>
-                    </View>
-                </View>
-                
+                {/* 🎨 Improved Performance Gauge UI */}
                 <View style={[styles.performanceGaugeContainer, { backgroundColor: colors.white }]}>
                     <View style={styles.gaugeHeaderRow}>
                         <View>
                             <Text style={[styles.gaugeTitle, { color: colors.primary }]}>{ZONE_INFO[selectedZone].name}</Text>
                             <Text style={[styles.gaugeSubTitle, { color: colors.primary, opacity: 0.5 }]}>
-                                현재 {count}명 (권장 {ZONE_INFO[selectedZone].networkSizeLabel})
+                                현재 {zoneCounts[selectedZone]}명 (권장 {ZONE_INFO[selectedZone].networkSizeLabel})
                             </Text>
                         </View>
                         <View style={styles.gaugeStatusBadge}>
-                            {count < minCapacity ? <><AlertCircle size={14} color="#90A4AE" /><Text style={{ color: '#90A4AE', fontSize: 12, fontWeight: '800', marginLeft: 4 }}>인원 부족</Text></> :
-                             count > capacity ? <><AlertCircle size={14} color="#D98B73" /><Text style={{ color: '#D98B73', fontSize: 12, fontWeight: '800', marginLeft: 4 }}>초과 밀집</Text></> :
-                             <><CheckCircle2 size={14} color={colors.accent} /><Text style={{ color: colors.accent, fontSize: 12, fontWeight: '800', marginLeft: 4 }}>안정적 밀도</Text></>}
+                            {(() => {
+                                const count = zoneCounts[selectedZone];
+                                const { capacity, minCapacity } = ZONE_INFO[selectedZone];
+                                if (count < minCapacity) return <><AlertCircle size={14} color="#90A4AE" /><Text style={{ color: '#90A4AE', fontSize: 12, fontWeight: '800', marginLeft: 4 }}>인원 부족</Text></>;
+                                if (count > capacity) return <><AlertCircle size={14} color="#D98B73" /><Text style={{ color: '#D98B73', fontSize: 12, fontWeight: '800', marginLeft: 4 }}>초과 밀집</Text></>;
+                                return <><CheckCircle2 size={14} color={colors.accent} /><Text style={{ color: colors.accent, fontSize: 12, fontWeight: '800', marginLeft: 4 }}>안정적 밀도</Text></>;
+                            })()}
                         </View>
                     </View>
 
                     {/* Gauge Visual Area */}
                     <View style={styles.gaugeVisualArea}>
-                        {/* TARGET Value Marker */}
+                        {/* TARGET Value Marker (Bubble now points to IDEAL) */}
                         <View style={styles.actualPointerWrapper}>
-                            <View style={[styles.actualPointer, { left: `${capacityPercentage}%`, backgroundColor: '#54595E' }]}>
-                                <Text style={styles.actualPointerText} numberOfLines={1}>수용량 {capacity}명</Text>
+                            <View style={[styles.actualPointer, { left: `${ZONE_INFO[selectedZone].targetIdeal}%`, backgroundColor: '#54595E' }]}>
+                                <Text style={styles.actualPointerText} numberOfLines={1}>권장 {ZONE_INFO[selectedZone].targetIdeal}%</Text>
                                 <View style={[styles.pointerArrow, { borderTopColor: '#54595E' }]} />
                             </View>
                         </View>
 
                         {/* Track & Shading */}
                         <View style={[styles.trackBase, { backgroundColor: colors.primary + '0A' }]}>
-                            {/* ACTUAL FILL BAR */}
+                            {/* ACTUAL FILL BAR (Graph Line) */}
                             <View
                                 style={{
                                     position: 'absolute',
-                                    top: 0, left: 0, bottom: 0,
-                                    width: `${fillPercentage}%`,
-                                    backgroundColor: count > capacity ? '#D98B73' : ZONE_INFO[selectedZone].color,
+                                    top: 0,
+                                    left: 0,
+                                    bottom: 0,
+                                    width: `${Math.min(100, energyData[selectedZone])}%`,
+                                    backgroundColor: ZONE_INFO[selectedZone].color,
                                     borderRadius: 6,
                                     zIndex: 5
                                 }}
                             />
 
+                            {/* Recommended Range Guidelines (Lines) */}
+                            <View style={{ position: 'absolute', top: 0, bottom: 0, left: `${ZONE_INFO[selectedZone].targetMin}%`, width: 1, backgroundColor: colors.primary, opacity: 0.1, zIndex: 10 }} />
+                            <View style={{ position: 'absolute', top: 0, bottom: 0, left: `${ZONE_INFO[selectedZone].targetMax}%`, width: 1, backgroundColor: colors.primary, opacity: 0.1, zIndex: 10 }} />
+
                             {/* Ideal Target Center Line */}
-                            <View style={{ position: 'absolute', top: 0, bottom: 0, left: `${capacityPercentage}%`, width: 2, backgroundColor: '#54595E', zIndex: 11 }} />
+                            <View style={{ position: 'absolute', top: 0, bottom: 0, left: `${ZONE_INFO[selectedZone].targetIdeal}%`, width: 2, backgroundColor: '#54595E', zIndex: 11 }} />
                         </View>
 
-                        {/* Labels */}
+                        {/* Labels (Bottom) */}
                         <View style={styles.gaugeXAxis}>
-                            <View style={{ flex: 1 }}><Text style={styles.axisLabel}>현재 인원 {count}명</Text></View>
-                            <Text style={styles.axisLabel}>Max</Text>
+                            <View style={{ flex: 1 }}><Text style={styles.axisLabel}>현재 비중 {energyData[selectedZone]}%</Text></View>
+                            <Text style={styles.axisLabel}>100%</Text>
                         </View>
                     </View>
 
-                    {/* Cross-Analysis Insight Nudge */}
-                    {(() => {
-                        let message = '';
-                        if (count <= capacity && val > targetMax) {
-                            message = '⚠️ 소수의 사람에게 마음을 온전히 기대고 있네요. 관계가 깊은 것은 좋지만, 지나친 의존을 주의하세요.';
-                        } else if (count > capacity && val <= targetMax) {
-                            message = '⚠️ 주변에 사람은 붐비는데, 정작 깊게 에너지를 나누는 느낌은 아니에요. 얕은 관계에서 오는 피로감을 점검해보세요.';
-                        } else if (count > capacity && val > targetMax) {
-                            message = '🚨 많은 사람들에게 너무 많은 에너지를 쏟고 있어 심각한 번아웃이 우려됩니다. 휴식이 필요합니다.';
-                        } else if (count < minCapacity && val < targetMin) {
-                            message = '⚠️ 고립감이 커질 수 있습니다. 조심스럽게 주변과 작은 교류를 시작해보세요.';
-                        } else if (count <= capacity && val < targetMin) {
-                            message = '⚠️ 인원수는 안정적이나, 교류의 깊이가 부족합니다. 좀 더 마음을 열고 대화해보세요.';
-                        } else {
-                            message = '✨ 안정적인 인원수와 건강한 에너지 흐름을 유지하고 있습니다. 완벽한 궤도 비행 중이에요!';
-                        }
-                
-                        return (
-                            <View style={[styles.nudgeBox, { backgroundColor: colors.background }]}>
+                    <View style={[styles.nudgeBox, { backgroundColor: colors.background }]}>
+                        {(() => {
+                            const count = zoneCounts[selectedZone];
+                            const { capacity, minCapacity, targetMin, targetMax } = ZONE_INFO[selectedZone];
+                            const val = energyData[selectedZone];
+                            let message = '';
+                            if (count <= capacity && val > targetMax) {
+                                message = '⚠️ 소수의 사람에게 에너지가 집중되어 있습니다. 지나친 의존을 주의하세요.';
+                            } else if (count > capacity && val <= targetMax) {
+                                message = '⚠️ 사람 수는 많은데, 깊게 교류하는 에너지는 적습니다. 얕은 관계에서 오는 피로감을 점검해보세요.';
+                            } else if (count > capacity && val > targetMax) {
+                                message = '🚨 수용 한도 이상의 사람들에게 너무 많은 에너지를 쏟고 있어 번아웃이 우려됩니다.';
+                            } else if (count < minCapacity && val < targetMin) {
+                                message = '⚠️ 고립감이 커질 수 있습니다. 아주 조심스럽게 주변과 작은 교류를 시작해보세요.';
+                            } else if (count <= capacity && val < targetMin) {
+                                message = '⚠️ 인원수는 안정적이나, 교류하는 에너지가 부족합니다. 조금 더 마음을 열어보는 건 어떨까요?';
+                            } else {
+                                message = '✨ 안정적인 인원 밀도와 건강한 에너지 흐름을 함께 유지하고 있습니다.';
+                            }
+                            return (
                                 <Text style={[styles.nudgeText, { color: colors.primary }]}>{message}</Text>
-                            </View>
-                        );
-                    })()}
+                            );
+                        })()}
+                    </View>
                 </View>
-            </View>
+            </View >
         );
     };
 
@@ -503,7 +498,15 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                 <View style={styles.insightBox}>
                     <Zap size={16} color={colors.accent} />
                     <Text style={[styles.insightText, { color: colors.primary }]}>
-                        {zoneCounts[selectedZone] > ZONE_INFO[selectedZone].capacity ? ZONE_INFO[selectedZone].over : zoneCounts[selectedZone] < ZONE_INFO[selectedZone].minCapacity ? ZONE_INFO[selectedZone].under : '현재 매우 안정적인 인원 밀도를 유지하고 있습니다.'}
+                        {(() => {
+                            const count = zoneCounts[selectedZone];
+                            const val = energyData[selectedZone];
+                            const { capacity, minCapacity, targetMin, targetMax, over, under } = ZONE_INFO[selectedZone];
+                            
+                            if (count > capacity || val > targetMax) return over;
+                            if (count < minCapacity || val < targetMin) return under;
+                            return '현재 안정적인 인원 밀도와 균형 잡힌 에너지를 유지하고 있습니다.';
+                        })()}
                     </Text>
                 </View>
             </View>
@@ -715,8 +718,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
 
                     {renderTrendSection()}
 
-                    {renderEnergyDistribution()}
-                    {renderNetworkDensity()}
+                    {renderEnergyChart()}
                     {renderEnergyHealthList()}
 
 
