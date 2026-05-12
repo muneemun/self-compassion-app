@@ -253,19 +253,29 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
 
                     <View style={styles.duelArea}>
                         <View style={styles.cardsGrid}>
-                            {[leftParticipant, rightParticipant].map((p, i) => (
-                                <AnimatedTouchableOpacity
-                                    key={p.id}
-                                    style={[styles.card, { backgroundColor: 'white' }]}
-                                    onPress={() => handleSelect(p, i === 0 ? 'left' : 'right')}
-                                >
-                                    <View style={styles.avatarContainer}>
-                                        <Text style={{ fontSize: 32, fontWeight: '800', color: colors.primary }}>{p.name.charAt(0)}</Text>
-                                    </View>
-                                    <Text style={styles.name}>{p.name}</Text>
-                                    <Text style={styles.role}>{p.role}</Text>
-                                </AnimatedTouchableOpacity>
-                            ))}
+                            {[leftParticipant, rightParticipant].map((p, i) => {
+                                const zoneColor = p.zone === 1 ? '#FFB74D' : p.zone === 2 ? '#D98B73' : p.zone === 3 ? '#4A5D4E' : p.zone === 4 ? '#90A4AE' : '#D1D5DB';
+                                return (
+                                    <AnimatedTouchableOpacity
+                                        key={p.id}
+                                        style={[styles.card, { backgroundColor: 'white', borderColor: zoneColor + '40', borderWidth: 1 }]}
+                                        onPress={() => handleSelect(p, i === 0 ? 'left' : 'right')}
+                                    >
+                                        <View style={[styles.zoneBadge, { backgroundColor: zoneColor }]}>
+                                            <Text style={styles.zoneBadgeText}>Zone {p.zone}</Text>
+                                        </View>
+                                        <View style={[styles.avatarContainer, { borderColor: zoneColor, borderWidth: 3, padding: 2 }]}>
+                                            {p.image ? (
+                                                <Image source={{ uri: p.image }} style={styles.avatarImage} />
+                                            ) : (
+                                                <Text style={{ fontSize: 32, fontWeight: '800', color: colors.primary }}>{p.name.charAt(0)}</Text>
+                                            )}
+                                        </View>
+                                        <Text style={styles.name}>{p.name}</Text>
+                                        <Text style={styles.role}>{p.role}</Text>
+                                    </AnimatedTouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
                 </SafeAreaView>
@@ -288,8 +298,11 @@ const styles = StyleSheet.create({
     question: { fontSize: 24, fontWeight: '900', textAlign: 'center' },
     duelArea: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
     cardsGrid: { flexDirection: 'row', gap: 16 },
-    card: { flex: 1, borderRadius: 32, padding: 24, alignItems: 'center', elevation: 4, shadowOpacity: 0.1 },
-    avatarContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+    card: { flex: 1, borderRadius: 32, padding: 24, alignItems: 'center', elevation: 4, shadowOpacity: 0.1, position: 'relative' },
+    avatarContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center', marginBottom: 16, overflow: 'hidden' },
+    avatarImage: { width: '100%', height: '100%', borderRadius: 40 },
     name: { fontSize: 18, fontWeight: '900', marginBottom: 4 },
     role: { fontSize: 13, opacity: 0.6 },
+    zoneBadge: { position: 'absolute', top: 16, right: 16, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+    zoneBadgeText: { color: 'white', fontSize: 10, fontWeight: '800' },
 });
