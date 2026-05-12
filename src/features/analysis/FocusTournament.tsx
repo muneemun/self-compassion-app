@@ -105,10 +105,10 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
 
     const getRoundTitle = () => {
         const count = roundParticipants.length;
-        if (count === 2) return "Final";
-        if (count === 3 || count === 4) return "Semi-final";
-        if (count >= 5 && count <= 8) return "Quarter-final";
-        return `Round of ${count}`;
+        if (count === 2) return "결승전";
+        if (count === 3 || count === 4) return "준결승전";
+        if (count >= 5 && count <= 8) return "8강전";
+        return `${count}강전`;
     };
 
     const progress = totalMatches > 0 ? (completedMatches / totalMatches) * 100 : 0;
@@ -171,10 +171,16 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
     const analyzeResult = (finalWinners: RelationshipNode[]) => {
         if (entryLens === 'Negative') {
             setLeanType('Boundaries');
-            setInsightText('You chose to build boundaries among your most draining relationships.');
+            setInsightText('심리적 경계 설정과 에너지 관리가 가장 시급하게 필요한 관계들을 파악했습니다.');
+        } else if (entryLens === 'Positive') {
+            setLeanType('Growth');
+            setInsightText('당신의 삶에 긍정적인 에너지를 불어넣는 소중한 비타민 같은 관계들을 확인했습니다.');
+        } else if (entryLens === 'Frequency') {
+            setLeanType('Vitality');
+            setInsightText('자주 만나는 관계들 속에서 당신에게 가장 유의미한 영향을 주는 인물들을 확인했습니다.');
         } else {
             setLeanType('Harmony');
-            setInsightText('You found a balanced harmony across your social network.');
+            setInsightText('당신의 정서적 안정감을 높여주는 핵심 인연들을 확인했습니다.');
         }
     };
 
@@ -187,7 +193,7 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
                 <SafeAreaView style={{ flex: 1 }}>
                     <ScrollView contentContainerStyle={{ padding: 24 }}>
                         <Text style={{ fontSize: 24, fontWeight: '900', color: colors.primary, textAlign: 'center' }}>
-                            {isNegative ? "Detox Ranking" : "Tuning Result"}
+                            {entryLens === 'Negative' ? "에너지 디톡스 우선순위" : entryLens === 'Positive' ? "나의 비타민 랭킹" : entryLens === 'Frequency' ? "일상의 영향력 랭킹" : "관계 균형 조율 결과"}
                         </Text>
                         <View style={{ alignItems: 'center', marginTop: 32 }}>
                             <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: colors.primary + '10', alignItems: 'center', justifyContent: 'center' }}>
@@ -197,17 +203,17 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
                             <Text style={{ color: colors.primary, opacity: 0.6 }}>{topWinner.role}</Text>
                         </View>
                         <View style={{ marginTop: 40, backgroundColor: 'white', padding: 20, borderRadius: 24 }}>
-                            <Text style={{ fontWeight: '700', marginBottom: 8 }}>Insight</Text>
+                            <Text style={{ fontWeight: '700', marginBottom: 8 }}>조율 인사이트</Text>
                             <Text style={{ lineHeight: 20 }}>{insightText}</Text>
                         </View>
                         <TouchableOpacity
                             style={{ backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 20, alignItems: 'center', marginTop: 40 }}
                             onPress={() => onComplete(winners.map(w => w.id))}
                         >
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Apply to Orbit</Text>
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>궤도에 반영하기</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={{ marginTop: 16, alignItems: 'center' }} onPress={onClose}>
-                            <Text style={{ color: colors.primary, opacity: 0.5 }}>Exit without saving</Text>
+                            <Text style={{ color: colors.primary, opacity: 0.5 }}>저장하지 않고 나가기</Text>
                         </TouchableOpacity>
                     </ScrollView>
                 </SafeAreaView>
@@ -225,7 +231,7 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
                         </TouchableOpacity>
                         <View style={styles.pauseBadge}>
                             <Pause size={14} color={colors.primary} />
-                            <Text style={styles.pauseText}>Pause</Text>
+                            <Text style={styles.pauseText}>일시정지</Text>
                         </View>
                     </View>
 
@@ -238,7 +244,10 @@ export const FocusTournament: React.FC<FocusTournamentProps> = ({
 
                     <View style={styles.questionSection}>
                         <Text style={[styles.question, { color: colors.primary }]}>
-                            {isNegative ? "Who drains your energy more?" : "Who brings you more joy?"}
+                            {entryLens === 'Negative' ? "누구와 함께할 때 에너지가 더 많이 소모되나요?" :
+                             entryLens === 'Positive' ? "누구와 함께할 때 더 큰 에너지를 얻나요?" :
+                             entryLens === 'Frequency' ? "누구와의 만남이 일상에 더 큰 영향을 미치나요?" :
+                             "누구와 함께할 때 마음이 더 편안한가요?"}
                         </Text>
                     </View>
 
