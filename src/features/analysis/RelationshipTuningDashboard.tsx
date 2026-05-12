@@ -35,6 +35,8 @@ const ZONE_INFO = {
     zone5: { targetMin: 10, targetMax: 20, targetIdeal: 15 }, // 배경 소음(외부 환경)
 };
 
+const ZONE_CAPACITY: Record<number, number> = { 1: 5, 2: 15, 3: 50, 4: 100, 5: 150 };
+
 interface RelationshipTuningDashboardProps {
     onBack: () => void;
     onSelectNode: (id: string) => void;
@@ -214,23 +216,24 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
         (Object.keys(energyPercents) as Array<keyof typeof energyPercents>).forEach(key => {
             const zoneNum = parseInt(key.replace('zone', ''));
-            const actual = energyPercents[key];
-            const info = ZONE_INFO[key];
+            const count = relationships.filter(r => r.zone === zoneNum).length;
+            const cap = ZONE_CAPACITY[zoneNum];
+            const minCap = zoneNum <= 2 ? 1 : 0;
 
-            if (actual > info.targetMax) {
+            if (count > cap) {
                 imbalancedZones.push({
                     zone: zoneNum,
                     name: zoneNames[zoneNum],
-                    actual,
-                    target: `${info.targetMin}-${info.targetMax}%`,
+                    actual: count,
+                    target: `권장 ${cap}명 이내`,
                     status: 'over'
                 });
-            } else if (actual < info.targetMin) {
+            } else if (count < minCap) {
                 imbalancedZones.push({
                     zone: zoneNum,
                     name: zoneNames[zoneNum],
-                    actual,
-                    target: `${info.targetMin}-${info.targetMax}%`,
+                    actual: count,
+                    target: `최소 ${minCap}명 이상`,
                     status: 'under'
                 });
             }
@@ -690,7 +693,6 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16, marginTop: 16 }}>
                     {[1, 2, 3, 4, 5].map(z => {
                         const count = relationships.filter((r) => r.zone === z).length;
-                        const ZONE_CAPACITY: Record<number, number> = { 1: 5, 2: 15, 3: 50, 4: 100, 5: 150 };
                         const cap = ZONE_CAPACITY[z] || 50;
                         const isOver = count > cap;
                         
@@ -1372,8 +1374,9 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                     const zoneNum = parseInt(key.replace('zone', ''));
                                     const zoneName = ['안전기지', '심리적 우군', '전략적 동행', '사회적 지인', '배경 소음'][zoneNum - 1];
                                     const actual = energyPercents[key];
-                                    const info = ZONE_INFO[key];
-                                    const isImbalanced = actual > info.targetMax || actual < info.targetMin;
+                                    const count = relationships.filter(r => r.zone === zoneNum).length;
+                                    const cap = ZONE_CAPACITY[zoneNum];
+                                    const isImbalanced = count > cap || (zoneNum <= 2 && count < 1);
                                     const statusColor = isImbalanced ? '#D98B73' : '#4A5D4E';
 
                                     return (
@@ -1398,7 +1401,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                                     {Math.round(actual)}%
                                                 </Text>
                                             </View>
-                                            <Text style={styles.zoneTarget}>목표: {info.targetMin}-{info.targetMax}%</Text>
+                                            <Text style={styles.zoneTarget}>권장: {cap}명 이내</Text>
                                         </View>
                                     );
                                 })}
