@@ -111,7 +111,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     </View>
                     <View style={{ alignItems: 'center' }}>
                         <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.6, marginBottom: 4 }}>회복 델타</Text>
-                        <Text style={{ fontSize: 20, fontWeight: '700', color: '#7BA67E' }}>+{selfTimeStats.avgRestorationDelta}</Text>
+                        <Text style={{ fontSize: 20, fontWeight: '700', color: '#7BA67E' }}>+{Math.round(selfTimeStats.avgRestorationDelta)}</Text>
                     </View>
                 </View>
             </View>

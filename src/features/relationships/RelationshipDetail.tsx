@@ -535,7 +535,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             <View style={styles.statHeaderRow}>
                                 <Text style={[styles.statLabel, { color: colors.primary, opacity: 0.4 }]}>안정성</Text>
                             </View>
-                            <Text style={[styles.statValue, { color: colors.primary }]}>{stability}%</Text>
+                            <Text style={[styles.statValue, { color: colors.primary }]}>{Math.round(stability)}%</Text>
                             <View style={[styles.miniStatusBadge, { backgroundColor: getMetricStatus('stability', stability).color + '1A' }]}>
                                 <Text style={[styles.miniStatusText, { color: getMetricStatus('stability', stability).color }]}>
                                     {getMetricStatus('stability', stability).label}
@@ -560,7 +560,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                 </View>
                             </View>
                             <View style={styles.statContentRow}>
-                                <Text style={[styles.statValue, { color: colors.primary }]}>{node.temperature}%</Text>
+                                <Text style={[styles.statValue, { color: colors.primary }]}>{Math.round(node.temperature)}%</Text>
                                 <Heart size={14} color={node.temperature > 80 ? "#FF5252" : "#999"} fill={node.temperature > 80 ? "#FF5252" : "transparent"} />
                             </View>
                             <View style={[styles.miniStatusBadge, { backgroundColor: getMetricStatus('intimacy', node.temperature).color + '1A' }]}>
@@ -593,7 +593,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                 <View>
                                     <Text style={[styles.graphLabel, { color: colors.primary, opacity: 0.6 }]}>현재 긴밀도</Text>
                                     <View style={styles.graphValueRow}>
-                                        <Text style={[styles.graphMainValue, { color: colors.primary }]}>{node.temperature}%</Text>
+                                        <Text style={[styles.graphMainValue, { color: colors.primary }]}>{Math.round(node.temperature)}%</Text>
                                         <View style={styles.trendBadge}>
                                             <Text style={styles.trendText}>{trendText}</Text>
                                         </View>
