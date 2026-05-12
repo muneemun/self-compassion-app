@@ -13,7 +13,7 @@ import {
     Dimensions,
     Alert
 } from 'react-native';
-import { X, Sparkles, Calendar } from 'lucide-react-native';
+import { X, Sparkles, Calendar, Trash2 } from 'lucide-react-native';
 import { useAppStore } from '../../store/useAppStore';
 import { useSelfTimeStore } from '../../store/useSelfTimeStore';
 import { SelfCareCategory, SELF_CARE_CATEGORY_LABELS } from '../../types/selfTime';
@@ -84,6 +84,27 @@ export const SelfTimeCheckInModal = () => {
     const entries = useSelfTimeStore(state => state.entries);
     const addEntry = useSelfTimeStore(state => state.addEntry);
     const updateEntry = useSelfTimeStore(state => state.updateEntry);
+    const deleteEntry = useSelfTimeStore(state => state.deleteEntry);
+
+    const handleDelete = () => {
+        Alert.alert(
+            "기록 삭제",
+            "이 기록을 삭제하시겠습니까?",
+            [
+                { text: "취소", style: "cancel" },
+                { 
+                    text: "삭제", 
+                    style: "destructive",
+                    onPress: () => {
+                        if (editingLogId) {
+                            deleteEntry(editingLogId);
+                            handleClose();
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const [category, setCategory] = useState<SelfCareCategory | null>(null);
     const [activityName, setActivityName] = useState('');
@@ -332,13 +353,20 @@ export const SelfTimeCheckInModal = () => {
                     <View style={styles.dragHandle} />
 
                     <View style={styles.header}>
-                        <View>
+                        <View style={{ flex: 1 }}>
                             <Text style={styles.title}>🌿 {editingLogId ? '기록 수정' : '나와의 시간 기록'}</Text>
                             <Text style={styles.subtitle}>온전히 나를 위해 쓴 에너지를 채워주세요</Text>
                         </View>
-                        <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
-                            <X size={24} color={THEME.textMuted} />
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            {editingLogId && (
+                                <TouchableOpacity style={styles.closeBtn} onPress={handleDelete}>
+                                    <Trash2 size={20} color={THEME.secondary} />
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
+                                <X size={24} color={THEME.textMuted} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>

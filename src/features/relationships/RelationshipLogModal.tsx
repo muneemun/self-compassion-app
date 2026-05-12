@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Dimensions, Animated, PanResponder, ScrollView } from 'react-native';
-import { X, Edit3, Heart, Zap, Calendar } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Dimensions, Animated, PanResponder, ScrollView, Alert } from 'react-native';
+import { X, Edit3, Heart, Zap, Calendar, Trash2 } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { useAppStore } from '../../store/useAppStore';
@@ -58,6 +58,27 @@ export const RelationshipLogModal = () => {
     );
     const addInteraction = useRelationshipStore(state => state.addInteraction);
     const updateInteraction = useRelationshipStore(state => state.updateInteraction);
+    const deleteInteraction = useRelationshipStore(state => state.deleteInteraction);
+
+    const handleDelete = () => {
+        Alert.alert(
+            "기록 삭제",
+            "이 교류 기록을 삭제하시겠습니까?",
+            [
+                { text: "취소", style: "cancel" },
+                { 
+                    text: "삭제", 
+                    style: "destructive",
+                    onPress: () => {
+                        if (editingLogId && currentLogTargetId) {
+                            deleteInteraction(currentLogTargetId, editingLogId);
+                            setRelationshipLogModalOpen(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const [newLog, setNewLog] = useState({ 
         title: '', 
@@ -184,9 +205,16 @@ export const RelationshipLogModal = () => {
                                     {editingLogId ? '교류 기록 수정' : `${node.name}님과의 교류 기록`}
                                 </Text>
                             </View>
-                            <TouchableOpacity onPress={() => setRelationshipLogModalOpen(false)}>
-                                <X size={24} color={colors.primary} opacity={0.5} />
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                {editingLogId && (
+                                    <TouchableOpacity onPress={handleDelete}>
+                                        <Trash2 size={20} color="#D98B73" />
+                                    </TouchableOpacity>
+                                )}
+                                <TouchableOpacity onPress={() => setRelationshipLogModalOpen(false)}>
+                                    <X size={24} color={colors.primary} opacity={0.5} />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <View style={styles.form}>
