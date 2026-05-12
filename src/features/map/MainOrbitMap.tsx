@@ -12,7 +12,8 @@ import {
     TextInput,
     Easing as RNEasing,
     Keyboard,
-    LayoutAnimation
+    LayoutAnimation,
+    BackHandler
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HubLayout } from '../../layouts/BaseLayout';
@@ -1083,6 +1084,23 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
     const [selectedTarget, setSelectedTarget] = useState<RelationshipNode | null>(null);
     const [isActionVisible, setIsActionVisible] = useState(false);
+
+    useEffect(() => {
+        if (!isSearchModalVisible) return;
+        
+        const handleBackPress = () => {
+            if (isActionVisible) {
+                setIsActionVisible(false);
+                setSelectedTarget(null);
+                return true;
+            }
+            setIsSearchModalVisible(false);
+            return true;
+        };
+
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+        return () => backHandler.remove();
+    }, [isSearchModalVisible, isActionVisible]);
 
     // ✨ Sparkle Effect Values (Removed fake sparkles)
     const sparkleAnim = useSharedValue(0);

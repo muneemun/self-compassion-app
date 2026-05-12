@@ -85,6 +85,8 @@ function App() {
   const [initialSetupDone, setInitialSetupDone] = useState(false);
   const hasCompletedOnboarding = useAppStore(state => state.hasCompletedOnboarding);
   const setHasCompletedOnboarding = useAppStore(state => state.setHasCompletedOnboarding);
+  const isRelationshipLogModalOpen = useAppStore(state => state.isRelationshipLogModalOpen);
+  const setRelationshipLogModalOpen = useAppStore(state => state.setRelationshipLogModalOpen);
   // ✅ Reactive subscription — NOT getState() snapshot
   const relationships = useRelationshipStore(state => state.relationships);
   const { addRelationship, updateAnalysisResult, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
@@ -118,6 +120,7 @@ function App() {
   useEffect(() => {
     const handleBackPress = () => {
       // If a modal/detail screen is open, close it
+      if (isRelationshipLogModalOpen) { setRelationshipLogModalOpen(false); return true; }
       if (isDiagnosing) { setIsDiagnosing(false); setPendingRelationship(null); setSelectedNodeId(null); return true; }
       if (isManagingProfile) { setIsManagingProfile(false); return true; }
       if (isViewingReport) { setIsViewingReport(false); return true; }
@@ -132,6 +135,12 @@ function App() {
       if (orbitMapViewState.viewMode === 'list') { 
         setOrbitMapViewState({ viewMode: 'map' }); 
         return true; 
+      }
+
+      // 'insight' 탭(균형 상세 리포트)에서는 'tuning' 탭으로 복귀
+      if (activeTab === 'insight') {
+        setActiveTab('tuning');
+        return true;
       }
 
       // If we are not on the main 'map' tab, go back to 'map'
@@ -155,7 +164,7 @@ function App() {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
     return () => backHandler.remove();
   }, [
-    isDiagnosing, isManagingProfile, isViewingReport, isViewingDetailedMap, 
+    isRelationshipLogModalOpen, isDiagnosing, isManagingProfile, isViewingReport, isViewingDetailedMap, 
     isViewingInteractionHistory, isViewingDataManagement, isViewingProfileEdit, 
     isViewingReminders, isViewingNotifications, isAddingRelationship, 
     selectedNodeId, orbitMapViewState.viewMode, activeTab
