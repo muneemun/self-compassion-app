@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
+import * as Notifications from 'expo-notifications';
 import { useAppStore } from '../store/useAppStore';
 import { NotificationService } from '../utils/notificationService';
 
 export const NotificationManager = () => {
-    const { reminderSettings, notificationSettings } = useAppStore();
+    const { reminderSettings, notificationSettings, setActiveTab, setSelfTimeModalOpen } = useAppStore();
     
     useEffect(() => {
         const initNotifications = async () => {
@@ -18,6 +19,22 @@ export const NotificationManager = () => {
         };
         
         initNotifications();
+
+        // 알림 클릭(응답) 리스너 등록
+        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+            const data = response.notification.request.content.data;
+            
+            if (data.screen === 'Health') {
+                setActiveTab('health');
+            } else if (data.screen === 'Tuning') {
+                setActiveTab('tuning');
+            } else if (data.screen === 'CheckIn') {
+                setActiveTab('map');
+                setSelfTimeModalOpen(true);
+            }
+        });
+
+        return () => subscription.remove();
     }, []);
 
     useEffect(() => {

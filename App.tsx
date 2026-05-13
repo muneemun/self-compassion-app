@@ -60,7 +60,8 @@ const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health'>('map');
+  const activeTab = useAppStore(state => state.activeTab);
+  const setActiveTab = useAppStore(state => state.setActiveTab);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnosisMode, setDiagnosisMode] = useState<"ZONE" | "RQS">("ZONE");

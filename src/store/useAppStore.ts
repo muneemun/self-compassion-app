@@ -12,6 +12,10 @@ interface AppState {
     setUserProfile: (profile: any) => void;
     activeZone: number;
     setActiveZone: (zone: number) => void;
+    
+    // 네비게이션 상태 (Deep Link 대응용)
+    activeTab: 'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health';
+    setActiveTab: (tab: AppState['activeTab']) => void;
 
     // 글로벌 '나와의 시간' 체크인 모달 제어
     isSelfTimeModalOpen: boolean;
@@ -68,6 +72,9 @@ export const useAppStore = create<AppState>()(
             setUserProfile: (profile) => set({ userProfile: profile }),
             activeZone: 1,
             setActiveZone: (zone) => set({ activeZone: zone }),
+            
+            activeTab: 'map',
+            setActiveTab: (tab) => set({ activeTab: tab }),
 
             isSelfTimeModalOpen: false,
             setSelfTimeModalOpen: (isOpen) => set({ isSelfTimeModalOpen: isOpen }),
