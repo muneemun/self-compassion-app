@@ -71,7 +71,9 @@ function App() {
   const [isViewingReminders, setIsViewingReminders] = useState(false);
   const [isViewingNotifications, setIsViewingNotifications] = useState(false);
   const [isViewingInteractionHistory, setIsViewingInteractionHistory] = useState(false);
+  const [historyDateRange, setHistoryDateRange] = useState<{start: Date, end: Date} | null>(null);
   const [isViewingDetailedMap, setIsViewingDetailedMap] = useState(false);
+  const [detailedMapDateRange, setDetailedMapDateRange] = useState<{start: Date, end: Date} | null>(null);
   const [enteredFromDetailedMap, setEnteredFromDetailedMap] = useState(false);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [pendingRelationship, setPendingRelationship] = useState<{
@@ -319,7 +321,10 @@ function App() {
                 ) : isViewingNotifications ? (
                   <NotificationSettingsScreen onBack={() => setIsViewingNotifications(false)} />
                 ) : isViewingInteractionHistory ? (
-                  <InteractionHistoryScreen onBack={() => setIsViewingInteractionHistory(false)} />
+                  <InteractionHistoryScreen 
+                    onBack={() => { setIsViewingInteractionHistory(false); setHistoryDateRange(null); }} 
+                    dateRange={historyDateRange}
+                  />
                 ) : isViewingDetailedMap ? (
                   <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF8F4' }}>
                     <View style={COMMON_STYLES.headerContainer}>
@@ -328,15 +333,22 @@ function App() {
                       </TouchableOpacity>
                       <View style={{ alignItems: 'center' }}>
                         <Text style={{ fontSize: 17, fontWeight: '900', color: '#4A5D4E' }}>상세 관계 지형도</Text>
-                        <Text style={{ fontSize: 11, color: '#999', marginTop: 2 }}>확대/축소하여 상세 분석</Text>
+                        <Text style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
+                          {detailedMapDateRange 
+                            ? `${detailedMapDateRange.start.getMonth()+1}월 ${detailedMapDateRange.start.getDate()}일 - ${detailedMapDateRange.end.getMonth()+1}월 ${detailedMapDateRange.end.getDate()}일`
+                            : "확대/축소하여 상세 분석"}
+                        </Text>
                       </View>
                       <View style={{ width: 44 }} />
                     </View>
-                    <ZoomableRelationshipMap onSelectNode={(id) => {
-                      setSelectedNodeId(id);
-                      setIsViewingDetailedMap(false);
-                      setEnteredFromDetailedMap(true);
-                    }} />
+                    <ZoomableRelationshipMap 
+                      dateRange={detailedMapDateRange}
+                      onSelectNode={(id) => {
+                        setSelectedNodeId(id);
+                        setIsViewingDetailedMap(false);
+                        setEnteredFromDetailedMap(true);
+                      }} 
+                    />
                   </SafeAreaView>
                 ) : (
                   <>
@@ -391,11 +403,17 @@ function App() {
                       <View style={activeTab === 'health' ? styles.tabActive : styles.tabHidden}>
                         <SelfHealthReport
                           onBack={() => setActiveTab('map')}
-                          onViewAllHistory={() => setIsViewingInteractionHistory(true)}
+                          onViewAllHistory={(range) => {
+                            setHistoryDateRange(range || null);
+                            setIsViewingInteractionHistory(true);
+                          }}
                           onSelectRelationship={(id) => {
                             setSelectedNodeId(id);
                           }}
-                          onViewDetailedMap={() => setIsViewingDetailedMap(true)}
+                          onViewDetailedMap={(range) => {
+                            setDetailedMapDateRange(range || null);
+                            setIsViewingDetailedMap(true);
+                          }}
                         />
                       </View>
                       <View style={activeTab === 'lab' ? styles.tabActive : styles.tabHidden}>

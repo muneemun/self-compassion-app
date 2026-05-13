@@ -35,7 +35,7 @@ const ZONE_COLORS: Record<number, string> = {
     5: '#D1D5DB'
 };
 
-export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationship, onViewDetailedMap }: { onBack: () => void; onViewAllHistory?: () => void; onSelectRelationship?: (id: string) => void; onViewDetailedMap?: () => void }) => {
+export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationship, onViewDetailedMap }: { onBack: () => void; onViewAllHistory?: (range: {start: Date, end: Date}) => void; onSelectRelationship?: (id: string) => void; onViewDetailedMap?: (range: {start: Date, end: Date}) => void }) => {
     const colors = useColors();
     const textMuted = colors.gray[500];
     const [period, setPeriod] = useState<'주간' | '월간' | '연간'>('주간');
@@ -235,11 +235,17 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
         const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
 
         relationships.forEach((node) => {
-            // [Platformization] Use pure interaction data only
             const interactions = node.interactions || [];
-            if (interactions.length === 0) return;
+            
+            // Filter interactions within the current date range
+            const validInteractions = interactions.filter(interaction => {
+                const iDate = new Date(interaction.createdAt || interaction.date);
+                return iDate >= dateRange.start && iDate <= dateRange.end;
+            });
 
-            const lastInteraction = interactions[interactions.length - 1];
+            if (validInteractions.length === 0) return;
+
+            const lastInteraction = validInteractions[validInteractions.length - 1];
             const sat = lastInteraction.satisfaction ?? 50;
             const drain = lastInteraction.energyDrain ?? 50;
             
@@ -266,7 +272,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         <Text style={{ fontSize: 13, color: '#888', fontWeight: '500', flex: 1 }}>만족도와 에너지 소모에 따른 우리 관계의 위치</Text>
                         {onViewDetailedMap && (
                             <TouchableOpacity 
-                                onPress={onViewDetailedMap}
+                                onPress={() => onViewDetailedMap(dateRange)}
                                 style={{ backgroundColor: THEME.primary + '10', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}
                             >
                                 <Text style={{ fontSize: 11, fontWeight: '800', color: THEME.primary }}>상세 지도</Text>
@@ -556,7 +562,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                 })}
                 <TouchableOpacity
                     style={{ marginTop: 8, alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)' }}
-                    onPress={onViewAllHistory}
+                    onPress={() => onViewAllHistory?.(dateRange)}
                 >
                     <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', opacity: 0.6 }}>전체 활동 기록 보기 ➔</Text>
                 </TouchableOpacity>

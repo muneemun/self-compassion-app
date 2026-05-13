@@ -11,10 +11,11 @@ const { width } = Dimensions.get('window');
 
 interface Props {
     relationshipId?: string; // Optional for Global History
+    dateRange?: { start: Date; end: Date } | null;
     onBack: () => void;
 }
 
-export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBack }) => {
+export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, dateRange, onBack }) => {
     const colors = useColors();
     const relationships = useRelationshipStore(state => state.relationships);
     const selfTimeEntries = useSelfTimeStore(state => state.entries);
@@ -74,6 +75,13 @@ export const InteractionHistoryScreen: React.FC<Props> = ({ relationshipId, onBa
         let combined = [...interactions, ...selfTime].sort((a, b) => {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
+
+        if (dateRange) {
+            combined = combined.filter(h => {
+                const hDate = new Date(h.createdAt);
+                return hDate >= dateRange.start && hDate <= dateRange.end;
+            });
+        }
 
         if (filterType === 'INTERACTION') {
             combined = combined.filter(h => h.type === 'INTERACTION');

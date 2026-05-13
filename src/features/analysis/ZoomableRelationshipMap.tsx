@@ -72,7 +72,7 @@ const resolveCollisions = (nodes: { x: number; y: number; [key: string]: any }[]
     return nodes;
 };
 
-export const ZoomableRelationshipMap: React.FC<{ onClose?: () => void; onSelectNode?: (id: string) => void }> = ({ onClose, onSelectNode }) => {
+export const ZoomableRelationshipMap: React.FC<{ dateRange?: {start: Date, end: Date} | null; onClose?: () => void; onSelectNode?: (id: string) => void }> = ({ dateRange, onClose, onSelectNode }) => {
     const colors = useColors();
     const relationships = useRelationshipStore(state => state.relationships);
 
@@ -143,11 +143,23 @@ export const ZoomableRelationshipMap: React.FC<{ onClose?: () => void; onSelectN
     const points = useMemo(() => {
         const counts = { q1: 0, q2: 0, q3: 0, q4: 0 };
         let data = relationships
-            .filter(node => (node.interactions || []).length > 0)
+            .filter(node => {
+                if (!dateRange) return (node.interactions || []).length > 0;
+                const valid = (node.interactions || []).filter(i => {
+                    const iDate = new Date(i.createdAt || i.date);
+                    return iDate >= dateRange.start && iDate <= dateRange.end;
+                });
+                return valid.length > 0;
+            })
             .map(node => {
-                const logs = node.interactions || [];
-                const lastLog = logs.slice(-1)[0];
+                const logs = dateRange 
+                    ? (node.interactions || []).filter(i => {
+                        const iDate = new Date(i.createdAt || i.date);
+                        return iDate >= dateRange.start && iDate <= dateRange.end;
+                    }) 
+                    : (node.interactions || []);
 
+                const lastLog = logs.slice(-1)[0];
                 const sat = lastLog?.satisfaction ?? 50;
                 const drain = lastLog?.energyDrain ?? 50;
 
@@ -171,7 +183,7 @@ export const ZoomableRelationshipMap: React.FC<{ onClose?: () => void; onSelectN
         data = resolveCollisions(data);
 
         return { data, counts };
-    }, [relationships]);
+    }, [relationships, dateRange]);
 
     // Reset to fit-all view
     const handleResetView = () => {
