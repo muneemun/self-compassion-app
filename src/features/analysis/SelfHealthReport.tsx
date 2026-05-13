@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, SafeAreaView, Image, StatusBar, Platform, Alert } from 'react-native';
 import Svg, { Polygon, Line, Circle, Rect, G, Defs, LinearGradient as SvgLinearGradient, Stop, Path, Text as SvgText } from 'react-native-svg';
-import { ChevronLeft, MoreHorizontal, Calendar, Info, TrendingUp, BatteryFull, CheckCircle2, Download, Edit3, Shield, Zap, Leaf, Activity, X, Heart, History } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, Calendar, Info, TrendingUp, BatteryFull, CheckCircle2, Edit3, Shield, Zap, Leaf, Activity, X, Heart, History } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelfHealthData } from './useSelfHealthData';
 import { useColors } from '../../theme/ColorLockContext';
@@ -749,7 +749,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     <View style={{ height: 100 }} />
                 </View>
             </HubLayout>
-            <TouchableOpacity style={styles.fab}><Download size={20} color="white" /><Text style={styles.fabText}>PDF로 저장</Text></TouchableOpacity>
+
             {infoModal.visible && <View style={StyleSheet.absoluteFill} pointerEvents="box-none">{renderInfoModal()}</View>}
         </View>
     );
@@ -818,8 +818,7 @@ const styles = StyleSheet.create({
     adSourceText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
     adTitle: { fontSize: 16, fontWeight: '800', color: THEME.primary, lineHeight: 22, marginBottom: 4 },
     adSubtitle: { fontSize: 13, color: THEME.textMuted },
-    fab: { position: 'absolute', bottom: 160, right: 24, backgroundColor: THEME.primary, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 30, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
-    fabText: { color: 'white', fontWeight: '700', marginLeft: 8, fontSize: 14 },
+
     popupBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     floatingPopupCard: { width: '100%', maxHeight: '80%', borderRadius: 28, padding: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.15, shadowRadius: 30, elevation: 10 },
     guideHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
