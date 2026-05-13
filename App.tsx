@@ -72,6 +72,7 @@ function App() {
   const [isViewingNotifications, setIsViewingNotifications] = useState(false);
   const [isViewingInteractionHistory, setIsViewingInteractionHistory] = useState(false);
   const [isViewingDetailedMap, setIsViewingDetailedMap] = useState(false);
+  const [enteredFromDetailedMap, setEnteredFromDetailedMap] = useState(false);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [pendingRelationship, setPendingRelationship] = useState<{
     name: string;
@@ -131,7 +132,16 @@ function App() {
       if (isViewingReminders) { setIsViewingReminders(false); return true; }
       if (isViewingNotifications) { setIsViewingNotifications(false); return true; }
       if (isAddingRelationship) { setIsAddingRelationship(false); return true; }
-      if (selectedNodeId) { setSelectedNodeId(null); return true; }
+      if (selectedNodeId) {
+        if (enteredFromDetailedMap) {
+          setSelectedNodeId(null);
+          setIsViewingDetailedMap(true);
+          setEnteredFromDetailedMap(false);
+        } else {
+          setSelectedNodeId(null);
+        }
+        return true;
+      }
       if (orbitMapViewState.viewMode === 'list') { 
         setOrbitMapViewState({ viewMode: 'map' }); 
         return true; 
@@ -167,7 +177,7 @@ function App() {
     isRelationshipLogModalOpen, isDiagnosing, isManagingProfile, isViewingReport, isViewingDetailedMap, 
     isViewingInteractionHistory, isViewingDataManagement, isViewingProfileEdit, 
     isViewingReminders, isViewingNotifications, isAddingRelationship, 
-    selectedNodeId, orbitMapViewState.viewMode, activeTab
+    selectedNodeId, enteredFromDetailedMap, orbitMapViewState.viewMode, activeTab
   ]);
 
   // 온보딩 완료 직후 relationships가 0명이면 1회만 자동으로 인맥 추가 화면 표시
@@ -267,7 +277,13 @@ function App() {
                     <RelationshipDetail
                       relationshipId={selectedNodeId}
                       onBack={() => {
-                        setSelectedNodeId(null);
+                        if (enteredFromDetailedMap) {
+                          setSelectedNodeId(null);
+                          setIsViewingDetailedMap(true);
+                          setEnteredFromDetailedMap(false);
+                        } else {
+                          setSelectedNodeId(null);
+                        }
                         setAutoOpenLog(false);
                       }}
                       onDiagnose={(mode) => {
@@ -319,6 +335,7 @@ function App() {
                     <ZoomableRelationshipMap onSelectNode={(id) => {
                       setSelectedNodeId(id);
                       setIsViewingDetailedMap(false);
+                      setEnteredFromDetailedMap(true);
                     }} />
                   </SafeAreaView>
                 ) : (
