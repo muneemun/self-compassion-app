@@ -1,0 +1,81 @@
+import React, { useEffect } from 'react';
+import { useAppStore } from '../store/useAppStore';
+import { NotificationService } from '../utils/notificationService';
+
+export const NotificationManager = () => {
+    const { reminderSettings, notificationSettings } = useAppStore();
+    
+    useEffect(() => {
+        const initNotifications = async () => {
+            try {
+                const hasPermission = await NotificationService.requestPermissions();
+                if (hasPermission) {
+                    await syncNotifications();
+                }
+            } catch (error) {
+                console.warn('알림 모듈을 초기화할 수 없습니다. 네이티브 빌드가 필요할 수 있습니다:', error);
+            }
+        };
+        
+        initNotifications();
+    }, []);
+
+    useEffect(() => {
+        try {
+            syncNotifications();
+        } catch (error) {
+            // Silently ignore sync errors if module is missing
+        }
+    }, [reminderSettings, notificationSettings]);
+
+    const syncNotifications = async () => {
+        // 1. 기존 알림 모두 삭제
+        await NotificationService.cancelAllNotifications();
+
+        // 2. 오늘 기록 리마인더 (Daily)
+        if (reminderSettings.isDailyEnabled) {
+            const dailyTime = new Date(reminderSettings.dailyTime);
+            await NotificationService.scheduleDailyReminder(
+                dailyTime.getHours(),
+                dailyTime.getMinutes()
+            );
+        }
+
+        // 3. 정기 궤도 점검 (Periodic)
+        if (reminderSettings.isTuningEnabled) {
+            const tuningTime = new Date(reminderSettings.tuningTime);
+            const dayOfWeek = mapAnchorToDayOfWeek(reminderSettings.tuningAnchor);
+            
+            if (dayOfWeek !== -1) {
+                await NotificationService.scheduleTuningReminder(
+                    dayOfWeek,
+                    tuningTime.getHours(),
+                    tuningTime.getMinutes()
+                );
+            }
+        }
+
+        // 4. 분석 리포트 알림 (설정 활성화 시)
+        if (notificationSettings.isSelfReportEnabled || notificationSettings.isOrbitReportEnabled) {
+            await NotificationService.scheduleReportReminder();
+        }
+    };
+
+    const mapAnchorToDayOfWeek = (anchor: string): number => {
+        const map: Record<string, number> = {
+            '일요일': 1,
+            '월요일': 2,
+            '화요일': 3,
+            '수요일': 4,
+            '목요일': 5,
+            '금요일': 6,
+            '토요일': 7,
+            '매월 1일': -1, // 복잡한 주기는 현재 단순화
+            '매월 말일': -1,
+            '마지막 일요일': 1,
+        };
+        return map[anchor] || -1;
+    };
+
+    return null; // UI는 없음
+};

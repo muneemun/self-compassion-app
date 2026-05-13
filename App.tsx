@@ -33,6 +33,7 @@ import { ProfileEditScreen } from './src/features/settings/ProfileEditScreen';
 import { ReminderSettingsScreen } from './src/features/settings/ReminderSettingsScreen';
 import { NotificationSettingsScreen } from './src/features/settings/NotificationSettingsScreen';
 import { SelfTimeCheckInModal } from './src/features/selfcare/SelfTimeCheckInModal';
+import { NotificationManager } from './src/components/NotificationManager';
 
 import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
 
@@ -200,6 +201,7 @@ function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <NotificationManager />
       <SafeAreaProvider>
         <ColorLockProvider>
           <View style={styles.root}>
