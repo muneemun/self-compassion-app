@@ -35,7 +35,7 @@ const ZONE_COLORS: Record<number, string> = {
     5: '#D1D5DB'
 };
 
-export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationship }: { onBack: () => void; onViewAllHistory?: () => void; onSelectRelationship?: (id: string) => void }) => {
+export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationship, onViewDetailedMap }: { onBack: () => void; onViewAllHistory?: () => void; onSelectRelationship?: (id: string) => void; onViewDetailedMap?: () => void }) => {
     const colors = useColors();
     const textMuted = colors.gray[500];
     const [period, setPeriod] = useState<'주간' | '월간' | '연간'>('주간');
@@ -122,12 +122,21 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
         const { interactionCounts, selfTimeCounts, avgTemps, labels } = stats;
         const CHART_HEIGHT = 160;
 
+        // Dynamic bar width to prevent overflow
+        const barWidth = period === '월간' ? 6 : period === '연간' ? 12 : 16;
+        // The screen has paddingHorizontal:24 (48 total) and card has padding:24 (48 total). 
+        // So the inner width of the card is width - 96.
+        const containerWidth = width - 96;
+        const chartPaddingH = 20;
+        const actualChartAreaWidth = containerWidth - (chartPaddingH * 2);
+
         // Path calculation for Temperature Line - filter out nulls to prevent invalid paths
         const linePoints = avgTemps
             .map((temp: number | null, i: number) => {
                 if (temp === null) return null;
-                const chartAreaWidth = width - 48 - 40;
-                const x = (i * chartAreaWidth / (labels.length > 1 ? labels.length - 1 : 1)) + 20;
+                // Calculate exact center x for the bar at index i
+                const step = labels.length > 1 ? (actualChartAreaWidth - barWidth) / (labels.length - 1) : 0;
+                const x = chartPaddingH + (barWidth / 2) + (i * step);
                 const y = CHART_HEIGHT - (temp * CHART_HEIGHT / 100);
                 return { x, y };
             })
@@ -173,7 +182,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
 
                     <View style={styles.barsLayer}>
                         {interactionCounts.map((val: number, i: number) => (
-                            <View key={i} style={styles.barColumnWrapper}>
+                            <View key={i} style={[styles.barColumnWrapper, { width: barWidth }]}>
                                 <View style={[styles.interactionBar, { height: `${val}%`, backgroundColor: THEME.secondary + '30', position: 'absolute', bottom: 0 }]} />
                                 {selfTimeCounts && selfTimeCounts[i] > 0 && (
                                     <View style={[styles.interactionBar, { height: `${selfTimeCounts[i]}%`, backgroundColor: '#4A8C8C' + '80', position: 'absolute', bottom: 0 }]} />
@@ -182,7 +191,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         ))}
                     </View>
 
-                    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
                         <Path
                             d={linePath}
                             fill="none"
@@ -192,7 +201,15 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                             strokeLinejoin="round"
                         />
                         {linePoints.map((p: any, i: number) => (
-                            <Circle key={i} cx={p.x} cy={p.y} r="4" fill="white" stroke={THEME.accent} strokeWidth="2" />
+                            <Circle 
+                                key={i} 
+                                cx={p.x} 
+                                cy={p.y} 
+                                r="4" 
+                                fill="white" 
+                                stroke={THEME.accent} 
+                                strokeWidth="2" 
+                            />
                         ))}
                     </Svg>
                 </View>
@@ -241,10 +258,20 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             <>
                 <View style={[styles.card, { paddingVertical: 24, paddingHorizontal: 16 }]}>
                     <View style={styles.cardHeader}>
-                        <View>
-                            <Text style={styles.cardTitle}>정서적 관계 지형도</Text>
-                            <Text style={styles.cardSubtitle}>전체 인맥의 관계 밸런스 조감</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.cardTitle, { color: THEME.primary }]}>정서적 관계 지형도</Text>
                         </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <Text style={{ fontSize: 13, color: '#888', fontWeight: '500', flex: 1 }}>만족도와 에너지 소모에 따른 우리 관계의 위치</Text>
+                        {onViewDetailedMap && (
+                            <TouchableOpacity 
+                                onPress={onViewDetailedMap}
+                                style={{ backgroundColor: THEME.primary + '10', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                            >
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: THEME.primary }}>상세 지도</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
@@ -268,24 +295,20 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                 <View style={styles.topographyGrid}>
                                     {/* Top Row: Satisfaction High */}
                                     <View style={[styles.gridCell, { backgroundColor: '#4A5D4E08' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#4A5D4E' }]}>편안한 사이</Text>
-                                        <Text style={[styles.gridLabelSub]}>저절로 기운이 나요</Text>
+                                        <Text style={[styles.gridLabel, { color: '#4A5D4E' }]}>✨ 나의 비타민</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q4}</Text></View>
                                     </View>
                                     <View style={[styles.gridCell, { backgroundColor: '#FFB74D08' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#FFB74D' }]}>뜨거운 사이</Text>
-                                        <Text style={[styles.gridLabelSub]}>에너지가 넘쳐나요</Text>
+                                        <Text style={[styles.gridLabel, { color: '#FFB74D' }]}>성장의 자극</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q2}</Text></View>
                                     </View>
                                     {/* Bottom Row: Satisfaction Low */}
                                     <View style={[styles.gridCell, { backgroundColor: '#90A4AE08' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#90A4AE' }]}>평범한 사이</Text>
-                                        <Text style={[styles.gridLabelSub]}>그냥 무난한 사이예요</Text>
+                                        <Text style={[styles.gridLabel, { color: '#90A4AE' }]}>일상의 중력</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q3}</Text></View>
                                     </View>
                                     <View style={[styles.gridCell, { backgroundColor: '#D98B7308' }]}>
-                                        <Text style={[styles.gridLabel, { color: '#D98B73' }]}>지치는 사이</Text>
-                                        <Text style={[styles.gridLabelSub]}>마음이 조금 무거워요</Text>
+                                        <Text style={[styles.gridLabel, { color: '#D98B73' }]}>⚠️ 주의가 필요해</Text>
                                         <View style={styles.countBadge}><Text style={styles.countText}>{counts.q1}</Text></View>
                                     </View>
                                 </View>
@@ -335,28 +358,28 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                             </Text>
                         </View>
                     </View>
-                </View>
-                
-                <View style={styles.chartLegendRow}>
-                    <View style={styles.legendGroup}>
-                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[1] }]} />
-                        <Text style={styles.legendLabel}>Z1</Text>
-                    </View>
-                    <View style={styles.legendGroup}>
-                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[2] }]} />
-                        <Text style={styles.legendLabel}>Z2</Text>
-                    </View>
-                    <View style={styles.legendGroup}>
-                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[3] }]} />
-                        <Text style={styles.legendLabel}>Z3</Text>
-                    </View>
-                    <View style={styles.legendGroup}>
-                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[4] }]} />
-                        <Text style={styles.legendLabel}>Z4</Text>
-                    </View>
-                    <View style={styles.legendGroup}>
-                        <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[5] }]} />
-                        <Text style={styles.legendLabel}>Z5</Text>
+                    
+                    <View style={[styles.chartLegendRow, { marginTop: 16, justifyContent: 'center' }]}>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[1] }]} />
+                            <Text style={styles.legendLabel}>Z1</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[2] }]} />
+                            <Text style={styles.legendLabel}>Z2</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[3] }]} />
+                            <Text style={styles.legendLabel}>Z3</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[4] }]} />
+                            <Text style={styles.legendLabel}>Z4</Text>
+                        </View>
+                        <View style={styles.legendGroup}>
+                            <View style={[styles.legendBarIndicator, { backgroundColor: ZONE_COLORS[5] }]} />
+                            <Text style={styles.legendLabel}>Z5</Text>
+                        </View>
                     </View>
                 </View>
             </>
@@ -763,7 +786,7 @@ const styles = StyleSheet.create({
     chartGrid: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' },
     gridLine: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(74, 93, 78, 0.05)' },
     barsLayer: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, alignItems: 'flex-end' },
-    barColumnWrapper: { width: 12, height: '100%', justifyContent: 'flex-end' },
+    barColumnWrapper: { height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
     interactionBar: { width: '100%', borderRadius: 6 },
     xAxisLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 12 },
     xAxisText: { fontSize: 11, fontWeight: '700', color: THEME.textMuted },

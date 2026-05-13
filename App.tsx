@@ -395,6 +395,7 @@ function App() {
                           onSelectRelationship={(id) => {
                             setSelectedNodeId(id);
                           }}
+                          onViewDetailedMap={() => setIsViewingDetailedMap(true)}
                         />
                       </View>
                       <View style={activeTab === 'lab' ? styles.tabActive : styles.tabHidden}>

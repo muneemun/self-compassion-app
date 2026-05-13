@@ -101,7 +101,7 @@ export const useSelfHealthData = (period: PeriodType) => {
                     slots[slotIdx].interactionCount += 1;
                 }
                 const totalCount = slots[slotIdx].interactionCount + slots[slotIdx].selfTimeCount;
-                slots[slotIdx].totalTemp += (h.closeness || h.temperature || 0);
+                slots[slotIdx].totalTemp += (h.closeness || h.temperature || h.satisfaction || 0);
                 slots[slotIdx].totalOxytocin += (h.oxytocin || 0);
                 slots[slotIdx].totalCortisol += (h.cortisol || 0);
 
