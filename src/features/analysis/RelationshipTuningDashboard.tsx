@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Defs, RadialGradient, Stop, G, Text as SvgText } from 'react-native-svg';
-import { ChevronLeft, ChevronUp, ChevronDown, RefreshCw, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2, Flame, Snowflake, Activity, Sparkles, Shield } from 'lucide-react-native';
+import { ChevronLeft, ChevronUp, ChevronDown, History, LayoutGrid, Calendar, UserPlus, Info, Scale, Send, Sliders, Anchor, Sun, Brain, Zap, Heart, Infinity, MoreHorizontal, Check, X, Filter, Star, TrendingUp, TrendingDown, ArrowRight, Trash2, Users, AlertCircle, CheckCircle2, BarChart2, Flame, Snowflake, Activity, Sparkles, Shield } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { AppHeader } from '../../components/AppHeader';
@@ -408,24 +408,13 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     };
 
     const [nudgeList, setNudgeList] = useState<any[]>([]);
-    const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Initial load
     useEffect(() => {
         setNudgeList(getDynamicNudges());
     }, [relationships]);
 
-    const handleRefresh = () => {
-        setIsRefreshing(true);
-        // Simulate loading & refresh data
-        setTimeout(() => {
-            const freshNudges = getDynamicNudges();
-            // 셔플 효과를 위해 약간의 순서 변경 (예시)
-            // 실제로는 서버 데이터를 다시 가져오거나 알고리즘 파라미터를 변경해야 함
-            setNudgeList([...freshNudges]);
-            setIsRefreshing(false);
-        }, 800);
-    };
+
 
     const renderHeader = () => (
         <AppHeader
@@ -452,14 +441,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                         >
                             <CheckCircle2 size={24} color={colors.primary} />
                         </TouchableOpacity>
-                    ) : (
-                        <TouchableOpacity
-                            onPress={handleRefresh}
-                            disabled={isRefreshing}
-                        >
-                            <RefreshCw size={24} color={colors.primary} style={isRefreshing ? { transform: [{ rotate: '45deg' }] } : {}} />
-                        </TouchableOpacity>
-                    )}
+                    ) : null}
                 </View>
             }
         />
