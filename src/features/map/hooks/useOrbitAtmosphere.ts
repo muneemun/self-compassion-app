@@ -137,7 +137,7 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         transitionDuration: 1500,
         ambientText: '지금 관계들이 참 따뜻하게 흐르고 있어요. 잘 되고 있어요.',
-        flashColor: 'rgba(255, 220, 100, 0.3)',
+        flashColor: 'rgba(255, 250, 240, 0.8)',
         eventText: '오늘 만남이 참 좋았던 것 같아요. 기분 좋죠?',
         description: '골든 밸런스 — 최적 에너지 순환',
     },

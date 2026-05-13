@@ -52,7 +52,7 @@ import { useOrbitEngine } from './hooks/useOrbitEngine';
 import { useOrbitAtmosphere, ATMOSPHERE_THEMES, AtmosphereState } from './hooks/useOrbitAtmosphere';
 import { ZONE_FILTERS, getDynamicTabs } from './constants';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const BASE_ORBIT_SIZE = width * 1.1;
 
 // 🧩 4-Quadrant Character Badge
@@ -1889,8 +1889,13 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
                             <ReAnimated.View 
                                 pointerEvents="none"
                                 style={[
-                                    StyleSheet.absoluteFill,
-                                    { backgroundColor: '#000', zIndex: 100 },
+                                    { 
+                                        position: 'absolute',
+                                        width: width * 5,
+                                        height: height * 5,
+                                        backgroundColor: (cognitiveFeedback.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0)) ? '#FFFFFF' : '#000', 
+                                        zIndex: 100 
+                                    },
                                     dimmingStyle
                                 ]} 
                             />
