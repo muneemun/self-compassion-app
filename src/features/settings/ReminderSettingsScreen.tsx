@@ -22,21 +22,25 @@ type TuningPeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) => {
     const colors = useColors();
-    const { userProfile } = useAppStore();
+    const { userProfile, reminderSettings, setReminderSettings } = useAppStore();
     const hasBirthday = !!userProfile?.birthday;
 
-    // Wellness State
-    const [isDailyEnabled, setIsDailyEnabled] = useState(true);
-    const [dailyTime, setDailyTime] = useState(new Date(new Date().setHours(22, 0, 0, 0)));
-    const [showDailyPicker, setShowDailyPicker] = useState(false);
+    const {
+        isDailyEnabled,
+        dailyTime,
+        isTuningEnabled,
+        tuningPeriod,
+        tuningAnchor,
+        tuningTime
+    } = reminderSettings;
 
-    // Tuning State
-    const [isTuningEnabled, setIsTuningEnabled] = useState(true);
-    const [tuningPeriod, setTuningPeriod] = useState<TuningPeriod>('weekly');
-    const [tuningAnchor, setTuningAnchor] = useState('일요일'); // '일요일', '매월 말일', etc.
-    const [tuningTime, setTuningTime] = useState(new Date(new Date().setHours(21, 0, 0, 0)));
+    // Local UI State (Not persistent)
+    const [showDailyPicker, setShowDailyPicker] = useState(false);
     const [showTuningPicker, setShowTuningPicker] = useState(false);
     const [showAnchorPicker, setShowAnchorPicker] = useState(false);
+
+    const dailyTimeDate = new Date(dailyTime);
+    const tuningTimeDate = new Date(tuningTime);
 
     const ANCHOR_OPTIONS: Record<TuningPeriod, string[]> = {
         weekly: ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'],
@@ -47,17 +51,19 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
 
     // 주기가 바뀔 때 기본 앵커 설정
     const handlePeriodChange = (p: TuningPeriod) => {
-        setTuningPeriod(p);
-        setTuningAnchor(ANCHOR_OPTIONS[p][ANCHOR_OPTIONS[p].length - 1]); // 추천(마지막 항목) 기본 선택
+        setReminderSettings({
+            tuningPeriod: p,
+            tuningAnchor: ANCHOR_OPTIONS[p][ANCHOR_OPTIONS[p].length - 1]
+        });
     };
 
     const getNextDatePreview = () => {
         const now = new Date();
         if (tuningPeriod === 'weekly') {
-            return `다음 점검 예정: 이번 주 ${tuningAnchor} ${formatTime(tuningTime)}`;
+            return `다음 점검 예정: 이번 주 ${tuningAnchor} ${formatTime(tuningTimeDate)}`;
         }
         if (tuningPeriod === 'monthly') {
-            return `다음 점검 예정: ${tuningAnchor} ${formatTime(tuningTime)}`;
+            return `다음 점검 예정: ${tuningAnchor} ${formatTime(tuningTimeDate)}`;
         }
         return `다음 점검 예정: ${tuningAnchor} 자정`;
     };
@@ -148,7 +154,7 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
                         description="오늘 당신의 정서 에너지는 얼마나 채워졌나요? 잠시 궤도를 멈추고 기록하도록 조용히 노크합니다."
                         icon={CheckCircle}
                         isEnabled={isDailyEnabled}
-                        onToggle={setIsDailyEnabled}
+                        onToggle={(val: boolean) => setReminderSettings({ isDailyEnabled: val })}
                         tags={['상호작용', '정서개입', '마음흔적']}
                     >
                         <TouchableOpacity
@@ -157,20 +163,20 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
                         >
                             <Text style={[styles.itemLabel, { color: colors.primary }]}>알림 시간</Text>
                             <View style={[styles.pickerBadge, { backgroundColor: colors.primary + '10' }]}>
-                                <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(dailyTime)}</Text>
+                                <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(dailyTimeDate)}</Text>
                                 <Clock size={14} color={colors.primary} />
                             </View>
                         </TouchableOpacity>
 
                         {showDailyPicker && (
                             <DateTimePicker
-                                value={dailyTime}
+                                value={dailyTimeDate}
                                 mode="time"
                                 is24Hour={true}
                                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                                 onChange={(event, selectedDate) => {
                                     setShowDailyPicker(Platform.OS === 'ios');
-                                    if (selectedDate) setDailyTime(selectedDate);
+                                    if (selectedDate) setReminderSettings({ dailyTime: selectedDate.toISOString() });
                                 }}
                             />
                         )}
@@ -183,7 +189,7 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
                         description="행성들의 중력이 변하고 있어요. 관계 지도를 재배치하여 균형을 맞출 시간임을 알려드려요."
                         icon={Orbit}
                         isEnabled={isTuningEnabled}
-                        onToggle={setIsTuningEnabled}
+                        onToggle={(val: boolean) => setReminderSettings({ isTuningEnabled: val })}
                     >
                         <View style={styles.periodChoiceContainer}>
                             {(Object.keys(PERIOD_INFO) as TuningPeriod[]).map((p) => {
@@ -242,7 +248,7 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
                                 >
                                     <Text style={[styles.itemLabel, { color: colors.primary }]}>점검 시간</Text>
                                     <View style={[styles.pickerBadge, { backgroundColor: colors.primary + '10' }]}>
-                                        <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(tuningTime)}</Text>
+                                        <Text style={[styles.pickerText, { color: colors.primary }]}>{formatTime(tuningTimeDate)}</Text>
                                         <Clock size={14} color={colors.primary} />
                                     </View>
                                 </TouchableOpacity>
@@ -251,13 +257,13 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
 
                         {showTuningPicker && (
                             <DateTimePicker
-                                value={tuningTime}
+                                value={tuningTimeDate}
                                 mode="time"
                                 is24Hour={true}
                                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                                 onChange={(event, selectedDate) => {
                                     setShowTuningPicker(Platform.OS === 'ios');
-                                    if (selectedDate) setTuningTime(selectedDate);
+                                    if (selectedDate) setReminderSettings({ tuningTime: selectedDate.toISOString() });
                                 }}
                             />
                         )}
@@ -292,7 +298,7 @@ export const ReminderSettingsScreen = ({ onBack }: ReminderSettingsScreenProps) 
                                                     disabled && { opacity: 0.3, borderColor: colors.gray[200] }
                                                 ]}
                                                 onPress={() => {
-                                                    setTuningAnchor(anchor);
+                                                    setReminderSettings({ tuningAnchor: anchor });
                                                     setShowAnchorPicker(false);
                                                 }}
                                             >

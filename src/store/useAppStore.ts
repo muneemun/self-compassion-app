@@ -36,6 +36,25 @@ interface AppState {
     setRecoveryPulseActive?: (active: boolean) => void;
     cognitiveFeedback?: { message: string | null; type: string | null };
     setCognitiveFeedback?: (feedback: { message: string | null; type: string | null }) => void;
+
+    // 알림 설정 (Notification Settings)
+    notificationSettings: {
+        isSelfReportEnabled: boolean;
+        isOrbitReportEnabled: boolean;
+        isNoticeEnabled: boolean;
+    };
+    setNotificationSettings: (settings: Partial<AppState['notificationSettings']>) => void;
+
+    // 리마인더 설정 (Reminder Settings)
+    reminderSettings: {
+        isDailyEnabled: boolean;
+        dailyTime: string;
+        isTuningEnabled: boolean;
+        tuningPeriod: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+        tuningAnchor: string;
+        tuningTime: string;
+    };
+    setReminderSettings: (settings: Partial<AppState['reminderSettings']>) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -69,6 +88,27 @@ export const useAppStore = create<AppState>()(
                 currentLogTargetId: targetId ?? (isOpen ? null : null),
                 editingLogId: logId
             }),
+
+            notificationSettings: {
+                isSelfReportEnabled: true,
+                isOrbitReportEnabled: true,
+                isNoticeEnabled: false,
+            },
+            setNotificationSettings: (newSettings) => set((state) => ({
+                notificationSettings: { ...state.notificationSettings, ...newSettings }
+            })),
+
+            reminderSettings: {
+                isDailyEnabled: true,
+                dailyTime: new Date(new Date().setHours(22, 0, 0, 0)).toISOString(),
+                isTuningEnabled: true,
+                tuningPeriod: 'weekly',
+                tuningAnchor: '일요일',
+                tuningTime: new Date(new Date().setHours(21, 0, 0, 0)).toISOString(),
+            },
+            setReminderSettings: (newSettings) => set((state) => ({
+                reminderSettings: { ...state.reminderSettings, ...newSettings }
+            })),
         }),
         {
             name: 'social-orbit-app-storage',

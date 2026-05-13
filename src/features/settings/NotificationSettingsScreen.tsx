@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
+import { useAppStore } from '../../store/useAppStore';
 
 interface NotificationSettingsScreenProps {
     onBack: () => void;
@@ -16,10 +17,9 @@ interface NotificationSettingsScreenProps {
 
 export const NotificationSettingsScreen = ({ onBack }: NotificationSettingsScreenProps) => {
     const colors = useColors();
+    const { notificationSettings, setNotificationSettings } = useAppStore();
 
-    const [isSelfReportEnabled, setIsSelfReportEnabled] = useState(true);
-    const [isOrbitReportEnabled, setIsOrbitReportEnabled] = useState(true);
-    const [isNoticeEnabled, setIsNoticeEnabled] = useState(false);
+    const { isSelfReportEnabled, isOrbitReportEnabled, isNoticeEnabled } = notificationSettings;
 
     const renderHeader = () => (
         <View style={styles.header}>
@@ -72,7 +72,7 @@ export const NotificationSettingsScreen = ({ onBack }: NotificationSettingsScree
                     description="지난주 마음 날씨가 분석되었습니다. 어느 시점에 가장 평온했는지 성찰 리포트를 보내드립니다."
                     icon={Heart}
                     isEnabled={isSelfReportEnabled}
-                    onToggle={setIsSelfReportEnabled}
+                    onToggle={(val: boolean) => setNotificationSettings({ isSelfReportEnabled: val })}
                     tags={['정서긴밀도', '안정지수', 'AI처방']}
                 />
 
@@ -83,7 +83,7 @@ export const NotificationSettingsScreen = ({ onBack }: NotificationSettingsScree
                     description="소셜 우주의 새로운 균형점이 발견되었습니다. 당신에게 소중한 궤도 변화를 리포트로 전달합니다."
                     icon={Orbit}
                     isEnabled={isOrbitReportEnabled}
-                    onToggle={setIsOrbitReportEnabled}
+                    onToggle={(val: boolean) => setNotificationSettings({ isOrbitReportEnabled: val })}
                     tags={['궤도변화', '에너지비율', '관계밀도']}
                 />
 
@@ -93,7 +93,7 @@ export const NotificationSettingsScreen = ({ onBack }: NotificationSettingsScree
                     description="새로운 기능 소식과 성찰 가이드 업데이트를 전해드립니다."
                     icon={Megaphone}
                     isEnabled={isNoticeEnabled}
-                    onToggle={setIsNoticeEnabled}
+                    onToggle={(val: boolean) => setNotificationSettings({ isNoticeEnabled: val })}
                 />
 
                 {/* Brand Philosophy Footer */}
