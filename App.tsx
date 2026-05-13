@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { View, TouchableOpacity, Text, StyleSheet, Dimensions, BackHandler, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Orbit, SlidersHorizontal, Activity, Rocket, FlaskConical } from 'lucide-react-native';
+import { ArrowLeft, Orbit, SlidersHorizontal, Activity, Rocket } from 'lucide-react-native';
 
 import { ColorLockProvider } from './src/theme/ColorLockContext';
 import { COMMON_STYLES } from './src/theme/LayoutStyles';
@@ -33,7 +33,7 @@ import { ProfileEditScreen } from './src/features/settings/ProfileEditScreen';
 import { ReminderSettingsScreen } from './src/features/settings/ReminderSettingsScreen';
 import { NotificationSettingsScreen } from './src/features/settings/NotificationSettingsScreen';
 import { SelfTimeCheckInModal } from './src/features/selfcare/SelfTimeCheckInModal';
-import { LabMapScreen } from './src/features/map/LabMapScreen';
+
 import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
 
 const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
@@ -59,7 +59,7 @@ const PlanetIcon = ({ color, size }: { color: string, size: number }) => (
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health' | 'lab'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health'>('map');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnosisMode, setDiagnosisMode] = useState<"ZONE" | "RQS">("ZONE");
@@ -416,9 +416,7 @@ function App() {
                           }}
                         />
                       </View>
-                      <View style={activeTab === 'lab' ? styles.tabActive : styles.tabHidden}>
-                        <LabMapScreen />
-                      </View>
+
                     </View>
 
                     {/* Floating Bottom Navigation */}
@@ -464,16 +462,7 @@ function App() {
                           <Text style={[styles.navText, activeTab === 'health' && styles.activeNavText]}>Health</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={styles.navItem}
-                          onPress={() => setActiveTab('lab')}
-                        >
-                          <View style={styles.iconWrapper}>
-                            {activeTab === 'lab' && <View style={styles.activeIconBg} />}
-                            <FlaskConical size={22} color={activeTab === 'lab' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'lab' ? 2.5 : 2} />
-                          </View>
-                          <Text style={[styles.navText, activeTab === 'lab' && styles.activeNavText]}>Lab</Text>
-                        </TouchableOpacity>
+
 
                         <TouchableOpacity
                           style={styles.navItem}
