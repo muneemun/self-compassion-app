@@ -93,11 +93,21 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
     const MOCK_HISTORY: Record<string, any> = {};
 
     const getDataForPeriod = (period: string) => {
-        if (period in MOCK_HISTORY) return MOCK_HISTORY[period];
+        if (period in MOCK_HISTORY) return { ...MOCK_HISTORY[period], energyDelta: 0 };
 
         const zoneEnergyMap = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
         const zoneCounts = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
-        const totalEnergySum = (relationships || []).reduce((sum: number, r: RelationshipNode) => sum + (r.temperature || 50), 0);
+        
+        // Dynamic delta calculation
+        const parsePeriod = (p: string) => {
+            const m = p.match(/(\d+)년 (\d+)월/);
+            return m ? { y: parseInt(m[1]), m: parseInt(m[2]) } : { y: 2026, m: 5 };
+        };
+        const target = parsePeriod(period);
+        const prevM = target.m === 1 ? 12 : target.m - 1;
+        const prevY = target.m === 1 ? target.y - 1 : target.y;
+
+        let curSum = 0, curCnt = 0, preSum = 0, preCnt = 0;
 
         (relationships || []).forEach((r: RelationshipNode) => {
             const key = `zone${r.zone}` as keyof typeof zoneEnergyMap;
@@ -105,9 +115,20 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                 zoneEnergyMap[key] += (r.temperature || 50);
                 zoneCounts[key] += 1;
             }
+            (r.interactions || []).forEach(i => {
+                const d = new Date(i.createdAt || i.date);
+                if (d.getFullYear() === target.y && d.getMonth() + 1 === target.m) {
+                    curSum += (i.satisfaction || 50); curCnt++;
+                } else if (d.getFullYear() === prevY && d.getMonth() + 1 === prevM) {
+                    preSum += (i.satisfaction || 50); preCnt++;
+                }
+            });
         });
 
+        const energyDelta = preCnt > 0 ? Math.round((curSum / (curCnt || 1)) - (preSum / preCnt)) : (curCnt > 0 ? 5 : 0);
+
         const energyData = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
+        const totalEnergySum = Object.values(zoneEnergyMap).reduce((a, b) => a + b, 0);
         if (totalEnergySum > 0) {
             (Object.keys(energyData) as Array<keyof typeof energyData>).forEach(key => {
                 energyData[key] = Math.round((zoneEnergyMap[key] / totalEnergySum) * 100);
@@ -131,11 +152,10 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         const frequency = frequencySorted.length > 0 ? frequencySorted[0] : null;
 
         let trendPoints = [80, 70, 90, 60, 40, 50, 30, 10, 20];
-
-        return { energyData, zoneCounts, lensData: { recovery, drain, frequency }, trendPoints };
+        return { energyData, zoneCounts, lensData: { recovery, drain, frequency }, trendPoints, energyDelta };
     };
 
-    const { energyData, zoneCounts, lensData, trendPoints } = getDataForPeriod(selectedPeriod);
+    const { energyData, zoneCounts, lensData, trendPoints, energyDelta } = getDataForPeriod(selectedPeriod);
     const [selectedZone, setSelectedZone] = useState<keyof typeof energyData>('zone1');
 
     const METRIC_GUIDE = {
@@ -301,8 +321,10 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                         </TouchableOpacity>
                     </View>
                     <View style={styles.trendStatus}>
-                        <TrendingUp size={14} color={colors.accent} />
-                        <Text style={[styles.trendStatusText, { color: colors.accent }]}>전월 대비 +12%</Text>
+                        <TrendingUp size={14} color={energyDelta >= 0 ? colors.accent : '#D98B73'} style={{ transform: [{ rotate: energyDelta >= 0 ? '0deg' : '180deg' }] }} />
+                        <Text style={[styles.trendStatusText, { color: energyDelta >= 0 ? colors.accent : '#D98B73' }]}>
+                            전월 대비 {energyDelta >= 0 ? '+' : ''}{energyDelta}%
+                        </Text>
                     </View>
                 </View>
 
