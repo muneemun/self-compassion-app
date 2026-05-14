@@ -77,32 +77,43 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
     const getMetrics = (r: RelationshipNode) => {
         const logs = r.interactions || [];
-        const lastLog = logs.slice(-1)[0];
-        const sat = lastLog?.satisfaction ?? (r.metrics?.satisfaction || 50);
-        const drain = lastLog?.energyDrain ?? 50;
         const count = logs.length;
         
-        let freqScore = count * 10;
-        if (r.lastInteraction?.includes('방금') || r.lastInteraction?.includes('분 전')) freqScore += 50;
-        else if (r.lastInteraction?.includes('오늘') || r.lastInteraction?.includes('시간 전')) freqScore += 40;
-        else if (r.lastInteraction?.includes('어제')) freqScore += 30;
-        else if (r.lastInteraction?.includes('일 전')) freqScore += 10;
+        // Calculate averages for more stable analysis (Policy: Average instead of Last Log)
+        const rawSat = count > 0 
+            ? logs.reduce((acc, l) => acc + (l.satisfaction ?? 50), 0) / count 
+            : (r.metrics?.satisfaction || 50);
+            
+        const rawDrain = count > 0 
+            ? logs.reduce((acc, l) => acc + (l.energyDrain ?? 50), 0) / count 
+            : 50;
         
-        return { sat, drain, freqScore, count };
+        const sat = Math.round(rawSat);
+        const drain = Math.round(rawDrain);
+        
+        let recencyWeight = 0;
+        if (r.lastInteraction?.includes('방금') || r.lastInteraction?.includes('분 전')) recencyWeight = 50;
+        else if (r.lastInteraction?.includes('오늘') || r.lastInteraction?.includes('시간 전')) recencyWeight = 40;
+        else if (r.lastInteraction?.includes('어제')) recencyWeight = 30;
+        else if (r.lastInteraction?.includes('주') || r.lastInteraction?.includes('일 전')) recencyWeight = 10;
+        
+        let freqScore = (count * 10) + recencyWeight;
+        
+        return { sat, drain, freqScore, count, recencyWeight };
     };
 
     const getLensValue = (r: RelationshipNode, lens: string) => {
-        const { sat, drain, freqScore } = getMetrics(r);
-        if (lens === 'Positive') return sat - drain;
-        if (lens === 'Negative') return drain - sat;
+        const { sat, drain, freqScore, recencyWeight } = getMetrics(r);
+        if (lens === 'Positive') return (sat - drain) + (recencyWeight || 0);
+        if (lens === 'Negative') return (drain - sat) + (recencyWeight || 0);
         if (lens === 'Frequency') return freqScore;
         return sat;
     };
 
     const getLensDisplay = (r: RelationshipNode, lens: string) => {
         const { sat, drain, count } = getMetrics(r);
-        if (lens === 'Positive') return `만족 ${sat} · 소모 ${drain}`;
-        if (lens === 'Negative') return `소모 ${drain} · 만족 ${sat}`;
+        if (lens === 'Positive') return `만족 ${Math.round(sat)} · 소모 ${Math.round(drain)}`;
+        if (lens === 'Negative') return `소모 ${Math.round(drain)} · 만족 ${Math.round(sat)}`;
         if (lens === 'Frequency') return `${count}회 교류 · ${r.lastInteraction || '기록 없음'}`;
         const hasData = (r.interactions && r.interactions.length > 0) || 
                         (r.history && r.history.some(h => h.title?.includes('조율') || h.title?.includes('반영')));

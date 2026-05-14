@@ -20,7 +20,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
     // Generate dynamic periods based on current date
     const getDynamicPeriods = () => {
         const now = new Date();
-        const periods = [];
+        const periods = ['전체'];
         for (let i = 0; i < 3; i++) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             periods.push(`${d.getFullYear()}년 ${d.getMonth() + 1}월`);
@@ -137,19 +137,76 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             energyData.zone1 = 15; energyData.zone2 = 25; energyData.zone3 = 30; energyData.zone4 = 20; energyData.zone5 = 10;
         }
 
-        const sortedByTemp = [...(relationships || [])].sort((a, b) => (b.temperature || 0) - (a.temperature || 0));
-        const recovery = sortedByTemp.length > 0 ? sortedByTemp[0] : null;
-        const drain = sortedByTemp.length > 0 ? sortedByTemp[sortedByTemp.length - 1] : null;
+        // 🎯 Multi-angle Analysis Logic (Aligned with Tuning Tab)
+        // Filter relationships that have at least 1 interaction in the target period
+        const activeRelationships = (relationships || []).filter(r => {
+            if (period === '전체') return (r.interactions || []).length > 0;
+            const periodInteractions = (r.interactions || []).filter(i => {
+                const d = new Date(i.createdAt || i.date);
+                return d.getFullYear() === target.y && d.getMonth() + 1 === target.m;
+            });
+            return periodInteractions.length > 0;
+        });
 
-        const getInteractionWeight = (str: string = '') => {
-            if (!str) return 0;
-            if (str.includes('방금') || str.includes('분 전')) return 100;
-            if (str.includes('오늘') || str.includes('시간 전')) return 80;
-            if (str.includes('어제')) return 60;
-            return 10;
+        const getActiveMetrics = (r: RelationshipNode) => {
+            const periodInteractions = period === '전체' 
+                ? (r.interactions || [])
+                : (r.interactions || []).filter(i => {
+                    const d = new Date(i.createdAt || i.date);
+                    return d.getFullYear() === target.y && d.getMonth() + 1 === target.m;
+                });
+            
+            const count = periodInteractions.length;
+            const rawSat = count > 0 ? periodInteractions.reduce((acc, i) => acc + (i.satisfaction || 50), 0) / count : 50;
+            const rawDrain = count > 0 ? periodInteractions.reduce((acc, i) => acc + (i.energyDrain || 50), 0) / count : 50;
+            
+            const avgSat = Math.round(rawSat);
+            const avgDrain = Math.round(rawDrain);
+            
+            let recencyWeight = 0;
+            const lastInt = r.lastInteraction || '';
+            if (lastInt.includes('방금') || lastInt.includes('분 전')) recencyWeight = 50;
+            else if (lastInt.includes('오늘') || lastInt.includes('시간 전')) recencyWeight = 40;
+            else if (lastInt.includes('어제')) recencyWeight = 30;
+            else if (lastInt.includes('주') || lastInt.includes('일 전')) recencyWeight = 10;
+
+            return { avgSat, avgDrain, count, recencyWeight };
         };
-        const frequencySorted = [...(relationships || [])].sort((a, b) => getInteractionWeight(b.lastInteraction) - getInteractionWeight(a.lastInteraction));
-        const frequency = frequencySorted.length > 0 ? frequencySorted[0] : null;
+
+        const recovery = activeRelationships
+            .filter(r => {
+                const m = getActiveMetrics(r);
+                return m.avgSat >= 70 && m.avgDrain <= 40; // Match Tuning Tab Filter
+            })
+            .sort((a, b) => {
+                const mA = getActiveMetrics(a);
+                const mB = getActiveMetrics(b);
+                return (mB.avgSat - mB.avgDrain + mB.recencyWeight) - (mA.avgSat - mA.avgDrain + mA.recencyWeight);
+            })[0] || null;
+
+        const drain = activeRelationships
+            .filter(r => {
+                const m = getActiveMetrics(r);
+                return m.avgDrain >= 70 && m.avgSat <= 40; // Match Tuning Tab Filter
+            })
+            .sort((a, b) => {
+                const mA = getActiveMetrics(a);
+                const mB = getActiveMetrics(b);
+                return (mB.avgDrain - mB.avgSat + mB.recencyWeight) - (mA.avgDrain - mA.avgSat + mA.recencyWeight);
+            })[0] || null;
+
+        const frequency = activeRelationships
+            .filter(r => {
+                const m = getActiveMetrics(r);
+                return m.count >= 3 || m.recencyWeight >= 10; // Match Tuning Tab Filter
+            })
+            .sort((a, b) => {
+                const mA = getActiveMetrics(a);
+                const mB = getActiveMetrics(b);
+                const scoreA = (mA.count * 10) + mA.recencyWeight;
+                const scoreB = (mB.count * 10) + mB.recencyWeight;
+                return scoreB - scoreA;
+            })[0] || null;
 
         let trendPoints = [80, 70, 90, 60, 40, 50, 30, 10, 20];
         return { energyData, zoneCounts, lensData: { recovery, drain, frequency }, trendPoints, energyDelta };

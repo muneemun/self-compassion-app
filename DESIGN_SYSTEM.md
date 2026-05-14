@@ -36,3 +36,14 @@
 - **Visual Anchor**: 상단에 **Crown 아이콘**을 배치하여 '관계의 주인공'이라는 테마를 강조.
 - **Action Priority**: 우승자 카드 내부에 즉시 교감할 수 있는 **메인 액션 버튼** 배치.
 
+---
+
+## 6. Card Components (Premium Flat)
+- **Concept**: 불필요한 장식을 배제하고 선과 면의 대비를 강조한 '절제된 미학'.
+- **Background**: 기본적으로 순백색(`THEME.white`)을 사용하여 깔끔한 인상을 전달함.
+- **Outline & Border**: 
+    - 일반 상태: 1px 두께의 투명한 보더(`rgba(74, 93, 78, 0.08)`).
+    - 선택/강조 상태: **2px** 두께의 솔리드 보더(`colors.primary`).
+- **Shadow-Free Principle**: 카드 내부나 외부의 그림자(`Shadow`), 블러(`Blur`) 효과를 지양하여 렌더링 부하를 줄이고 시각적 노이즈를 최소화함.
+- **Interactive Feedback**: 선택 시 입체적인 변화(Scale, Shadow) 대신, 색상의 반전이나 명확한 테두리 변화를 통해 피드백을 전달함.
+
