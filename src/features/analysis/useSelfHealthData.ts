@@ -10,25 +10,51 @@ export const useSelfHealthData = (period: PeriodType) => {
 
     // 2. Period Data Calculation
     const periodData = useMemo(() => {
+        // Helper to get local midnight date for consistent comparison
+        const normalizeToLocalMidnight = (date: Date | string) => {
+            if (!date) return new Date(NaN);
+            
+            if (typeof date === 'string') {
+                // If it's YYYY-MM-DD or ISO string, split and use local constructor
+                const datePart = date.split('T')[0];
+                const parts = datePart.split('-');
+                if (parts.length === 3) {
+                    const year = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1;
+                    const day = parseInt(parts[2], 10);
+                    return new Date(year, month, day, 0, 0, 0, 0);
+                }
+            }
+            
+            const d = new Date(date);
+            if (isNaN(d.getTime())) return d;
+            
+            const result = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            result.setHours(0, 0, 0, 0);
+            return result;
+        };
+
         const now = new Date();
-        let startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
+        const todayLocal = normalizeToLocalMidnight(now);
+        let startDate = new Date(todayLocal);
 
         let numSlots = 7;
         let mode: 'daily' | 'monthly' = 'daily';
 
         if (period === '주간') {
             numSlots = 7;
-            startDate.setDate(now.getDate() - 6);
+            startDate.setDate(todayLocal.getDate() - 6);
         } else if (period === '월간') {
             numSlots = 30;
-            startDate.setDate(now.getDate() - 29);
+            startDate.setDate(todayLocal.getDate() - 29);
         } else {
             numSlots = 12;
             mode = 'monthly';
-            startDate.setMonth(now.getMonth() - 11);
+            startDate.setMonth(todayLocal.getMonth() - 11);
             startDate.setDate(1);
         }
+        
+        startDate = normalizeToLocalMidnight(startDate);
 
         const slots = Array.from({ length: numSlots }, () => ({
             interactionCount: 0,
@@ -73,8 +99,11 @@ export const useSelfHealthData = (period: PeriodType) => {
 
         const allHistory = [...interactionHistory, ...mappedSelfTime]
             .filter(h => h.date)
-            .map(h => ({ ...h, dateObj: new Date(h.date) }))
-            .filter(h => h.dateObj >= startDate && !isNaN(h.dateObj.getTime()));
+            .map(h => ({ 
+                ...h, 
+                dateObj: normalizeToLocalMidnight(h.date) 
+            }))
+            .filter(h => h.dateObj.getTime() >= startDate.getTime() && !isNaN(h.dateObj.getTime()));
 
         let totalOxytocinSum = 0;
         let totalCortisolSum = 0;
@@ -89,7 +118,9 @@ export const useSelfHealthData = (period: PeriodType) => {
         allHistory.forEach(h => {
             let slotIdx = -1;
             if (mode === 'daily') {
-                slotIdx = Math.floor((h.dateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                // Difference in days using normalized midnight dates
+                const diffMs = h.dateObj.getTime() - startDate.getTime();
+                slotIdx = Math.round(diffMs / (1000 * 60 * 60 * 24));
             } else {
                 slotIdx = (h.dateObj.getFullYear() - startDate.getFullYear()) * 12 + (h.dateObj.getMonth() - startDate.getMonth());
             }

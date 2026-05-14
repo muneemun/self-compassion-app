@@ -46,35 +46,45 @@ export const NotificationManager = () => {
     }, [reminderSettings, notificationSettings]);
 
     const syncNotifications = async () => {
-        // 1. 기존 알림 모두 삭제
-        await NotificationService.cancelAllNotifications();
+        try {
+            // 1. 기존 알림 모두 삭제
+            await NotificationService.cancelAllNotifications();
 
-        // 2. 오늘 기록 리마인더 (Daily)
-        if (reminderSettings.isDailyEnabled) {
-            const dailyTime = new Date(reminderSettings.dailyTime);
-            await NotificationService.scheduleDailyReminder(
-                dailyTime.getHours(),
-                dailyTime.getMinutes()
-            );
-        }
-
-        // 3. 정기 궤도 점검 (Periodic)
-        if (reminderSettings.isTuningEnabled) {
-            const tuningTime = new Date(reminderSettings.tuningTime);
-            const dayOfWeek = mapAnchorToDayOfWeek(reminderSettings.tuningAnchor);
-            
-            if (dayOfWeek !== -1) {
-                await NotificationService.scheduleTuningReminder(
-                    dayOfWeek,
-                    tuningTime.getHours(),
-                    tuningTime.getMinutes()
-                );
+            // 2. 오늘 기록 리마인더 (Daily)
+            if (reminderSettings.isDailyEnabled) {
+                const dailyTime = new Date(reminderSettings.dailyTime);
+                if (!isNaN(dailyTime.getTime())) {
+                    await NotificationService.scheduleDailyReminder(
+                        dailyTime.getHours(),
+                        dailyTime.getMinutes()
+                    );
+                } else {
+                    console.warn('Invalid daily reminder time:', reminderSettings.dailyTime);
+                }
             }
-        }
 
-        // 4. 분석 리포트 알림 (설정 활성화 시)
-        if (notificationSettings.isSelfReportEnabled || notificationSettings.isOrbitReportEnabled) {
-            await NotificationService.scheduleReportReminder();
+            // 3. 정기 궤도 점검 (Periodic)
+            if (reminderSettings.isTuningEnabled) {
+                const tuningTime = new Date(reminderSettings.tuningTime);
+                const dayOfWeek = mapAnchorToDayOfWeek(reminderSettings.tuningAnchor);
+                
+                if (!isNaN(tuningTime.getTime()) && dayOfWeek !== -1) {
+                    await NotificationService.scheduleTuningReminder(
+                        dayOfWeek,
+                        tuningTime.getHours(),
+                        tuningTime.getMinutes()
+                    );
+                } else {
+                    console.warn('Invalid tuning reminder settings:', { tuningTime, dayOfWeek });
+                }
+            }
+
+            // 4. 분석 리포트 알림 (설정 활성화 시)
+            if (notificationSettings.isSelfReportEnabled || notificationSettings.isOrbitReportEnabled) {
+                await NotificationService.scheduleReportReminder();
+            }
+        } catch (error) {
+            console.error('Failed to sync notifications:', error);
         }
     };
 
