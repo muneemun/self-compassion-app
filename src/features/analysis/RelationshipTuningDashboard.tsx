@@ -617,9 +617,16 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const renderOrbitVisualization = () => (
         <View style={styles.vizSection}>
             <View style={styles.sectionHeader}>
-                <View style={styles.titleWithIcon}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>나의 관계 밸런스</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <View style={styles.titleWithIcon}>
+                        <Text style={[styles.sectionTitle, { color: colors.primary }]}>나의 관계 밸런스</Text>
+                    </View>
+                    <TouchableOpacity onPress={onGoToReport} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(74, 93, 78, 0.05)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }}>
+                        <BarChart2 size={14} color={colors.primary} />
+                        <Text style={[styles.miniSelectText, { color: colors.primary, top: 0 }]}>상세 보기</Text>
+                    </TouchableOpacity>
                 </View>
+                
                 {/* Insight Card Style Summary */}
                 <View style={{ marginTop: 12, backgroundColor: '#F5F7F6', borderRadius: 16, padding: 16 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -666,10 +673,6 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                 {/* 🏷️ Dynamics View (궤도 역학 분석 / 용량 점검) */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, width: '100%', marginTop: 0, marginBottom: 8 }}>
                     <Text style={{ fontSize: 13, color: '#888', fontWeight: '600', flex: 1, textAlign: 'left' }}>거리 별 관계 분포도</Text>
-                    <TouchableOpacity onPress={onGoToReport} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(74, 93, 78, 0.05)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }}>
-                        <BarChart2 size={14} color={colors.primary} />
-                        <Text style={[styles.miniSelectText, { color: colors.primary, top: 0 }]}>상세 보기</Text>
-                    </TouchableOpacity>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16, marginTop: 16 }}>
