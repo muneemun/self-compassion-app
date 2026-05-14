@@ -33,7 +33,7 @@ export const useSelfHealthData = (period: PeriodType) => {
         const slots = Array.from({ length: numSlots }, () => ({
             interactionCount: 0,
             selfTimeCount: 0,
-            totalTemp: 0,
+            totalEnergy: 0,
             totalOxytocin: 0,
             totalCortisol: 0,
             label: ''
@@ -61,7 +61,7 @@ export const useSelfHealthData = (period: PeriodType) => {
             
         const mappedSelfTime = selfTimeEntries.filter(e => !e.isDeleted).map(e => ({
             id: e.id,
-            date: e.createdAt.split('T')[0],
+            date: e.createdAt ? e.createdAt.split('T')[0] : '',
             isSelfTime: true,
             temperature: e.emotionalSatisfaction,
             oxytocin: 60,
@@ -101,7 +101,7 @@ export const useSelfHealthData = (period: PeriodType) => {
                     slots[slotIdx].interactionCount += 1;
                 }
                 const totalCount = slots[slotIdx].interactionCount + slots[slotIdx].selfTimeCount;
-                slots[slotIdx].totalTemp += (h.closeness || h.temperature || h.satisfaction || 0);
+                slots[slotIdx].totalEnergy += (h.closeness || h.temperature || h.satisfaction || 0);
                 slots[slotIdx].totalOxytocin += (h.oxytocin || 0);
                 slots[slotIdx].totalCortisol += (h.cortisol || 0);
 
@@ -150,7 +150,7 @@ export const useSelfHealthData = (period: PeriodType) => {
         const interactionCounts = slots.map(s => s.interactionCount);
         const selfTimeCounts = slots.map(s => s.selfTimeCount);
         const totalCounts = slots.map(s => s.interactionCount + s.selfTimeCount);
-        const avgTemps = slots.map((s, i) => totalCounts[i] > 0 ? Math.round(s.totalTemp / totalCounts[i]) : null);
+        const avgEnergyLevels = slots.map((s, i) => totalCounts[i] > 0 ? Math.round(s.totalEnergy / totalCounts[i]) : null);
         const labels = slots.map(s => s.label);
 
         const maxCount = Math.max(...interactionCounts, ...selfTimeCounts, 5); // 최소 기준치를 5로 두어 데이터가 적을 때 꽉 차지 않게 함
@@ -190,7 +190,7 @@ export const useSelfHealthData = (period: PeriodType) => {
                 interactionCounts: normalizedInteractionCounts,
                 selfTimeCounts: normalizedSelfTimeCounts,
                 rawCounts: interactionCounts,
-                avgTemps,
+                avgEnergyLevels,
                 labels
             },
             dateRange: {

@@ -1638,7 +1638,7 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
                                                     return (
                                                         <Text style={[styles.tempText, { color: (person.temperature || 0) > 70 ? colors.accent : colors.primary }]}>
-                                                            {hasRealData ? `${Math.round(person.temperature || 0)}°` : '---'}
+                                                            {hasRealData ? `${Math.round(person.temperature || 0)}%` : '---'}
                                                         </Text>
                                                     );
                                                 })()}

@@ -663,7 +663,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                 ? `현재 ${relationships.length}명의 인맥만 등록되어 있어 분석 데이터가 부족합니다. 사람들을 더 추가하여 내 마음의 지도를 완성해 보세요.`
                                 : (stabilityStatus.imbalancedZones.length > 0
                                     ? `지금 Zone ${stabilityStatus.imbalancedZones[0].zone}에 ${stabilityStatus.imbalancedZones[0].status === 'over' ? '권장 인원보다 관계가 밀집되어 있습니다. 에너지 보호를 위해 관계의 재배치나 거리두기가 필요해요.' : '사람이 너무 적어요. 편안한 사람들과 시간을 보내며 에너지를 채워봐요.'}`
-                                    : "관계 에너지가 골고루 잘 흐르고 있어요. 마음이 아주 편안한 상태네요!")}
+                                    : "정서 에너지가 골고루 잘 흐르고 있어요. 관계와 휴식의 균형이 아주 좋네요!")}
                         </Text>
                     </View>
                 </View>

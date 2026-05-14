@@ -1,7 +1,7 @@
 # 문서 버전 관리 및 백업 매뉴얼 (Backup & Versioning Policy)
 
 > **Document Status:** Active
-> **Last Updated:** 2026-04-24
+> **Last Updated:** 2026-05-14
 > **Objective:** 기획 문서와 관리 시트의 히스토리를 '코드'와 동일한 수준으로 엄격하게 관리하여, 협업 시 발생할 수 있는 분쟁을 원천 차단하고 구조의 무결성을 유지합니다.
 
 ---

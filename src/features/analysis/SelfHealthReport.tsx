@@ -119,7 +119,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
     };
 
     const renderEnergyChart = () => {
-        const { interactionCounts, selfTimeCounts, avgTemps, labels } = stats;
+        const { interactionCounts, selfTimeCounts, avgEnergyLevels, labels } = stats;
         const CHART_HEIGHT = 160;
 
         // Dynamic bar width to prevent overflow
@@ -130,14 +130,14 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
         const chartPaddingH = 20;
         const actualChartAreaWidth = containerWidth - (chartPaddingH * 2);
 
-        // Path calculation for Temperature Line - filter out nulls to prevent invalid paths
-        const linePoints = avgTemps
-            .map((temp: number | null, i: number) => {
-                if (temp === null) return null;
+        // Path calculation for Energy Level Line - filter out nulls to prevent invalid paths
+        const linePoints = avgEnergyLevels
+            .map((energy: number | null, i: number) => {
+                if (energy === null) return null;
                 // Calculate exact center x for the bar at index i
                 const step = labels.length > 1 ? (actualChartAreaWidth - barWidth) / (labels.length - 1) : 0;
                 const x = chartPaddingH + (barWidth / 2) + (i * step);
-                const y = CHART_HEIGHT - (temp * CHART_HEIGHT / 100);
+                const y = CHART_HEIGHT - (energy * CHART_HEIGHT / 100);
                 return { x, y };
             })
             .filter((p: any) => p !== null) as { x: number, y: number }[];
@@ -169,7 +169,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     </View>
                     <View style={styles.legendGroup}>
                         <View style={[styles.legendLineIndicator, { borderColor: THEME.accent }]} />
-                        <Text style={styles.legendLabel}>정서 온도</Text>
+                        <Text style={styles.legendLabel}>정서 에너지</Text>
                     </View>
                 </View>
 
@@ -592,12 +592,12 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                 <View style={[styles.cardHeader, { marginBottom: 16 }]}>
                     <View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={styles.cardTitle}>감정 리듬</Text>
+                            <Text style={styles.cardTitle}>정서 에너지 흐름</Text>
                             <TouchableOpacity onPress={() => setInfoModal({ visible: true, type: 'pulse' })}>
                                 <Info size={16} color={colors.primary} opacity={0.5} />
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.cardSubtitle}>감정의 일관성 및 상태</Text>
+                        <Text style={styles.cardSubtitle}>교류 만족도와 자기 회복의 통합 리듬</Text>
                     </View>
                     <TouchableOpacity style={styles.editBtn}>
                         <Edit3 size={18} color={colors.primary} />
@@ -683,23 +683,39 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             },
             energy: {
                 title: '에너지 사용 리포트 가이드',
-                subtitle: '나의 활동과 마음 온도',
+                subtitle: '나의 활동과 정서 에너지',
                 items: [
                     { label: '교류량', desc: '소중한 사람들과 얼마나 자주 어울렸는지 보여주는 횟수예요.' },
                     { label: '나의 시간 (회복)', desc: '일기를 쓰거나 휴식을 취하는 등, 나를 돌보는 데 쓴 시간이에요.' },
-                    { label: '정서 온도', desc: '그날 누구와 함께, 혹은 혼자서 마음이 얼마나 편안했는지 보여주는 평균 온도예요.\n온도가 높다고 무조건 좋고, 낮다고 나쁜 건 아니에요! 내 마음의 온도가 어떻게 변하는지 지켜보는 것이 더 중요해요.' },
+                    { label: '정서 에너지', desc: '사람들과의 교류(만족도)와 나를 돌보는 회복 시간(나와의 시간)을 종합하여 산출된 내 마음의 배터리 상태입니다.\n수치가 높을수록 정서적으로 충만하고 안정된 상태임을 의미하며, 단순히 기분이 좋은 것을 넘어 관계와 휴식의 균형이 잘 잡혀있는지를 나타냅니다.' },
                 ]
             },
             pulse: {
-                title: '감정 리듬 분석',
+                title: '정서 에너지 흐름',
                 subtitle: 'Emotional Pulse Analysis',
                 items: [
-                    { label: '긍정적 (Positive)', desc: '정서적 온도가 60°C 이상으로, 만족스럽고 따뜻했던 상호작용입니다.' },
-                    { label: '소모적 (Challenging)', desc: '정서적 온도가 40°C 이하이거나, 갈등/스트레스(Cortisol) 반응이 감지된 상호작용입니다.' },
-                    { label: '일관성 (Consistency)', desc: '감정 기복이 크지 않고 안정적인 패턴을 유지하는지 보여줍니다.' },
+                    { label: '긍정적 (Positive)', desc: '정서 에너지가 60% 이상으로, 만족스럽고 따뜻했던 상호작용 혹은 충분한 회복이 이루어진 상태입니다.' },
+                    { label: '소모적 (Challenging)', desc: '정서 에너지가 40% 이하이거나, 갈등/스트레스(Cortisol) 반응이 감지되어 에너지 보충이 필요한 상태입니다.' },
+                    { label: '일관성 (Consistency)', desc: '에너지 기복이 크지 않고 안정적인 패턴을 유지하고 있는지를 보여줍니다.' },
+                ]
+            },
+            oxytocin: {
+                title: '옥시토신(공감 호르몬) 가이드',
+                subtitle: '정서적 연결의 깊이',
+                items: [
+                    { label: '안정 지수', desc: '상대방과의 대화에서 얼마나 안전함과 신뢰를 느꼈는지를 나타냅니다.' },
+                    { label: '충전 원리', desc: '진심 어린 경청과 공감이 이루어질 때 수치가 상승하며, 정서 에너지를 보충하는 핵심 동력입니다.' },
+                ]
+            },
+            cortisol: {
+                title: '코르티솔(스트레스) 가이드',
+                subtitle: '심리적 에너지 소모도',
+                items: [
+                    { label: '주의 지수', desc: '상호작용 중 느꼈던 긴장감이나 피로도를 나타냅니다.' },
+                    { label: '관리 방법', desc: '코르티솔 수치가 높을 때는 즉각적인 "나와의 시간"을 통해 에너지를 해독하고 평온을 찾아야 합니다.' },
                 ]
             }
-        }[infoModal.type] as any;
+        }[infoModal.type || 'energy'] || { title: '가이드', subtitle: '', items: [] };
 
         return (
             <View style={[styles.popupBackdrop, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>

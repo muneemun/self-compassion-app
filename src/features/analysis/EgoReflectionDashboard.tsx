@@ -167,8 +167,8 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         },
         trend: {
             title: '정서 에너지 흐름도',
-            sub: '마음의 일기예보',
-            info: '최근 30일간의 모든 상호작용(긴밀도, 옥시토신, 코르티솔)을 종합 분석한 정서의 흐름입니다.',
+            sub: '마음의 배터리 리포트',
+            info: '최근 30일간의 인맥 교류(만족도)와 자기 돌봄(회복도)을 종합 분석한 정서 에너지의 변화 추이입니다.',
             details: [
                 { label: '상승 곡선', desc: '자아 회복력(Resilience)이 높아진 상태이며, 긍정적인 정서가 축적되고 있음을 의미합니다.' },
                 { label: '곡선의 굴곡', desc: '굴곡이 심할수록 외부 자극에 민감한 상태임을, 완만할수록 정서가 단단하고 평온한 상태임을 뜻합니다.' }

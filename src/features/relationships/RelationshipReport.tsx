@@ -802,7 +802,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                             onChangeText={(text) => setNewLog({ ...newLog, event: text })}
                         />
 
-                        <Text style={[styles.inputLabel, { color: colors.primary, marginTop: 20 }]}>정서 긴밀도 ({newLog.temperature}%)</Text>
+                        <Text style={[styles.inputLabel, { color: colors.primary, marginTop: 20 }]}>정서 에너지 ({newLog.temperature}%)</Text>
                         <View style={styles.tempSelector}>
                             {[20, 40, 60, 80, 100].map(temp => (
                                 <TouchableOpacity
@@ -821,7 +821,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
                             ))}
                         </View>
                         <Text style={styles.tempDesc}>
-                            {newLog.temperature >= 80 ? '아주 따뜻하고 좋았어요!' : newLog.temperature >= 60 ? '평범하고 무난했어요.' : '다소 차갑거나 안 좋았어요.'}
+                            {newLog.temperature >= 80 ? '에너지가 아주 충만하고 좋았어요!' : newLog.temperature >= 60 ? '평범하고 무난했어요.' : '에너지가 다소 방전된 느낌이었어요.'}
                         </Text>
 
                         <TouchableOpacity

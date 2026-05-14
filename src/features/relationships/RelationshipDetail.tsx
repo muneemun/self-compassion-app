@@ -314,7 +314,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                             />
                         ))}
 
-                        {/* Temperature Line */}
+                        {/* Energy Line */}
                         <Path d={tempLine.path} stroke={colors.accent} strokeWidth={3} fill="none" opacity={0.8} />
                         {/* Oxytocin Line */}
                         <Path d={oxyLine.path} stroke="#4CAF50" strokeWidth={3} fill="none" opacity={0.6} />
@@ -572,7 +572,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                         </TouchableOpacity>
                     </View>
 
-                    {/* Temperature Graph */}
+                    {/* Energy Graph */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -952,7 +952,7 @@ export const RelationshipDetail = ({ relationshipId, onBack, onDiagnose, onManag
                                 ) : (
                                     <View style={[styles.guideStatusBox, { backgroundColor: getMetricStatus(activePopup as any, activePopup === 'stability' ? stability : activePopup === 'intimacy' ? node.temperature : activePopup === 'oxytocin' ? oxytocin : cortisol).color + '0D' }]}>
                                         <Text style={[styles.guideStatusLabel, { color: getMetricStatus(activePopup as any, activePopup === 'stability' ? stability : activePopup === 'intimacy' ? node.temperature : activePopup === 'oxytocin' ? oxytocin : cortisol).color }]}>
-                                            현재 상태: {getMetricStatus(activePopup as any, activePopup === 'stability' ? stability : activePopup === 'intimacy' ? node.temperature : activePopup === 'oxytocin' ? oxytocin : cortisol).label}
+                                            현재 에너지 상태: {getMetricStatus(activePopup as any, activePopup === 'stability' ? stability : activePopup === 'intimacy' ? node.temperature : activePopup === 'oxytocin' ? oxytocin : cortisol).label}
                                         </Text>
                                         <Text style={[styles.guideStatusDesc, { color: colors.primary, opacity: 0.6 }]}>
                                             {getMetricStatus(activePopup as any, activePopup === 'stability' ? stability : activePopup === 'intimacy' ? node.temperature : activePopup === 'oxytocin' ? oxytocin : cortisol).desc}

@@ -485,7 +485,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                     </Text>
 
                     <Text style={[styles.resultEnergy, { color: guide.color }]}>
-                        정서 영향력: {guide.impact}
+                        정서 에너지 수준: {guide.impact}
                     </Text>
                 </View>
 
@@ -543,7 +543,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
                     onBack();
                     Alert.alert(
                         "분석 완료",
-                        "관계의 물리적 속성 분석이 완료되었습니다. 해당 인물과의 정서 긴밀도가 맵에 반영됩니다."
+                        "관계의 물리적 속성 분석이 완료되었습니다. 해당 인물과의 정서 에너지 흐름이 맵에 반영됩니다."
                     );
                 }}
             />
