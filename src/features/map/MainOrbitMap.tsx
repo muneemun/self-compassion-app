@@ -22,7 +22,7 @@ import { AppHeader } from '../../components/AppHeader';
 import {
     Search, Plus, LocateFixed, LayoutGrid, List,
     ChevronDown, ChevronUp, HeartPulse, X, ChevronRight,
-    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Leaf, CircleDashed, Activity, Snowflake
+    Edit3, RefreshCw, Zap, Users, Target, Briefcase, Heart, ArrowUpDown, Flame, Leaf, CircleDashed, Activity, Snowflake, Sparkles
 } from 'lucide-react-native';
 import { RelationshipList } from '../relationships/RelationshipList';
 import { RELATIONSHIP_TYPE_LABELS, RelationshipNode, getDynamicCharacter, RQS_GRADE_BADGES } from '../../types/relationship';
@@ -67,6 +67,53 @@ const BadgeIcon = ({ node }: { node: RelationshipNode }) => {
 };
 
 const styles = StyleSheet.create({
+    selfTimeCardPremium: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderColor: 'rgba(74, 93, 78, 0.08)',
+    },
+    selfTimeCardLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        flex: 1,
+    },
+    selfTimeIconWrapper: {
+        width: 52,
+        height: 52,
+        borderRadius: 18,
+        backgroundColor: '#D98B73',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selfTimeCardTitle: {
+        fontSize: 17,
+        fontWeight: '900',
+        color: '#4A5D4E',
+        marginBottom: 2,
+    },
+    selfTimeCardSub: {
+        fontSize: 12,
+        color: '#8C968D',
+        fontWeight: '600',
+    },
+    selfTimeBadge: {
+        backgroundColor: 'rgba(217, 139, 115, 0.1)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    selfTimeBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#D98B73',
+    },
     content: {
         flex: 1,
     },
@@ -1506,19 +1553,21 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
 
                                 {searchMode === 'action' && searchQuery === '' && activeSearchTag === '전체' && (
                                     <TouchableOpacity
-                                        style={[styles.selectionItem, { backgroundColor: colors.white + '80', borderStyle: 'dashed', borderWidth: 1, borderColor: colors.accent }]}
+                                        style={styles.selfTimeCardPremium}
                                         onPress={() => handleSelectPerson('self')}
                                     >
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
-                                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent + '20', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Heart size={20} color={colors.accent} />
+                                        <View style={styles.selfTimeCardLeft}>
+                                            <View style={styles.selfTimeIconWrapper}>
+                                                <Sparkles size={24} color="white" />
                                             </View>
                                             <View>
-                                                <Text style={{ fontSize: 15, fontWeight: '800', color: colors.primary }}>나와의 시간 (Self-Time)</Text>
-                                                <Text style={{ fontSize: 12, color: colors.accent, fontWeight: '600' }}>오늘 나를 위한 돌봄 기록하기</Text>
+                                                <Text style={styles.selfTimeCardTitle}>나와의 시간 (Self-Time)</Text>
+                                                <Text style={styles.selfTimeCardSub}>지친 나를 위해 정서 에너지를 충전하세요</Text>
                                             </View>
                                         </View>
-                                        <ChevronRight size={18} color={colors.accent} />
+                                        <View style={styles.selfTimeBadge}>
+                                            <Text style={styles.selfTimeBadgeText}>치유</Text>
+                                        </View>
                                     </TouchableOpacity>
                                 )}
 

@@ -13,12 +13,12 @@ import {
     Dimensions,
     Alert
 } from 'react-native';
-import { X, Sparkles, Calendar, Trash2 } from 'lucide-react-native';
+import { X, Sparkles, Calendar, Trash2, CheckCircle2, Leaf } from 'lucide-react-native';
 import { useAppStore } from '../../store/useAppStore';
 import { useSelfTimeStore } from '../../store/useSelfTimeStore';
 import { SelfCareCategory, SELF_CARE_CATEGORY_LABELS } from '../../types/selfTime';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 // 🎨 Theme Colors
 const THEME = {
@@ -194,30 +194,62 @@ export const SelfTimeCheckInModal = () => {
 
     const renderCategories = () => (
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>어떤 종류의 휴식이었나요?</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            <Text style={styles.sectionTitle}>휴식의 성격 선택</Text>
+            <View style={styles.categoryGrid}>
                 {(Object.keys(SELF_CARE_CATEGORY_LABELS) as SelfCareCategory[]).map((cat) => {
                     const Icon = CATEGORY_ICONS[cat];
                     const isSelected = category === cat;
+                    const desc = {
+                        SOMATIC: '몸의 긴장 해소',
+                        WRITING: '생각 정리와 기록',
+                        CREATIVE: '창의적 에너지 발산',
+                        SENSORY: '오감의 즐거움',
+                        MINDFULNESS: '현재에 머무르기'
+                    }[cat];
+
                     return (
                         <TouchableOpacity
                             key={cat}
-                            style={[styles.categoryCard, isSelected && styles.categoryCardActive]}
+                            style={[
+                                styles.categoryCardGrid, 
+                                isSelected && { 
+                                    borderColor: THEME.primary, 
+                                    backgroundColor: THEME.white,
+                                    borderWidth: 2,
+                                }
+                            ]}
                             onPress={() => {
                                 setCategory(cat);
                                 setActivityName('');
                             }}
                         >
-                            <View style={[styles.iconWrapper, isSelected && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                            <View style={[
+                                styles.gridIconWrapper, 
+                                isSelected ? { backgroundColor: THEME.primary + '10' } : { backgroundColor: THEME.primary + '05' }
+                            ]}>
                                 <Text style={{ fontSize: 24 }}>{Icon}</Text>
                             </View>
-                            <Text style={[styles.categoryText, isSelected && styles.categoryTextActive]}>
-                                {SELF_CARE_CATEGORY_LABELS[cat]}
-                            </Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[
+                                    styles.gridCategoryText, 
+                                    isSelected ? { color: THEME.primary, fontWeight: '900' } : { color: THEME.textMain }
+                                ]}>
+                                    {SELF_CARE_CATEGORY_LABELS[cat]}
+                                </Text>
+                                <Text style={[
+                                    styles.gridCategoryDesc,
+                                    isSelected && { color: THEME.primary, opacity: 0.8 }
+                                ]}>{desc}</Text>
+                            </View>
+                            {isSelected && (
+                                <View style={[styles.checkBadge, { backgroundColor: THEME.primary, borderColor: THEME.white }]}>
+                                    <CheckCircle2 size={12} color="white" />
+                                </View>
+                            )}
                         </TouchableOpacity>
                     );
                 })}
-            </ScrollView>
+            </View>
         </View>
     );
 
@@ -227,27 +259,56 @@ export const SelfTimeCheckInModal = () => {
 
         return (
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>무엇을 했나요?</Text>
-                <View style={styles.chipsContainer}>
-                    {suggestions.map((suggestion) => (
-                        <TouchableOpacity
-                            key={suggestion}
-                            style={[styles.chip, activityName === suggestion && styles.chipActive]}
-                            onPress={() => setActivityName(suggestion)}
-                        >
-                            <Text style={[styles.chipText, activityName === suggestion && styles.chipTextActive]}>
-                                {suggestion}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <Text style={styles.sectionTitle}>추천 활동 목록</Text>
+                    <View style={styles.badgeCount}>
+                        <Text style={styles.badgeCountText}>{suggestions.length}</Text>
+                    </View>
                 </View>
-                <TextInput
-                    style={styles.textInput}
-                    placeholder="직접 입력하기..."
-                    placeholderTextColor={THEME.textMuted}
-                    value={activityName}
-                    onChangeText={setActivityName}
-                />
+                
+                <View style={styles.suggestionVerticalList}>
+                    {suggestions.map((suggestion) => {
+                        const isActive = activityName === suggestion;
+                        return (
+                            <TouchableOpacity
+                                key={suggestion}
+                                style={[
+                                    styles.suggestionCardFull, 
+                                    isActive && { borderColor: THEME.secondary, backgroundColor: THEME.secondary + '08' }
+                                ]}
+                                onPress={() => setActivityName(suggestion)}
+                            >
+                                <View style={[styles.suggestionIconLarge, isActive && { backgroundColor: THEME.secondary }]}>
+                                    <Sparkles size={16} color={isActive ? 'white' : THEME.secondary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.suggestionTitleText, isActive && { color: THEME.secondary }]}>
+                                        {suggestion}
+                                    </Text>
+                                    <Text style={styles.suggestionSubText}>
+                                        {category === 'MINDFULNESS' ? '정신적 명료함 회복' : '정서적 에너지 충전'}
+                                    </Text>
+                                </View>
+                                {isActive && (
+                                    <View style={styles.activeCheckCircle}>
+                                        <CheckCircle2 size={16} color={THEME.secondary} />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+
+                <View style={styles.customInputWrapper}>
+                    <Text style={styles.inputLabel}>직접 입력</Text>
+                    <TextInput
+                        style={styles.textInputCompact}
+                        placeholder="위 목록에 없는 활동을 하셨나요?"
+                        placeholderTextColor={THEME.textMuted}
+                        value={activityName}
+                        onChangeText={setActivityName}
+                    />
+                </View>
             </View>
         );
     };
@@ -271,18 +332,27 @@ export const SelfTimeCheckInModal = () => {
     const renderDuration = () => (
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>얼마나 시간을 보냈나요?</Text>
-            <View style={styles.chipsContainer}>
-                {[5, 15, 30, 60].map((mins) => (
-                    <TouchableOpacity
-                        key={mins}
-                        style={[styles.durationBtn, durationMinutes === mins && styles.durationBtnActive]}
-                        onPress={() => setDurationMinutes(mins)}
-                    >
-                        <Text style={[styles.durationText, durationMinutes === mins && styles.durationTextActive]}>
-                            {mins >= 60 ? '1시간+' : `${mins}분`}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+            <View style={styles.durationRow}>
+                {[5, 15, 30, 60].map((mins) => {
+                    const label = mins < 60 ? `${mins}분` : '1시간+';
+                    return (
+                        <TouchableOpacity
+                            key={mins}
+                            style={[
+                                styles.durationBtnCompact, 
+                                durationMinutes === mins && { backgroundColor: THEME.primary, borderColor: THEME.primary }
+                            ]}
+                            onPress={() => setDurationMinutes(mins)}
+                        >
+                            <Text style={[
+                                styles.durationTextCompact, 
+                                durationMinutes === mins && { color: 'white' }
+                            ]}>
+                                {label}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
         </View>
     );
@@ -466,107 +536,139 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: THEME.textMain,
     },
-    categoryScroll: {
+    categoryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 12,
-        paddingRight: 24,
     },
-    categoryCard: {
-        width: 100,
-        height: 110,
+    categoryCardGrid: {
+        width: (width - 60) / 2, // 2 columns
         backgroundColor: THEME.surface,
-        borderRadius: 20,
+        borderRadius: 24,
         padding: 16,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
         gap: 12,
         borderWidth: 1,
         borderColor: 'rgba(74, 93, 78, 0.08)',
-        shadowColor: "#4A5D4E",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
     },
-    categoryCardActive: {
-        backgroundColor: THEME.primary,
-        borderColor: THEME.primary,
-    },
-    iconWrapper: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+    gridIconWrapper: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         backgroundColor: 'rgba(74, 93, 78, 0.05)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    categoryText: {
+    gridCategoryText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: THEME.textMain,
+    },
+    gridCategoryDesc: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: THEME.textMuted,
+        marginTop: 2,
+    },
+    checkBadge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: THEME.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: 'white',
+    },
+    badgeCount: {
+        backgroundColor: THEME.primary + '15',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+    },
+    badgeCountText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: THEME.primary,
+    },
+    suggestionVerticalList: {
+        gap: 10,
+    },
+    suggestionCardFull: {
+        backgroundColor: THEME.surface,
+        borderRadius: 20,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(74, 93, 78, 0.08)',
+    },
+    suggestionIconLarge: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: THEME.secondary + '10',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    suggestionTitleText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: THEME.textMain,
+    },
+    suggestionSubText: {
+        fontSize: 12,
+        color: THEME.textMuted,
+        marginTop: 2,
+        fontWeight: '500',
+    },
+    activeCheckCircle: {
+        padding: 4,
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: THEME.textMuted,
+        marginBottom: 10,
+        marginLeft: 4,
+    },
+    customInputWrapper: {
+        marginTop: 16,
+    },
+    textInputCompact: {
+        backgroundColor: THEME.surface,
+        borderWidth: 1,
+        borderColor: 'rgba(74, 93, 78, 0.1)',
+        borderRadius: 20,
+        padding: 14,
+        paddingHorizontal: 20,
+        fontSize: 15,
+        fontWeight: '600',
+        color: THEME.textMain,
+    },
+    durationRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    durationBtnCompact: {
+        flex: 1,
+        height: 48,
+        backgroundColor: THEME.surface,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(74, 93, 78, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    durationTextCompact: {
         fontSize: 13,
         fontWeight: '700',
         color: THEME.textMain,
-        textAlign: 'center',
-    },
-    categoryTextActive: {
-        color: 'white',
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    chip: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: THEME.surface,
-        borderWidth: 1,
-        borderColor: 'rgba(74, 93, 78, 0.1)',
-    },
-    chipActive: {
-        backgroundColor: THEME.primary,
-        borderColor: THEME.primary,
-    },
-    chipText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: THEME.textMuted,
-    },
-    chipTextActive: {
-        color: 'white',
-        fontWeight: '700',
-    },
-    textInput: {
-        backgroundColor: THEME.surface,
-        borderWidth: 1,
-        borderColor: 'rgba(74, 93, 78, 0.1)',
-        borderRadius: 16,
-        padding: 16,
-        fontSize: 15,
-        fontWeight: '600',
-        color: THEME.textMain,
-        marginTop: 4,
-    },
-    durationBtn: {
-        flex: 1,
-        minWidth: 70,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: THEME.surface,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(74, 93, 78, 0.1)',
-    },
-    durationBtnActive: {
-        backgroundColor: 'rgba(217, 139, 115, 0.1)',
-        borderColor: THEME.secondary,
-    },
-    durationText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: THEME.textMuted,
-    },
-    durationTextActive: {
-        color: THEME.secondary,
     },
     sliderContainer: {
         marginBottom: 20,
