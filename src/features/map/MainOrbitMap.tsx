@@ -682,6 +682,7 @@ interface UserNodeProps {
     totalNodes: number;
     onSelectNode?: (id: string) => void;
     isNew?: boolean;
+    isFocused?: boolean;
 }
 const UserNode = memo(({
     node,
@@ -691,11 +692,16 @@ const UserNode = memo(({
     zoomSharedValue,
     totalNodes,
     onSelectNode,
-    isNew
+    isNew,
+    isFocused = true
 }: UserNodeProps) => {
     const twinkleAnim = useSharedValue(0);
 
     useEffect(() => {
+        if (!isFocused) {
+            twinkleAnim.value = 0;
+            return;
+        }
         twinkleAnim.value = withRepeat(
             withTiming(1, {
                 duration: 1500 + Math.random() * 1000,
@@ -704,7 +710,7 @@ const UserNode = memo(({
             -1,
             true
         );
-    }, []);
+    }, [isFocused]);
     // Re-introduce SharedValues to ensure visibility updates
     // If it's new, start from outside the orbit for the fly-in effect
     const radius = useSharedValue(isNew ? BASE_ORBIT_SIZE * 2 : orbitRadius);
@@ -743,7 +749,7 @@ const UserNode = memo(({
     const pulseAnim = useSharedValue(0);
 
     useEffect(() => {
-        if (zoomLevel <= 1.5) {
+        if (!isFocused || zoomLevel <= 1.5) {
             pulseAnim.value = 0;
             return;
         }
@@ -758,7 +764,7 @@ const UserNode = memo(({
             -1,
             true
         );
-    }, [node.temperature, zoomLevel]);
+    }, [node.temperature, zoomLevel, isFocused]);
 
     const auraAnimatedStyle = useAnimatedStyle(() => {
         const scale = 1 + pulseAnim.value * 0.2;
@@ -1901,9 +1907,10 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                         totalNodes={relationships.length}
                                         onSelectNode={onSelectNode}
                                         isNew={isNew}
+                                        isFocused={isFocused}
                                     />
                                 );
-                            }), [distributedNodes, zoomLevel, zoomSharedValue, relationships.length, onSelectNode])}
+                            }), [distributedNodes, zoomLevel, zoomSharedValue, relationships.length, onSelectNode, isFocused])}
 
                             {(() => {
                                 const centerSize = 60 + zoomLevel * 12;
