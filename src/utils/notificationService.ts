@@ -18,7 +18,8 @@ try {
 export const NotificationService = {
     // 1. 권한 요청
     async requestPermissions() {
-        if (!Device.isDevice) return false;
+        // 에뮬레이터에서도 권한 흐름을 테스트할 수 있도록 허용 (실기기 여부와 상관없이 진행)
+        // if (!Device.isDevice) return false; 
         
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
@@ -35,7 +36,7 @@ export const NotificationService = {
                 name: 'default',
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
+                lightColor: '#FFA000',
             });
         }
         
@@ -63,12 +64,13 @@ export const NotificationService = {
                     title: "🌿 오늘 마음은 어떠셨나요?",
                     body: "오늘의 정서 에너지를 기록하고 나를 돌보는 시간을 가져보세요.",
                     data: { screen: 'CheckIn' },
+                    android: { channelId: 'default' },
                 },
                 trigger: {
+                    type: 'daily',
                     hour,
                     minute,
-                    repeats: true,
-                },
+                } as any,
             });
         } catch (error) {
             console.warn('Failed to schedule daily reminder (requires exact alarm permission):', error);
@@ -82,19 +84,20 @@ export const NotificationService = {
                 console.warn('Invalid data for tuning reminder:', { dayOfWeek, hour, minute });
                 return;
             }
-            // dayOfWeek: 1 (Sun) - 7 (Sat) for Expo
+            // weekday: 1 (Sun) - 7 (Sat)
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: "🪐 정기 궤도 점검 시간",
                     body: "관계의 중력이 변하고 있어요. 지도를 재배치할 시간입니다.",
                     data: { screen: 'Tuning' },
+                    android: { channelId: 'default' },
                 },
                 trigger: {
+                    type: 'weekly',
                     weekday: dayOfWeek,
                     hour,
                     minute,
-                    repeats: true,
-                },
+                } as any,
             });
         } catch (error) {
             console.warn('Failed to schedule tuning reminder (requires exact alarm permission):', error);
@@ -109,16 +112,61 @@ export const NotificationService = {
                     title: "📊 주간 건강 리포트 도착",
                     body: "지난주 당신의 마음 날씨 분석이 완료되었습니다.",
                     data: { screen: 'Health' },
+                    android: { channelId: 'default' },
                 },
                 trigger: {
-                    weekday: 2, // Monday (Expo weekday 1=Sun, 2=Mon...)
+                    type: 'weekly',
+                    weekday: 2, // Monday
                     hour: 9,
                     minute: 0,
-                    repeats: true,
-                },
+                } as any,
             });
         } catch (error) {
-            console.warn('Failed to schedule report reminder (requires exact alarm permission):', error);
+            console.warn('Failed to schedule report reminder:', error);
+        }
+    },
+
+    // 6. 월간 리마인더 예약
+    async scheduleMonthlyReminder(day: number, hour: number, minute: number) {
+        try {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: "🪐 월간 궤도 대점검",
+                    body: "한 달간의 정서 흐름을 정리하고 새로운 목표를 세워보세요.",
+                    data: { screen: 'Tuning' },
+                    android: { channelId: 'default' },
+                },
+                trigger: {
+                    type: 'monthly',
+                    day,
+                    hour,
+                    minute,
+                } as any,
+            });
+        } catch (error) {
+            console.warn('Failed to schedule monthly reminder:', error);
+        }
+    },
+
+    // 7. 공지사항 및 업데이트 알림 (주간 체크 유도)
+    async scheduleNoticeReminder() {
+        try {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: "📢 새로운 마음 가이드 업데이트",
+                    body: "관계 비타민과 새로운 공지사항이 도착했는지 확인해보세요.",
+                    data: { screen: 'Settings' },
+                    android: { channelId: 'default' },
+                },
+                trigger: {
+                    type: 'weekly',
+                    weekday: 5, // Friday
+                    hour: 14,
+                    minute: 0,
+                } as any,
+            });
+        } catch (error) {
+            console.warn('Failed to schedule notice reminder:', error);
         }
     }
 };

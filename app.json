@@ -12,6 +12,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#FFA000"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.muneemun.socialorbit"
@@ -26,7 +30,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
-        "USE_EXACT_ALARM"
+        "USE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED"
       ]
     },
     "web": {

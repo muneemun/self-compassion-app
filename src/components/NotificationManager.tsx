@@ -66,22 +66,42 @@ export const NotificationManager = () => {
             // 3. 정기 궤도 점검 (Periodic)
             if (reminderSettings.isTuningEnabled) {
                 const tuningTime = new Date(reminderSettings.tuningTime);
-                const dayOfWeek = mapAnchorToDayOfWeek(reminderSettings.tuningAnchor);
+                const isMonthly = reminderSettings.tuningPeriod === 'monthly';
                 
-                if (!isNaN(tuningTime.getTime()) && dayOfWeek !== -1) {
-                    await NotificationService.scheduleTuningReminder(
-                        dayOfWeek,
-                        tuningTime.getHours(),
-                        tuningTime.getMinutes()
-                    );
+                if (!isNaN(tuningTime.getTime())) {
+                    if (isMonthly) {
+                        let day = 1;
+                        if (reminderSettings.tuningAnchor === '매월 말일') day = 31; // 라이브러리에서 보통 큰 수는 말일로 처리되거나 보정됨
+                        else if (reminderSettings.tuningAnchor === '매월 1일') day = 1;
+                        
+                        await NotificationService.scheduleMonthlyReminder(
+                            day,
+                            tuningTime.getHours(),
+                            tuningTime.getMinutes()
+                        );
+                    } else {
+                        const dayOfWeek = mapAnchorToDayOfWeek(reminderSettings.tuningAnchor);
+                        if (dayOfWeek !== -1) {
+                            await NotificationService.scheduleTuningReminder(
+                                dayOfWeek,
+                                tuningTime.getHours(),
+                                tuningTime.getMinutes()
+                            );
+                        }
+                    }
                 } else {
-                    console.warn('Invalid tuning reminder settings:', { tuningTime, dayOfWeek });
+                    console.warn('Invalid tuning reminder settings:', { tuningTime });
                 }
             }
 
             // 4. 분석 리포트 알림 (설정 활성화 시)
             if (notificationSettings.isSelfReportEnabled || notificationSettings.isOrbitReportEnabled) {
                 await NotificationService.scheduleReportReminder();
+            }
+
+            // 5. 공지사항 및 업데이트 알림 (설정 활성화 시)
+            if (notificationSettings.isNoticeEnabled) {
+                await NotificationService.scheduleNoticeReminder();
             }
         } catch (error) {
             console.error('Failed to sync notifications:', error);
@@ -97,8 +117,6 @@ export const NotificationManager = () => {
             '목요일': 5,
             '금요일': 6,
             '토요일': 7,
-            '매월 1일': -1, // 복잡한 주기는 현재 단순화
-            '매월 말일': -1,
             '마지막 일요일': 1,
         };
         return map[anchor] || -1;
