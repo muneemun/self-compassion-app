@@ -71,7 +71,7 @@ export const NotificationService = {
                 },
             });
         } catch (error) {
-            console.error('Failed to schedule daily reminder:', error);
+            console.warn('Failed to schedule daily reminder (requires exact alarm permission):', error);
         }
     },
 
@@ -97,7 +97,7 @@ export const NotificationService = {
                 },
             });
         } catch (error) {
-            console.error('Failed to schedule tuning reminder:', error);
+            console.warn('Failed to schedule tuning reminder (requires exact alarm permission):', error);
         }
     },
 
@@ -118,7 +118,7 @@ export const NotificationService = {
                 },
             });
         } catch (error) {
-            console.error('Failed to schedule report reminder:', error);
+            console.warn('Failed to schedule report reminder (requires exact alarm permission):', error);
         }
     }
 };

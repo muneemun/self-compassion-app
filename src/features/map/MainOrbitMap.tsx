@@ -891,16 +891,18 @@ const UserNode = memo(({
 });
 
 interface MainOrbitMapProps {
+    isFocused?: boolean;
     onSelectNode: (id: string) => void;
     onPressAdd: () => void;
     onDiagnose: (id: string, mode: 'ZONE' | 'RQS') => void;
     onRecordLog: (id: string) => void;
 }
 
-export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog }: MainOrbitMapProps) => {
+export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDiagnose, onRecordLog }: MainOrbitMapProps) => {
     const colors = useColors();
     const { relationships, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
     const { userProfile, interactionFeedback, setInteractionFeedback, cognitiveFeedback, setCognitiveFeedback } = useAppStore();
+    const entranceOpacity = useSharedValue(0);
 
     // ── 🌌 Atmosphere Engine v2 ────────────────────────────────────
     const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('NORMAL');
@@ -1083,6 +1085,20 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
             zoomSharedValue.value = withSpring(zoomLevel, { damping: 20, stiffness: 100 });
         }
     }, [zoomLevel]);
+
+    // 🌟 Tab Focus Entrance Animation
+    useEffect(() => {
+        if (isFocused) {
+            // Reset state for entrance effect
+            entranceOpacity.value = 0;
+            zoomSharedValue.value = zoomLevel * 0.8;
+            
+            // Animate in
+            entranceOpacity.value = withTiming(1, { duration: 600 });
+            zoomSharedValue.value = withSpring(zoomLevel, { damping: 15, stiffness: 90 });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isFocused]);
 
     const currentOrbitSize = BASE_ORBIT_SIZE; // Use fixed base size for layout calculations
 
@@ -1356,7 +1372,8 @@ export const MainOrbitMap = ({ onSelectNode, onPressAdd, onDiagnose, onRecordLog
             { translateX: panX.value + turbulenceValue.value },
             { translateY: panY.value + turbulenceValue.value },
             { rotate: `${universeRotation.value}deg` }
-        ]
+        ],
+        opacity: entranceOpacity.value
     }));
 
     const lastDist = useRef<number | null>(null);

@@ -12,11 +12,13 @@ import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withSpring,
+    withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Line, G, Text as SvgText } from 'react-native-svg';
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
+import { useIsFocused } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 const MAP_SIZE = 800;
@@ -75,6 +77,7 @@ const resolveCollisions = (nodes: { x: number; y: number; [key: string]: any }[]
 export const ZoomableRelationshipMap: React.FC<{ dateRange?: {start: Date, end: Date} | null; onClose?: () => void; onSelectNode?: (id: string) => void }> = ({ dateRange, onClose, onSelectNode }) => {
     const colors = useColors();
     const relationships = useRelationshipStore(state => state.relationships);
+    const isFocused = useIsFocused();
 
     // Dynamic layout measurement for accurate centering
     const [mapAreaHeight, setMapAreaHeight] = useState(0);
@@ -94,21 +97,33 @@ export const ZoomableRelationshipMap: React.FC<{ dateRange?: {start: Date, end: 
     const translateY = useSharedValue(initialTranslateY);
     const savedTranslateX = useSharedValue(initialTranslateX);
     const savedTranslateY = useSharedValue(initialTranslateY);
+    
+    // Animation states for opening entrance
+    const opacity = useSharedValue(0);
 
     // Re-center when actual layout is measured
     useEffect(() => {
-        if (mapAreaHeight > 0) {
+        if (mapAreaHeight > 0 && isFocused) {
+            // Reset animation state for replay
+            opacity.value = 0;
+
             const newFit = Math.min(width / MAP_SIZE, mapAreaHeight / MAP_SIZE);
             const newTX = (width / 2 - MAP_SIZE / 2) / newFit;
             const newTY = (mapAreaHeight / 2 - MAP_SIZE / 2) / newFit;
-            scale.value = newFit;
+            
+            // Opening Animation Trigger
+            scale.value = newFit * 0.8; // Start slightly smaller
+            scale.value = withSpring(newFit, { damping: 12, stiffness: 90 });
             savedScale.value = newFit;
+            
             translateX.value = newTX;
             translateY.value = newTY;
             savedTranslateX.value = newTX;
             savedTranslateY.value = newTY;
+            
+            opacity.value = withTiming(1, { duration: 600 });
         }
-    }, [mapAreaHeight]);
+    }, [mapAreaHeight, isFocused]);
 
     const pinchGesture = Gesture.Pinch()
         .onUpdate((e) => {
@@ -133,6 +148,7 @@ export const ZoomableRelationshipMap: React.FC<{ dateRange?: {start: Date, end: 
     const composed = Gesture.Simultaneous(pinchGesture, panGesture);
 
     const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
         transform: [
             { scale: scale.value },
             { translateX: translateX.value },
