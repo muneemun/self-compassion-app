@@ -111,7 +111,14 @@ const UserNode = memo(({ node, orbitRadius, initialAngle, zoomLevel, zoomSharedV
         const rad = (angle.value * Math.PI) / 180;
         const scaleFactor = 0.55 + (zoomSharedValue.value - 1) * 0.3375;
         const currentRadius = radius.value * scaleFactor;
-        return { transform: [{ translateX: Math.cos(rad) * currentRadius }, { translateY: Math.sin(rad) * currentRadius }, { scale: Math.min(1.3, scaleFactor) }] };
+        
+        return { 
+            transform: [
+                { translateX: Math.cos(rad) * currentRadius }, 
+                { translateY: Math.sin(rad) * currentRadius }, 
+                { scale: Math.min(1.3, scaleFactor) } // Strictly sync with MainOrbitMap
+            ] 
+        };
     });
     const twinkleStyle = useAnimatedStyle(() => ({ transform: [{ scale: 0.8 + twinkleAnim.value * 0.4 }], opacity: 0.7 + twinkleAnim.value * 0.3 }));
     const pulseAnim = useSharedValue(0);
@@ -132,6 +139,7 @@ const UserNode = memo(({ node, orbitRadius, initialAngle, zoomLevel, zoomSharedV
                 </View>
             );
         }
+        const showName = zoomLevel > 2.5 && node.id !== 'self';
         const avatarSize = (zoomLevel < 2.5 ? 28 : zoomLevel < 3.5 ? 36 : zoomLevel < 4.5 ? 42 : 48) * (0.7 + densityFactor * 0.3);
         const character = getDynamicCharacter(node.interactions || []);
         
@@ -146,18 +154,8 @@ const UserNode = memo(({ node, orbitRadius, initialAngle, zoomLevel, zoomSharedV
                     <View style={[styles.avatarWrapper, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, borderColor: accentColor, padding: 1.5 }]}>
                         <Image source={{ uri: node.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80' }} style={[styles.avatar, { borderRadius: (avatarSize - 3) / 2 }]} />
                     </View>
-                    {/* v5 Persona Badge */}
-                    <View style={{ 
-                        position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11, 
-                        backgroundColor: (character || DYNAMIC_CHARACTERS.Healing).bgColor, 
-                        borderWidth: 1.5, 
-                        borderColor: (character || DYNAMIC_CHARACTERS.Healing).color, 
-                        alignItems: 'center', justifyContent: 'center', zIndex: 10 
-                    }}>
-                        <BadgeIcon node={node} />
-                    </View>
                 </View>
-                {zoomLevel > 2.5 && (
+                {showName && (
                     <View style={styles.nodeLabelContainer}>
                         <Text style={styles.nodeNameText} numberOfLines={1}>{node.name}</Text>
                     </View>
@@ -279,6 +277,7 @@ export const TestOrbitMap = () => {
 
     // ── 🌌 Atmosphere Engine (100% Clone) ──────────────────────────────────
     const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('NORMAL');
+    const [zoomState, setZoomState] = useState(2); // Added for UI sync
     const atmosphereBgProgress = useSharedValue(1);
     const mistProgress = useSharedValue(0);
     const waveProgress = useSharedValue(0);
@@ -323,15 +322,7 @@ export const TestOrbitMap = () => {
 
     // ── v5 Swirl Engine (Rotation Logic)
     const universeRotation = useSharedValue(0);
-    useEffect(() => {
-        // Continuous rotation driven by swirlSpeed
-        const duration = 60000 / (currentTheme.swirlSpeed || 0.5);
-        universeRotation.value = withRepeat(
-            withTiming(universeRotation.value + 360, { duration, easing: Easing.linear }),
-            -1,
-            false
-        );
-    }, [currentTheme.state, currentTheme.swirlSpeed]);
+    // Continuous rotation removed to sync with MainOrbitMap
 
     // ── Feedback Animations (Mirror)
     const feedbackOpacity = useSharedValue(0);
@@ -452,8 +443,35 @@ export const TestOrbitMap = () => {
         selfPulse.value = withRepeat(withSequence(withTiming(1.08, { duration: 400, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 300, easing: Easing.in(Easing.quad) }), withTiming(1.05, { duration: 400, easing: Easing.out(Easing.quad) }), withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.quad) })), -1, false);
     }, []);
 
-    const selfHaloStyle = useAnimatedStyle(() => ({ transform: [{ scale: selfPulse.value }], opacity: 0.4 }));
-    const selfHaloSizeStyle = useAnimatedStyle(() => ({ width: 80, height: 80, borderRadius: 40 }));
+    const selfHaloStyle = useAnimatedStyle(() => ({ 
+        transform: [{ scale: selfPulse.value }], 
+        opacity: selfPulse.value === 1 ? 0.4 : 0.8
+    }));
+    
+    const selfHaloSizeStyle = useAnimatedStyle(() => {
+        const centerSize = 60 + zoomSharedValue.value * 12;
+        return {
+            width: centerSize + 20,
+            height: centerSize + 20,
+            borderRadius: (centerSize + 20) / 2,
+        };
+    });
+
+    const centerNodeSizeStyle = useAnimatedStyle(() => {
+        const centerSize = 60 + zoomSharedValue.value * 12;
+        return {
+            width: centerSize,
+            height: centerSize,
+            borderRadius: centerSize / 2
+        };
+    });
+    
+    const centerAvatarSizeStyle = useAnimatedStyle(() => {
+        const centerSize = 60 + zoomSharedValue.value * 12;
+        return {
+            borderRadius: (centerSize - 8) / 2
+        };
+    });
 
     const [isMoved, setIsMoved] = useState(false);
     const panX = useSharedValue(0), panY = useSharedValue(-120), offsetX = useSharedValue(0), offsetY = useSharedValue(-120);
@@ -659,11 +677,19 @@ export const TestOrbitMap = () => {
                                 <UserNode key={node.id} node={node} orbitRadius={radius} initialAngle={angle} zoomLevel={zoomLevel} zoomSharedValue={zoomSharedValue} totalNodes={relationships.length} onSelectNode={onSelectNode} isFocused />
                             ))}
 
-                            <TouchableOpacity style={{ alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.8}>
-                                <ReAnimated.View style={[{ position: 'absolute', backgroundColor: 'rgba(255, 152, 0, 0.4)', shadowColor: '#FF9800', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 10, zIndex: 200 }, selfHaloSizeStyle, selfHaloStyle]} />
-                                <View style={[styles.centerNode, { borderColor: '#FF9800', zIndex: 201 }]}>
-                                    <Image source={{ uri: userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80' }} style={styles.centerAvatar} />
-                                </View>
+                            <TouchableOpacity 
+                                style={{ alignItems: 'center', justifyContent: 'center', zIndex: 950 }} 
+                                activeOpacity={0.8}
+                                onPress={() => onSelectNode?.('self')}
+                            >
+                                {/* v5 Self Halo (Synced with MainOrbitMap) */}
+                                <ReAnimated.View style={[{ position: 'absolute', backgroundColor: 'rgba(255, 152, 0, 0.4)', shadowColor: '#FF9800', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 10 }, selfHaloSizeStyle, selfHaloStyle]} />
+                                <ReAnimated.View style={[styles.centerNode, { borderColor: '#FF9800' }, centerNodeSizeStyle]}>
+                                    <ReAnimated.Image 
+                                        source={{ uri: userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80' }} 
+                                        style={[{ width: '100%', height: '100%' }, centerAvatarSizeStyle]} 
+                                    />
+                                </ReAnimated.View>
                             </TouchableOpacity>
 
                             <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: width * 5, height: height * 5, backgroundColor: '#000', zIndex: 100 }, dimmingStyle]} />
@@ -672,7 +698,7 @@ export const TestOrbitMap = () => {
                             <ReAnimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 101 }, bloomStyle]} />
 
                             {/* v5 Interaction Ripples (Layer A) */}
-                            <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 900 }]}>
+                            <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 1000 }]}>
                                 <ReAnimated.View style={[styles.ripple, rippleStyle1]} />
                                 <ReAnimated.View style={[styles.ripple, rippleStyle2]} />
                                 <ReAnimated.View style={[styles.ripple, rippleStyle3]} />
@@ -756,8 +782,16 @@ export const TestOrbitMap = () => {
                         <View style={styles.rightControls}>
                             <BlurView intensity={40} tint="light" style={styles.zoomControls}>
                                 {[1, 2, 3, 4, 5].map((level) => (
-                                    <TouchableOpacity key={level} style={[styles.zoomBtn, Math.round(zoomLevel) === level && { backgroundColor: colors.primary }]} onPress={() => setZoomLevel(level)}>
-                                        <Text style={[styles.zoomBtnText, { color: Math.round(zoomLevel) === level ? colors.white : colors.primary }]}>{level}</Text>
+                                    <TouchableOpacity 
+                                        key={level} 
+                                        style={[styles.zoomBtn, Math.round(zoomState) === level && { backgroundColor: colors.primary }]} 
+                                        onPress={() => {
+                                            setZoomState(level);
+                                            zoomSharedValue.value = withTiming(level, { duration: 400 });
+                                            setOrbitMapViewState({ ...orbitMapViewState, zoomLevel: level });
+                                        }}
+                                    >
+                                        <Text style={[styles.zoomBtnText, { color: Math.round(zoomState) === level ? colors.white : colors.primary }]}>{level}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </BlurView>
