@@ -9,8 +9,10 @@ export const ZONE_FILTERS = [
 ];
 
 export const getDynamicTabs = (relationships: RelationshipNode[]) => {
+    if (!relationships || !Array.isArray(relationships)) return ['전체', ...ZONE_FILTERS.map(zf => zf.label)];
+    
     // 1. 존재하는 관계 타입 추출
-    const types = Array.from(new Set(relationships.map(r => r.type)));
+    const types = Array.from(new Set(relationships.map(r => r?.type).filter(Boolean)));
     const typeLabels = types.map(t => {
         const labels: Record<string, string> = {
             'family': '가족',

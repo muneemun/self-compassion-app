@@ -175,7 +175,7 @@ export const BackupService = {
         try {
           // 이미지 데이터 복원 처리
           const restoredRelationships = await Promise.all(
-            data.relationships.map(async (rel: any) => {
+            (data.relationships || []).map(async (rel: any) => {
               if (rel.imageBase64) {
                 const localUri = await this.restoreImageFromBackup(rel.imageBase64, rel.id);
                 if (localUri) {

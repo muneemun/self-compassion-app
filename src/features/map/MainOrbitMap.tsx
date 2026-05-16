@@ -32,19 +32,21 @@ import { useAppStore } from '../../store/useAppStore';
 import { RelationshipLogModal } from '../relationships/RelationshipLogModal';
 import { SystemStabilizationModal } from './SystemStabilizationModal';
 import Svg, { G, Circle, Path, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import ReAnimated, {
-    useAnimatedStyle,
-    withSpring,
-    useSharedValue,
-    useDerivedValue,
-    withTiming,
-    withRepeat,
+import ReAnimated, { 
+    useSharedValue, 
+    useAnimatedStyle, 
+    useDerivedValue, 
+    withSpring, 
+    withTiming, 
+    withRepeat, 
+    withSequence, 
+    withDelay, 
     Easing,
-    SharedValue,
-    withSequence,
-    withDelay,
+    interpolate,
     interpolateColor,
-    interpolate
+    Extrapolate,
+    cancelAnimation,
+    SharedValue
 } from 'react-native-reanimated';
 
 // 🧩 Modular Optimized Hooks & Constants
@@ -911,7 +913,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     const entranceOpacity = useSharedValue(0);
 
     // ── 🌌 Atmosphere Engine v2 ────────────────────────────────────
-    const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('NORMAL');
+    const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('CALM');
     const atmosphereBgProgress = useSharedValue(0);
     const mistProgress = useSharedValue(0);
     const waveProgress = useSharedValue(0);
@@ -975,7 +977,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
         const bgColor = interpolateColor(
             atmosphereBgProgress.value,
             [0, 1],
-            [ATMOSPHERE_THEMES.NORMAL.backgroundColor, currentTheme.backgroundColor]
+            [ATMOSPHERE_THEMES.CALM.backgroundColor, currentTheme.backgroundColor]
         );
         return { backgroundColor: bgColor };
     });
@@ -1066,9 +1068,9 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
         opacity: rippleOpacity.value * 0.4,
     }));
     // Tracking new nodes for entry animation
-    const prevNodeIds = useRef(new Set(relationships.map(r => r.id)));
+    const prevNodeIds = useRef(new Set((relationships || []).map(r => r.id)));
     useEffect(() => {
-        prevNodeIds.current = new Set(relationships.map(r => r.id));
+        prevNodeIds.current = new Set((relationships || []).map(r => r.id));
     }, [relationships]);
 
     // View State from Store
@@ -1207,14 +1209,13 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     // ⚡ Optimized Core Engine Integration
     const [systemMessage, setSystemMessage] = useState<string | null>(null);
     const atmosphere = useOrbitAtmosphere(relationships, setSystemMessage);
-    const { positionedNodes, filteredCount } = useOrbitEngine({
+    const { distributedNodes, filteredCount } = useOrbitEngine({
         relationships,
         viewState: orbitMapViewState,
         currentOrbitSize: BASE_ORBIT_SIZE
     });
 
-    const distributedNodes = positionedNodes;
-    const filteredRelationships = positionedNodes.map(pn => pn.node);
+    const filteredRelationships = distributedNodes.map(pn => pn.node);
 
     const handleSelectPerson = useCallback((person: RelationshipNode | 'self') => {
         Keyboard.dismiss();

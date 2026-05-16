@@ -92,12 +92,48 @@ export interface OrbitMapViewState {
     viewMode: 'map' | 'list';
 }
 
-// 🧬 Dynamic Character System v2.0 — 4-Quadrant Aligned
+// 🧬 Dynamic Character System v5.0 — Particle Metaphor Aligned
 export const DYNAMIC_CHARACTERS = {
-    Draining: { type: 'Draining', label: '지치는 사이', color: '#D98B73', bgColor: '#D98B7315', icon: 'Zap', desc: '만나고 나면 마음의 기운이 조금 빠져요.' },
-    Intense: { type: 'Intense', label: '뜨거운 사이', color: '#FFB74D', bgColor: '#FFB74D15', icon: 'Flame', desc: '에너지를 듬뿍 주고받는 활기찬 사이예요.' },
-    Distant: { type: 'Distant', label: '평범한 사이', color: '#90A4AE', bgColor: '#90A4AE15', icon: 'CircleDashed', desc: '큰 감정 없이 그냥 아는 무난한 사이예요.' },
-    Stable: { type: 'Stable', label: '편안한 사이', color: '#4A5D4E', bgColor: '#4A5D4E15', icon: 'Leaf', desc: '함께 있으면 저절로 기운이 나요.' },
+    Charge: { 
+        type: 'Charge', 
+        label: '충전', 
+        color: '#FFD700', 
+        bgColor: '#FFD70015', 
+        icon: 'Zap', 
+        waveWidth: 3,
+        waveColor: '#FFD700',
+        desc: '활력이 생겨요! 에너지가 충전되었습니다.' 
+    },
+    Healing: { 
+        type: 'Healing', 
+        label: '회복', 
+        color: '#81C784', 
+        bgColor: '#81C78415', 
+        icon: 'Leaf', 
+        waveWidth: 3,
+        waveColor: '#81C784',
+        desc: '마음이 정화돼요. 관계가 푸르러집니다.' 
+    },
+    Drain: { 
+        type: 'Drain', 
+        label: '소진', 
+        color: '#546E7A', 
+        bgColor: '#546E7A15', 
+        icon: 'Orbit', // Meteorite Metaphor
+        waveWidth: 8,
+        waveColor: '#37474F',
+        desc: '너무 무거워요. 잠시 무게를 덜어볼까요?' 
+    },
+    Crisis: { 
+        type: 'Crisis', 
+        label: '위기', 
+        color: '#D98B73', 
+        bgColor: '#D98B7315', 
+        icon: 'Activity', // Shard/Vibration Metaphor
+        waveWidth: 1.5,
+        waveColor: '#D98B73',
+        desc: '위태로운 기류입니다. 주의가 필요해요.' 
+    },
 };
 
 export const RQS_GRADE_BADGES = {
@@ -114,11 +150,14 @@ export const getDynamicCharacter = (interactions: Interaction[]) => {
     const avgSat = recentLogs.reduce((acc, curr) => acc + (curr.satisfaction || 0), 0) / recentLogs.length;
     const avgDrain = recentLogs.reduce((acc, curr) => acc + (curr.energyDrain || 0), 0) / recentLogs.length;
 
-    // 4-Quadrant mapping
-    if (avgDrain >= 50 && avgSat < 50)  return DYNAMIC_CHARACTERS.Draining;  // Q1
-    if (avgDrain >= 50 && avgSat >= 50) return DYNAMIC_CHARACTERS.Intense;    // Q2
-    if (avgDrain < 50  && avgSat < 50)  return DYNAMIC_CHARACTERS.Distant;    // Q3
-    return DYNAMIC_CHARACTERS.Stable;                                          // Q4
+    // v5 사분면 매핑 (만족도와 소모량 기준)
+    if (avgSat >= 70 && avgDrain < 40) return DYNAMIC_CHARACTERS.Charge;   // 만족도 높고 소모 적음 -> 충전
+    if (avgSat >= 50 && avgDrain < 30) return DYNAMIC_CHARACTERS.Healing;  // 만족도 보통이고 소모 매우 적음 -> 회복
+    if (avgDrain >= 60) return DYNAMIC_CHARACTERS.Drain;                   // 소모가 매우 높음 -> 소진
+    if (avgSat < 40) return DYNAMIC_CHARACTERS.Crisis;                    // 만족도가 매우 낮음 -> 위기
+    
+    return DYNAMIC_CHARACTERS.Healing; // 기본값
 };
+
 
 

@@ -185,7 +185,7 @@ export const RelationshipList = ({
             { id: 'z5', label: '배경 소음(외부 환경)', zone: 5 },
         ];
 
-        const uniqueTypes = Array.from(new Set(relationships.map(r => (r.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r.type))).filter(Boolean) as string[];
+        const uniqueTypes = Array.from(new Set((relationships || []).map(r => (r?.type && RELATIONSHIP_TYPE_LABELS[r.type]) || r?.type))).filter(Boolean) as string[];
         const dynamicTabs = passedTabs || ['전체', ...zoneFilters.map(z => z.label), ...uniqueTypes];
 
         const filteredRelationships = (relationships || []).filter(r => {
@@ -307,7 +307,7 @@ export const RelationshipList = ({
                         return (
                             <>
                                 <ZoneSection zone={1} title="핵심 그룹" priority count={zone1Nodes.length} />
-                                {zone1Nodes.map(node => (
+                                {(zone1Nodes || []).map(node => (
                                     <RelationshipCard key={node.id} node={node} onSelect={onSelect} />
                                 ))}
                             </>

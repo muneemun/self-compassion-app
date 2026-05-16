@@ -14,7 +14,7 @@ interface AppState {
     setActiveZone: (zone: number) => void;
     
     // 네비게이션 상태 (Deep Link 대응용)
-    activeTab: 'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health';
+    activeTab: 'map' | 'insight' | 'tuning' | 'space' | 'sos' | 'health' | 'test';
     setActiveTab: (tab: AppState['activeTab']) => void;
 
     // 글로벌 '나와의 시간' 체크인 모달 제어
