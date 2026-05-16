@@ -46,8 +46,12 @@ import ReAnimated, {
     interpolateColor,
     Extrapolate,
     cancelAnimation,
-    SharedValue
+    SharedValue,
+    createAnimatedComponent
 } from 'react-native-reanimated';
+
+const AnimatedCircle = createAnimatedComponent(Circle);
+const AnimatedPath = createAnimatedComponent(Path);
 
 // 🧩 Modular Optimized Hooks & Constants
 import { useOrbitEngine } from './hooks/useOrbitEngine';
@@ -170,6 +174,98 @@ const UserNode = memo(({ node, orbitRadius, initialAngle, zoomLevel, zoomSharedV
     );
 });
 
+const FallingLeaf = ({ idx, healingProgress }: { idx: number, healingProgress: SharedValue<number> }) => {
+    const animatedStyle = useAnimatedStyle(() => ({
+        position: 'absolute',
+        top: 80 + (idx * 20),
+        left: 80 + (Math.sin(idx) * 40),
+        transform: [
+            { translateY: healingProgress.value * 120 },
+            { translateX: Math.sin(healingProgress.value * 5 + idx) * 30 },
+            { rotate: `${healingProgress.value * 360 + (idx * 45)}deg` }
+        ]
+    }));
+
+    return (
+        <ReAnimated.View style={animatedStyle}>
+            <Leaf size={16} color="#A5D6A7" fill="#A5D6A7" />
+        </ReAnimated.View>
+    );
+};
+
+const RotatingMeteorite = ({ idx, drainProgress }: { idx: number, drainProgress: SharedValue<number> }) => {
+    const animatedStyle = useAnimatedStyle(() => ({
+        position: 'absolute',
+        top: 85,
+        left: 85,
+        transform: [
+            // Spiral rotation: Increases with distance
+            { rotate: `${drainProgress.value * 540 * (idx % 2 === 0 ? 1 : -1) + (idx * 90)}deg` },
+            // Spreading out further
+            { translateX: interpolate(drainProgress.value, [0, 1], [0, 120 + (idx * 20)]) },
+            { scale: interpolate(drainProgress.value, [0, 0.2, 1], [0, 1.2, 0.5]) }
+        ],
+        // Fade out as it spreads
+        opacity: interpolate(drainProgress.value, [0, 0.1, 0.6, 1], [0, 1, 0.8, 0])
+    }));
+
+    return (
+        <ReAnimated.View style={animatedStyle}>
+            <Svg width={18 + idx * 4} height={18 + idx * 4} viewBox="0 0 100 100">
+                <Path 
+                    d="M 50 15 L 85 30 L 75 80 L 40 85 L 15 50 L 30 20 Z" 
+                    fill="#37474F" 
+                    stroke="#263238" 
+                    strokeWidth="3" 
+                />
+            </Svg>
+        </ReAnimated.View>
+    );
+};
+
+const GlassShard = ({ idx, crisisProgress }: { idx: number, crisisProgress: SharedValue<number> }) => {
+    const animatedStyle = useAnimatedStyle(() => {
+        // More violent, irregular jitter
+        const jitterX = (Math.random() * 8 - 4) * crisisProgress.value;
+        const jitterY = (Math.random() * 8 - 4) * crisisProgress.value;
+        
+        return {
+            position: 'absolute',
+            top: 85,
+            left: 85,
+            transform: [
+                { rotate: `${(idx * 72) + (crisisProgress.value * 360)}deg` },
+                // Explosive start (Fast burst, then slow)
+                { translateX: interpolate(crisisProgress.value, [0, 0.1, 1], [0, 100, 180]) + jitterX },
+                { translateY: jitterY },
+                { scaleX: interpolate(crisisProgress.value, [0, 0.1, 1], [0, 2, 1.5]) },
+                { scaleY: interpolate(crisisProgress.value, [0, 1], [0, 0.8]) }
+            ],
+            opacity: interpolate(crisisProgress.value, [0, 0.05, 0.6, 1], [0, 1, 1, 0])
+        };
+    });
+
+    // Menacing Sharp Shard Paths
+    const shardPaths = [
+        "M 50 5 L 95 95 L 45 80 Z", // Long Sharp
+        "M 10 50 L 90 40 L 50 90 Z", // Wide Jagged
+        "M 50 0 L 70 100 L 30 100 Z", // Needle-like
+    ];
+
+    return (
+        <ReAnimated.View style={animatedStyle}>
+            <Svg width={20 + (idx % 2) * 10} height={30 + (idx % 3) * 5} viewBox="0 0 100 100">
+                <Path 
+                    d={shardPaths[idx % 3]} 
+                    fill={idx % 3 === 0 ? "#D32F2F" : (idx % 3 === 1 ? "#212121" : "#F5F5F5")} 
+                    stroke="#000" 
+                    strokeWidth="2" 
+                />
+            </Svg>
+        </ReAnimated.View>
+    );
+};
+
 // ─── 🪐 Main Test Component (ENVIRONMENT MIRROR) ───────────────────────
 
 export const TestOrbitMap = () => {
@@ -246,44 +342,104 @@ export const TestOrbitMap = () => {
     // v5 Specific Wave Properties
     const waveWidth = useSharedValue(3);
     const waveColor = useSharedValue('#FF9800');
+    const chargeProgress = useSharedValue(0); // For battery fill effect
+    const healingProgress = useSharedValue(0); // For leaf effect
+    const drainProgress = useSharedValue(0); // For meteorite effect
+    const crisisProgress = useSharedValue(0); // For glass shard effect
     
     useEffect(() => {
         if (interactionFeedback.isActive || cognitiveFeedback.message) {
             feedbackOpacity.value = withTiming(1, { duration: 500 });
 
-            // Apply v5 Particle Specs
-            if (interactionFeedback.isActive && interactionFeedback.targetId) {
-                const targetNode = relationships.find(r => r.id === interactionFeedback.targetId);
-                const persona = targetNode ? getDynamicCharacter(targetNode.interactions || []) : null;
-                if (persona) {
-                    waveWidth.value = persona.waveWidth;
-                    waveColor.value = persona.waveColor;
-                    if (persona.type === 'Crisis') {
-                        turbulenceValue.value = withRepeat(withSequence(withTiming(2, { duration: 50 }), withTiming(-2, { duration: 50 })), 10, true);
-                    }
-                }
-            }
+            // Determine duration based on persona (v5 Golden Window)
+            let duration = 5000; // Default 5s
+            if (cognitiveFeedback.message?.includes('에너지가 충전')) duration = 4000;
+            if (cognitiveFeedback.message?.includes('정화돼요')) duration = 6500;
+            if (cognitiveFeedback.message?.includes('무거워요')) duration = 5500;
+            if (cognitiveFeedback.message?.includes('주의하세요') || cognitiveFeedback.message?.includes('위험')) duration = 5000;
 
             if (cognitiveFeedback.type === 'SELF_CARE' || cognitiveFeedback.type === 'INTERACTION') {
-                rippleScale1.value = 0; rippleScale2.value = 0; rippleScale3.value = 0; rippleOpacity.value = 0.8;
-                rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
-                rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                rippleOpacity.value = withTiming(0, { duration: 3000 });
+                // ... logic handled in buttons or default
+                if (!(cognitiveFeedback.message?.includes('에너지가 충전') || cognitiveFeedback.message?.includes('정화돼요') || cognitiveFeedback.message?.includes('무거워요') || cognitiveFeedback.message?.includes('주의'))) {
+                    rippleScale1.value = 0; rippleScale2.value = 0; rippleScale3.value = 0; rippleOpacity.value = 0.8;
+                    rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
+                    rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+                    rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+                    rippleOpacity.value = withTiming(0, { duration: 3000 });
+                }
             }
+            
             const timer = setTimeout(() => {
-                feedbackOpacity.value = withTiming(0, { duration: 500 });
+                // Fade out everything
+                feedbackOpacity.value = withTiming(0, { duration: 800 });
+                
+                // Force reset progress values
+                cancelAnimation(chargeProgress);
+                cancelAnimation(healingProgress);
+                cancelAnimation(drainProgress);
+                cancelAnimation(crisisProgress);
+                chargeProgress.value = 0;
+                healingProgress.value = 0;
+                drainProgress.value = 0;
+                crisisProgress.value = 0;
+                
+                setIsStatusPillExpanded(false); 
+                
                 if (interactionFeedback.isActive) setInteractionFeedback({ ...interactionFeedback, isActive: false });
                 if (cognitiveFeedback.message) setCognitiveFeedback({ message: null, type: null });
-            }, 4000);
+            }, duration);
             return () => clearTimeout(timer);
         }
     }, [interactionFeedback.isActive, cognitiveFeedback.message]);
 
-    const dimmingStyle = useAnimatedStyle(() => ({ opacity: feedbackOpacity.value * 0.6 }));
+    const dimmingStyle = useAnimatedStyle(() => ({ 
+        opacity: interpolate(drainProgress.value, [0, 0.5, 1], [feedbackOpacity.value * 0.6, 0.8, 0.6]) 
+    }));
+    
+    // Bloom Effect for Healing
+    const bloomStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(healingProgress.value, [0, 0.2, 0.8, 1], [0, 0.4, 0.4, 0]) * feedbackOpacity.value,
+        backgroundColor: 'rgba(165, 214, 167, 0.3)'
+    }));
+
+    const leafOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(healingProgress.value, [0, 0.1, 0.8, 1], [0, 1, 1, 0]) * feedbackOpacity.value,
+    }));
+
+    const drainOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(drainProgress.value, [0, 0.1, 0.8, 1], [0, 1, 1, 0]) * feedbackOpacity.value,
+    }));
+
+    const crisisOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(crisisProgress.value, [0, 0.05, 0.8, 1], [0, 1, 1, 0]) * feedbackOpacity.value,
+    }));
+
     const rippleStyle1 = useAnimatedStyle(() => ({ transform: [{ scale: rippleScale1.value }], opacity: rippleOpacity.value, borderWidth: waveWidth.value, borderColor: waveColor.value }));
     const rippleStyle2 = useAnimatedStyle(() => ({ transform: [{ scale: rippleScale2.value }], opacity: rippleOpacity.value * 0.7, borderWidth: waveWidth.value, borderColor: waveColor.value }));
     const rippleStyle3 = useAnimatedStyle(() => ({ transform: [{ scale: rippleScale3.value }], opacity: rippleOpacity.value * 0.4, borderWidth: waveWidth.value, borderColor: waveColor.value }));
+
+    // ── Charge Overlay Style (Galaxy Style with Jitter & Counter-Rotate)
+    const lightningJitter = useSharedValue(0);
+    useEffect(() => {
+        if (chargeProgress.value > 0) {
+            lightningJitter.value = withRepeat(withSequence(withTiming(1.5, { duration: 60 }), withTiming(-1.5, { duration: 60 })), -1, true);
+        } else {
+            lightningJitter.value = 0;
+        }
+    }, [chargeProgress.value]);
+
+    const chargeOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(chargeProgress.value, [0, 0.1, 1], [0, 1, 1]) * feedbackOpacity.value,
+        transform: [
+            { scale: interpolate(chargeProgress.value, [0, 0.2, 1], [0.5, 1.1, 1]) },
+            { rotate: `${-universeRotation.value + lightningJitter.value}deg` } // Counter-rotate + Jitter
+        ]
+    }));
+
+    const batteryCircleProps = useDerivedValue(() => {
+        const strokeDashoffset = 251.2 * (1 - chargeProgress.value);
+        return { strokeDashoffset };
+    });
 
     // ── Engine State (Mirror)
     const { zoomLevel, selectedFilters, sortMode, isFilterExpanded } = orbitMapViewState;
@@ -364,16 +520,72 @@ export const TestOrbitMap = () => {
                                 style={[styles.labButton, { width: 60 }]}
                                 onPress={() => {
                                     const persona = DYNAMIC_CHARACTERS[pKey];
-                                    // Direct forced simulation for Lab
+                                    
+                                    // 🚨 Global Reset for Continuous Clicks
+                                    chargeProgress.value = 0;
+                                    healingProgress.value = 0;
+                                    drainProgress.value = 0;
+                                    crisisProgress.value = 0;
+                                    rippleScale1.value = 0; rippleScale2.value = 0; rippleScale3.value = 0;
+                                    cancelAnimation(chargeProgress);
+                                    cancelAnimation(healingProgress);
+                                    cancelAnimation(drainProgress);
+                                    cancelAnimation(crisisProgress);
+                                    cancelAnimation(rippleScale1);
+                                    cancelAnimation(rippleScale2);
+                                    cancelAnimation(rippleScale3);
+
                                     waveWidth.value = persona.waveWidth;
                                     waveColor.value = persona.waveColor;
                                     
-                                    // Trigger Ripple Animation Explicitly
-                                    rippleScale1.value = 0; rippleScale2.value = 0; rippleScale3.value = 0; rippleOpacity.value = 0.8;
-                                    rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
-                                    rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                                    rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                                    rippleOpacity.value = withTiming(0, { duration: 3000 });
+                                    if (pKey === 'Charge') {
+                                        // Galaxy Style Inward Ripple
+                                        rippleScale1.value = 4; rippleScale2.value = 4.5; rippleScale3.value = 5; rippleOpacity.value = 0.8;
+                                        rippleScale1.value = withTiming(0, { duration: 1500, easing: Easing.in(Easing.quad) });
+                                        rippleScale2.value = withDelay(300, withTiming(0, { duration: 1500, easing: Easing.in(Easing.quad) }));
+                                        rippleScale3.value = withDelay(600, withTiming(0, { duration: 1500, easing: Easing.in(Easing.quad) }));
+                                        rippleOpacity.value = withTiming(0, { duration: 2500 });
+                                        
+                                        // Battery Progress
+                                        chargeProgress.value = withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.quad) });
+                                    } else if (pKey === 'Healing') {
+                                        // Soft Slow Wave
+                                        rippleScale1.value = 0; rippleOpacity.value = 0.6;
+                                        rippleScale1.value = withTiming(4, { duration: 3500, easing: Easing.out(Easing.sin) });
+                                        rippleScale2.value = withDelay(800, withTiming(4, { duration: 3500, easing: Easing.out(Easing.sin) }));
+                                        rippleOpacity.value = withTiming(0, { duration: 4000 });
+                                        
+                                        // Healing Bloom & Leaves
+                                        healingProgress.value = withTiming(1, { duration: 3500, easing: Easing.inOut(Easing.sin) });
+                                    } else if (pKey === 'Drain') {
+                                        // Heavy Meteorite Ripple (Slowed Down)
+                                        waveWidth.value = 8;
+                                        waveColor.value = '#263238';
+                                        rippleScale1.value = 0; rippleOpacity.value = 0.8;
+                                        rippleScale1.value = withTiming(5, { duration: 4500, easing: Easing.out(Easing.exp) });
+                                        rippleOpacity.value = withTiming(0, { duration: 5000 });
+
+                                        // Drain Meteorite Progress (Heavier)
+                                        drainProgress.value = withTiming(1, { duration: 4500, easing: Easing.out(Easing.quad) });
+                                    } else if (pKey === 'Crisis') {
+                                        // Sharp Crisis Ripple
+                                        waveWidth.value = 2;
+                                        waveColor.value = '#FF5252';
+                                        rippleScale1.value = 0; rippleOpacity.value = 1;
+                                        // Fast multiple ripples
+                                        rippleScale1.value = withRepeat(withTiming(6, { duration: 1500 }), 3);
+                                        rippleOpacity.value = withTiming(0, { duration: 4000 });
+
+                                        // Crisis Progress
+                                        crisisProgress.value = withTiming(1, { duration: 3000, easing: Easing.out(Easing.quad) });
+                                    } else {
+                                        // Default Outward Ripple
+                                        rippleOpacity.value = 0.8;
+                                        rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
+                                        rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+                                        rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+                                        rippleOpacity.value = withTiming(0, { duration: 3000 });
+                                    }
 
                                     if (persona.type === 'Crisis') {
                                         turbulenceValue.value = withRepeat(withSequence(withTiming(3, { duration: 50 }), withTiming(-3, { duration: 50 })), 15, true);
@@ -456,11 +668,62 @@ export const TestOrbitMap = () => {
 
                             <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: width * 5, height: height * 5, backgroundColor: '#000', zIndex: 100 }, dimmingStyle]} />
                             
+                            {/* v5 Soft Bloom (Layer A) */}
+                            <ReAnimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 101 }, bloomStyle]} />
+
                             {/* v5 Interaction Ripples (Layer A) */}
                             <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 900 }]}>
                                 <ReAnimated.View style={[styles.ripple, rippleStyle1]} />
                                 <ReAnimated.View style={[styles.ripple, rippleStyle2]} />
                                 <ReAnimated.View style={[styles.ripple, rippleStyle3]} />
+                                
+                                {/* Galaxy Style Charge Overlay */}
+                                <ReAnimated.View style={[{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }, chargeOverlayStyle]}>
+                                    <Svg width="100" height="100" viewBox="0 0 100 100">
+                                        <Circle cx="50" cy="50" r="40" stroke="rgba(255, 215, 0, 0.2)" strokeWidth="6" fill="none" />
+                                        <AnimatedCircle 
+                                            cx="50" cy="50" r="40" 
+                                            stroke="#FFD700" strokeWidth="6" fill="none" 
+                                            strokeDasharray="251.2"
+                                            animatedProps={batteryCircleProps as any}
+                                            strokeLinecap="round"
+                                            transform="rotate(-90 50 50)"
+                                        />
+                                    </Svg>
+                                    <View style={{ position: 'absolute' }}>
+                                        {/* Sharp Custom Lightning Path */}
+                                        <Svg width="40" height="40" viewBox="0 0 100 100">
+                                            <Path 
+                                                d="M 55 5 L 25 55 L 50 55 L 40 95 L 75 40 L 50 40 L 65 5 Z" 
+                                                fill="#FFD700" 
+                                                stroke="#FFF" 
+                                                strokeWidth="2" 
+                                                strokeLinejoin="round" 
+                                            />
+                                        </Svg>
+                                    </View>
+                                </ReAnimated.View>
+
+                                {/* v5 Healing Leaf Overlay */}
+                                <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: 200, height: 200, zIndex: 910 }, leafOverlayStyle]}>
+                                    {[0, 1, 2, 3, 4].map(idx => (
+                                        <FallingLeaf key={idx} idx={idx} healingProgress={healingProgress} />
+                                    ))}
+                                </ReAnimated.View>
+
+                                {/* v5 Drain Meteorite Overlay */}
+                                <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: 200, height: 200, zIndex: 920 }, drainOverlayStyle]}>
+                                    {[0, 1, 2, 3].map(idx => (
+                                        <RotatingMeteorite key={idx} idx={idx} drainProgress={drainProgress} />
+                                    ))}
+                                </ReAnimated.View>
+
+                                {/* v5 Crisis Shard Overlay */}
+                                <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: 200, height: 200, zIndex: 930 }, crisisOverlayStyle]}>
+                                    {[0, 1, 2, 3, 4, 5].map(idx => (
+                                        <GlassShard key={idx} idx={idx} crisisProgress={crisisProgress} />
+                                    ))}
+                                </ReAnimated.View>
                             </View>
                         </ReAnimated.View>
                     </View>
