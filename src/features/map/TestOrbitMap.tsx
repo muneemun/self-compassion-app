@@ -290,8 +290,9 @@ export const TestOrbitMap = () => {
     const { ambient: autoTheme, immediate: immediateTheme, immediateChanged } = useOrbitAtmosphere(relationships, setAtmSystemMsg);
     const currentTheme = manualAtmosphereState ? ATMOSPHERE_THEMES[manualAtmosphereState] : autoTheme;
 
-    const prevAmbientStateRef = useRef(currentTheme.state);
+    const prevAmbientStateRef = useRef(currentTheme?.state || 'NORMAL');
     useEffect(() => {
+        if (!currentTheme) return;
         if (prevAmbientStateRef.current === currentTheme.state) return;
         prevAmbientStateRef.current = currentTheme.state;
         setAtmosphereState(currentTheme.state);
@@ -303,18 +304,18 @@ export const TestOrbitMap = () => {
         } else {
             waveProgress.value = withTiming(0, { duration: 600 });
         }
-    }, [currentTheme.state]);
+    }, [currentTheme?.state]);
 
     useEffect(() => {
-        if (!immediateChanged || manualAtmosphereState) return;
+        if (!immediateChanged || manualAtmosphereState || !immediateTheme) return;
         setEventText(immediateTheme.eventText);
         setIsStatusPillExpanded(true);
         flashProgress.value = 0.8;
         flashProgress.value = withDelay(600, withTiming(0, { duration: 3500, easing: Easing.out(Easing.quad) }));
-    }, [immediateTheme.state, immediateChanged, manualAtmosphereState]);
+    }, [immediateTheme?.state, immediateChanged, manualAtmosphereState]);
 
     const atmosphereBackgroundStyle = useAnimatedStyle(() => ({
-        backgroundColor: interpolateColor(atmosphereBgProgress.value, [0, 1], [ATMOSPHERE_THEMES.CALM.backgroundColor, currentTheme.backgroundColor])
+        backgroundColor: interpolateColor(atmosphereBgProgress.value, [0, 1], [ATMOSPHERE_THEMES.NORMAL.backgroundColor, currentTheme?.backgroundColor || ATMOSPHERE_THEMES.NORMAL.backgroundColor])
     }));
     const mistStyle = useAnimatedStyle(() => ({ opacity: mistProgress.value }));
     const waveStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + waveProgress.value * 3.5 }], opacity: interpolate(waveProgress.value, [0, 0.15, 1], [0, 0.6, 0]) }));
@@ -665,13 +666,14 @@ export const TestOrbitMap = () => {
                             </ReAnimated.View>
                         )}
 
-                        {currentTheme.waveEnabled && (
-                            <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 3 }]}>
-                                <ReAnimated.View style={[{ width: 200, height: 200, borderRadius: 100, borderWidth: 3, borderColor: currentTheme.waveColor }, waveStyle]} />
-                            </View>
-                        )}
-
                         <ReAnimated.View style={[styles.animatedCanvas, canvasAnimatedStyle]}>
+                            {/* v5 Ambient Weather Wave (Synced with Center Node) */}
+                            {currentTheme.waveEnabled && (
+                                <View pointerEvents="none" style={[{ position: 'absolute', alignItems: 'center', justifyContent: 'center', zIndex: 1 }]}>
+                                    <ReAnimated.View style={[{ width: 200, height: 200, borderRadius: 100, borderWidth: 3, borderColor: currentTheme.waveColor }, waveStyle]} />
+                                </View>
+                            )}
+
                             {useMemo(() => [1, 2, 3, 4, 5].map(l => <OrbitRing key={l} level={l} colors={colors} zoomSharedValue={zoomSharedValue} />), [colors, zoomSharedValue])}
                             {distributedNodes.map(({ node, radius, angle }: any) => (
                                 <UserNode key={node.id} node={node} orbitRadius={radius} initialAngle={angle} zoomLevel={zoomLevel} zoomSharedValue={zoomSharedValue} totalNodes={relationships.length} onSelectNode={onSelectNode} isFocused />

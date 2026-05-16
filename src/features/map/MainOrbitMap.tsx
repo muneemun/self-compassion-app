@@ -913,7 +913,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     const entranceOpacity = useSharedValue(0);
 
     // ── 🌌 Atmosphere Engine v2 ────────────────────────────────────
-    const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('CALM');
+    const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('NORMAL');
     const atmosphereBgProgress = useSharedValue(0);
     const mistProgress = useSharedValue(0);
     const waveProgress = useSharedValue(0);
@@ -930,10 +930,11 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     const { ambient: currentTheme, immediate: immediateTheme, immediateChanged } =
         useOrbitAtmosphere(relationships, setAtmSystemMsg);
 
-    const prevAmbientStateRef = useRef(currentTheme.state);
+    const prevAmbientStateRef = useRef(currentTheme?.state || 'NORMAL');
 
     // ── Layer B: 누적 상태 변화 → 배경 애니메이션 ────────────────
     useEffect(() => {
+        if (!currentTheme) return;
         if (prevAmbientStateRef.current === currentTheme.state) return;
         prevAmbientStateRef.current = currentTheme.state;
         setAtmosphereState(currentTheme.state);
@@ -958,17 +959,17 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
         } else {
             waveProgress.value = withTiming(0, { duration: 600 });
         }
-    }, [currentTheme.state]);
+    }, [currentTheme?.state]);
 
     // ── Layer A: 새 체크인 입력시 플래시 + 이벤트 텍스트 표시 ────────
     useEffect(() => {
-        if (!immediateChanged) return;
+        if (!immediateChanged || !immediateTheme) return;
         setEventText(immediateTheme.eventText);
         setIsStatusPillExpanded(true); // 새 이벤트 발생 시 상태창 자동으로 열기
         // 플래시: 빠르게 나타났다가 4초 후 자동 소멸
         flashProgress.value = 0.8;
         flashProgress.value = withDelay(600, withTiming(0, { duration: 3500, easing: Easing.out(Easing.quad) }));
-    }, [immediateTheme.state, immediateChanged]);
+    }, [immediateTheme?.state, immediateChanged]);
 
     // (티커 애니메이션 삭제됨)
 
@@ -977,7 +978,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
         const bgColor = interpolateColor(
             atmosphereBgProgress.value,
             [0, 1],
-            [ATMOSPHERE_THEMES.CALM.backgroundColor, currentTheme.backgroundColor]
+            [ATMOSPHERE_THEMES.NORMAL.backgroundColor, currentTheme?.backgroundColor || ATMOSPHERE_THEMES.NORMAL.backgroundColor]
         );
         return { backgroundColor: bgColor };
     });
@@ -1860,31 +1861,19 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                         )}
 
                         {/* ━━ [Atmosphere Layer 3] 에너지 파동(Wave) ━━━━━━━━━━━━━━━━━━━━━ */}
-                        {currentTheme.waveEnabled && (
-                            <View
-                                pointerEvents="none"
-                                style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 3 }]}
-                            >
-                                <ReAnimated.View
-                                    style={[
-                                        {
-                                            width: 200,
-                                            height: 200,
-                                            borderRadius: 100,
-                                            borderWidth: 3,
-                                            borderColor: currentTheme.waveColor,
-                                        },
-                                        waveStyle
-                                    ]}
-                                />
-                            </View>
-                        )}
+
 
                         {/* ━━ [Orbit Canvas] 기존 캐리어 그대로 유지 ━━━━━━━━━━━━━━━━━━━━ */}
                         <ReAnimated.View style={[
                             styles.animatedCanvas,
                             canvasAnimatedStyle
                         ]}>
+                            {/* Ambient Weather Wave (Synced with Center Node) */}
+                            {currentTheme.waveEnabled && (
+                                <View pointerEvents="none" style={[{ position: 'absolute', alignItems: 'center', justifyContent: 'center', zIndex: 1 }]}>
+                                    <ReAnimated.View style={[{ width: 200, height: 200, borderRadius: 100, borderWidth: 3, borderColor: currentTheme.waveColor }, waveStyle]} />
+                                </View>
+                            )}
                             {/* Rings and Zones with shading */}
                                 {useMemo(() => [1, 2, 3, 4, 5].map((level) => (
                                 <OrbitRing
