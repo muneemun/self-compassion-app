@@ -926,6 +926,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     // ── 📰 News Ticker & Long Press Popup State ──────────────────
     const [showStatusPopup, setShowStatusPopup] = useState(false);
     const [isStatusPillExpanded, setIsStatusPillExpanded] = useState(true);
+    const [overlayBgColor, setOverlayBgColor] = useState('#000000');
 
     const { ambient: currentTheme, immediate: immediateTheme, immediateChanged } =
         useOrbitAtmosphere(relationships, setAtmSystemMsg);
@@ -1003,9 +1004,30 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     const turbulenceValue = useSharedValue(0);
     const rippleOpacity = useSharedValue(0);
     
-    // Listen for store feedback triggers
+    const activeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Clean up timer on unmount
     useEffect(() => {
-        if (interactionFeedback.isActive || cognitiveFeedback.message) {
+        return () => {
+            if (activeTimerRef.current) {
+                clearTimeout(activeTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        const isActive = !!(interactionFeedback.isActive || cognitiveFeedback.message);
+
+        if (isActive) {
+            // Clear any existing active timer to prevent duplicates and ensure duration resets properly
+            if (activeTimerRef.current) {
+                clearTimeout(activeTimerRef.current);
+            }
+
+            // Lock overlay color on initiation to prevent dark flashing during subsequent fade-out
+            const isWhiteBg = !!(cognitiveFeedback.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0));
+            setOverlayBgColor(isWhiteBg ? '#FFFFFF' : '#000000');
+
             feedbackOpacity.value = withTiming(1, { duration: 500 });
             
             // If it's self-care or interaction
@@ -1021,18 +1043,19 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                 rippleOpacity.value = withTiming(0, { duration: 3000 });
             }
             
-            // Auto-hide after some time
-            const timer = setTimeout(() => {
-                feedbackOpacity.value = withTiming(0, { duration: 500 });
+            // Auto-hide after some time (Optimized Golden Window for production)
+            activeTimerRef.current = setTimeout(() => {
+                feedbackOpacity.value = withTiming(0, { duration: 400 });
+                
+                activeTimerRef.current = null;
+
                 if (interactionFeedback.isActive) {
                     setInteractionFeedback({ ...interactionFeedback, isActive: false });
                 }
                 if (cognitiveFeedback.message) {
                     setCognitiveFeedback({ message: null, type: null });
                 }
-            }, 4000);
-            
-            return () => clearTimeout(timer);
+            }, 3500);
         }
     }, [interactionFeedback.isActive, cognitiveFeedback.message]);
 
@@ -1956,7 +1979,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                         position: 'absolute',
                                         width: width * 5,
                                         height: height * 5,
-                                        backgroundColor: (cognitiveFeedback.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0)) ? '#FFFFFF' : '#000', 
+                                        backgroundColor: overlayBgColor, 
                                         zIndex: 100 
                                     },
                                     dimmingStyle

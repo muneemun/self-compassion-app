@@ -275,6 +275,7 @@ export const TestOrbitMap = () => {
 
     // 🧪 Lab State (Added Only This)
     const [manualAtmosphereState, setManualAtmosphereState] = useState<AtmosphereState | null>(null);
+    const [overlayBgColor, setOverlayBgColor] = useState('#000000');
 
     // ── 🌌 Atmosphere Engine (100% Clone) ──────────────────────────────────
     const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('NORMAL');
@@ -340,16 +341,38 @@ export const TestOrbitMap = () => {
     const drainProgress = useSharedValue(0); // For meteorite effect
     const crisisProgress = useSharedValue(0); // For glass shard effect
     
+    const activeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Clean up timer on unmount
     useEffect(() => {
-        if (interactionFeedback.isActive || cognitiveFeedback?.message) {
+        return () => {
+            if (activeTimerRef.current) {
+                clearTimeout(activeTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        const isActive = !!(interactionFeedback.isActive || cognitiveFeedback?.message);
+
+        if (isActive) {
+            // Clear any existing active timer to prevent duplicates and ensure duration resets properly
+            if (activeTimerRef.current) {
+                clearTimeout(activeTimerRef.current);
+            }
+
+            // Lock overlay color on initiation to prevent dark flashing during subsequent fade-out
+            const isWhiteBg = !!(cognitiveFeedback?.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0));
+            setOverlayBgColor(isWhiteBg ? '#FFFFFF' : '#000000');
+
             feedbackOpacity.value = withTiming(1, { duration: 500 });
 
-            // Determine duration based on persona (v5 Golden Window)
-            let duration = 5000; // Default 5s
-            if (cognitiveFeedback?.message?.includes('에너지가 충전')) duration = 4000;
-            if (cognitiveFeedback?.message?.includes('정화돼요')) duration = 6500;
-            if (cognitiveFeedback?.message?.includes('무거워요')) duration = 5500;
-            if (cognitiveFeedback?.message?.includes('주의하세요') || cognitiveFeedback?.message?.includes('위험')) duration = 5000;
+            // Determine duration based on persona (v5 Golden Window - Optimized Response Speed)
+            let duration = 3200; // Default snappy duration for Crisis/other
+            if (cognitiveFeedback?.message?.includes('에너지가 충전')) duration = 3000;
+            if (cognitiveFeedback?.message?.includes('정화돼요')) duration = 4200;
+            if (cognitiveFeedback?.message?.includes('무거워요')) duration = 3600;
+            if (cognitiveFeedback?.message?.includes('주의하세요') || cognitiveFeedback?.message?.includes('위험')) duration = 3200;
 
             if (cognitiveFeedback?.type === 'SELF_CARE' || cognitiveFeedback?.type === 'INTERACTION') {
                 // ... logic handled in buttons or default
@@ -362,9 +385,9 @@ export const TestOrbitMap = () => {
                 }
             }
             
-            const timer = setTimeout(() => {
-                // Fade out everything
-                feedbackOpacity.value = withTiming(0, { duration: 800 });
+            activeTimerRef.current = setTimeout(() => {
+                // Fade out smoothly with snappy 400ms transition
+                feedbackOpacity.value = withTiming(0, { duration: 400 });
                 
                 // Force reset progress values
                 cancelAnimation(chargeProgress);
@@ -378,10 +401,11 @@ export const TestOrbitMap = () => {
                 
                 setIsStatusPillExpanded(false); 
                 
+                activeTimerRef.current = null;
+
                 if (interactionFeedback.isActive) setInteractionFeedback({ ...interactionFeedback, isActive: false });
                 if (cognitiveFeedback?.message) setCognitiveFeedback?.({ message: null, type: null });
             }, duration);
-            return () => clearTimeout(timer);
         }
     }, [interactionFeedback.isActive, cognitiveFeedback?.message]);
 
@@ -586,7 +610,7 @@ export const TestOrbitMap = () => {
                                         position: 'absolute', 
                                         width: width * 5, 
                                         height: height * 5, 
-                                        backgroundColor: (cognitiveFeedback?.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0)) ? '#FFFFFF' : '#000', 
+                                        backgroundColor: overlayBgColor, 
                                         zIndex: 100 
                                     }, 
                                     dimmingStyle
