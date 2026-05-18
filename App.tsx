@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { View, TouchableOpacity, Text, StyleSheet, Dimensions, BackHandler, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Orbit, SlidersHorizontal, Activity, Rocket } from 'lucide-react-native';
+import { ArrowLeft, Orbit, SlidersHorizontal, Activity, Rocket, FlaskConical } from 'lucide-react-native';
 
 import { ColorLockProvider } from './src/theme/ColorLockContext';
 import { COMMON_STYLES } from './src/theme/LayoutStyles';
@@ -34,6 +34,7 @@ import { ReminderSettingsScreen } from './src/features/settings/ReminderSettings
 import { NotificationSettingsScreen } from './src/features/settings/NotificationSettingsScreen';
 import { SelfTimeCheckInModal } from './src/features/selfcare/SelfTimeCheckInModal';
 import { NotificationManager } from './src/components/NotificationManager';
+import { TestOrbitMap } from './src/features/map/TestOrbitMap';
 
 import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
 
@@ -419,6 +420,9 @@ function App() {
                           }}
                         />
                       </View>
+                      <View style={activeTab === 'test' ? styles.tabActive : styles.tabHidden}>
+                        <TestOrbitMap />
+                      </View>
 
                     </View>
 
@@ -465,7 +469,16 @@ function App() {
                           <Text style={[styles.navText, activeTab === 'health' && styles.activeNavText]}>Health</Text>
                         </TouchableOpacity>
 
-
+                        <TouchableOpacity
+                          style={styles.navItem}
+                          onPress={() => setActiveTab('test')}
+                        >
+                          <View style={styles.iconWrapper}>
+                            {activeTab === 'test' && <View style={styles.activeIconBg} />}
+                            <FlaskConical size={22} color={activeTab === 'test' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'test' ? 2.5 : 2} />
+                          </View>
+                          <Text style={[styles.navText, activeTab === 'test' && styles.activeNavText]}>Lab</Text>
+                        </TouchableOpacity>
 
                         <TouchableOpacity
                           style={styles.navItem}
