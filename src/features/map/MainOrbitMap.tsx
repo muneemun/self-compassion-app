@@ -616,22 +616,36 @@ const styles = StyleSheet.create({
     },
     feedbackMessageOverlay: {
         position: 'absolute',
-        bottom: 120,
+        top: 160,
         left: 20,
         right: 20,
-        padding: 24,
-        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 500,
+        zIndex: 9999,
+    },
+    feedbackPillFrame: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 24,
+        borderWidth: 0.8,
         overflow: 'hidden',
+        elevation: 4,
+        shadowColor: '#4A5D4E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+    },
+    feedbackPillContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     feedbackMessageText: {
-        fontSize: 16,
+        fontSize: 13,
         fontWeight: '800',
-        color: '#4A5D4E',
-        textAlign: 'center',
-        lineHeight: 24,
+        lineHeight: 18,
     },
 });
 
@@ -2121,23 +2135,83 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                         </>
                     )}
 
-                    {/* System Feedback Message Overlay (Used for both SELF_CARE and INTERACTION) */}
-                    {(cognitiveFeedback.type === 'SELF_CARE' || cognitiveFeedback.type === 'INTERACTION') ? (
-                        <ReAnimated.View 
-                            style={[
-                                styles.feedbackMessageOverlay,
-                                { opacity: feedbackOpacity.value }
-                            ]}
-                            pointerEvents="none"
-                        >
-                            <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-                            <View style={[styles.feedbackMessageContent, { borderColor: cognitiveFeedback.type === 'INTERACTION' ? '#4FC3F780' : '#FF980080' }]}>
-                                <Text style={[styles.feedbackMessageText, { color: cognitiveFeedback.type === 'INTERACTION' ? '#0288D1' : '#E65100' }]}>
-                                    {cognitiveFeedback.message || (interactionFeedback.isActive ? `궤도 에너지 ${interactionFeedback.closenessDelta > 0 ? '+' : ''}${interactionFeedback.closenessDelta || 0}% 변동이 기록되었어요.` : '')}
-                                </Text>
-                            </View>
-                        </ReAnimated.View>
-                    ) : (
+                    {/* System Feedback Message Overlay (Frosted Linen-Sand Pill) */}
+                    {(cognitiveFeedback.message && (
+                        cognitiveFeedback.type === 'SELF_CARE' || 
+                        cognitiveFeedback.type === 'INTERACTION' ||
+                        cognitiveFeedback.type === 'Charge' || 
+                        cognitiveFeedback.type === 'Healing' || 
+                        cognitiveFeedback.type === 'Drain' || 
+                        cognitiveFeedback.type === 'Stable' ||
+                        cognitiveFeedback.type === 'Crisis'
+                    )) ? (() => {
+                        let displayType: 'Charge' | 'Healing' | 'Drain' | 'Stable' | 'Crisis' = 'Stable';
+                        if (cognitiveFeedback.type === 'SELF_CARE') {
+                            displayType = 'Healing';
+                        } else if (cognitiveFeedback.type === 'INTERACTION') {
+                            const delta = interactionFeedback.closenessDelta || 0;
+                            if (delta > 0) {
+                                displayType = 'Charge';
+                            } else if (delta < 0) {
+                                displayType = 'Drain';
+                            } else {
+                                displayType = 'Stable';
+                            }
+                        } else if ((cognitiveFeedback.type as string) === 'CRISIS' || cognitiveFeedback.type === 'Crisis') {
+                            displayType = 'Crisis';
+                        } else if (
+                            cognitiveFeedback.type === 'Charge' || 
+                            cognitiveFeedback.type === 'Healing' || 
+                            cognitiveFeedback.type === 'Drain' || 
+                            cognitiveFeedback.type === 'Stable'
+                        ) {
+                            displayType = cognitiveFeedback.type as any;
+                        }
+
+                        const bgColor = 
+                            (displayType === 'Charge' || displayType === 'Healing') 
+                            ? 'rgba(255, 255, 255, 0.92)' 
+                            : 'rgba(232, 226, 213, 0.90)';
+                            
+                        const borderColor = 
+                            displayType === 'Charge' ? 'rgba(255, 143, 0, 0.12)' :
+                            displayType === 'Healing' ? 'rgba(46, 125, 50, 0.12)' :
+                            displayType === 'Drain' ? 'rgba(84, 110, 122, 0.12)' :
+                            displayType === 'Stable' ? 'rgba(74, 93, 78, 0.12)' :
+                            'rgba(198, 40, 40, 0.12)';
+
+                        const textColor = 
+                            displayType === 'Charge' ? '#FF8F00' :
+                            displayType === 'Healing' ? '#2E7D32' :
+                            displayType === 'Drain' ? '#37474F' :
+                            displayType === 'Stable' ? '#4A5D4E' :
+                            '#C62828';
+
+                        return (
+                            <ReAnimated.View 
+                                style={[
+                                    styles.feedbackMessageOverlay,
+                                    feedbackOverlayStyle
+                                ]}
+                                pointerEvents="none"
+                            >
+                                <View style={[styles.feedbackPillFrame, { backgroundColor: bgColor, borderColor: borderColor }]}>
+                                    <BlurView intensity={12} tint="light" style={StyleSheet.absoluteFill} />
+                                    <View style={styles.feedbackPillContent}>
+                                        {displayType === 'Charge' && <Zap size={14} color={textColor} />}
+                                        {displayType === 'Healing' && <Leaf size={14} color={textColor} />}
+                                        {displayType === 'Drain' && <CircleDashed size={14} color={textColor} />}
+                                        {displayType === 'Stable' && <Activity size={14} color={textColor} />}
+                                        {displayType === 'Crisis' && <Flame size={14} color={textColor} />}
+                                        
+                                        <Text style={[styles.feedbackMessageText, { color: textColor }]}>
+                                            {cognitiveFeedback.message}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </ReAnimated.View>
+                        );
+                    })() : (
                         <SystemStabilizationModal 
                             visible={!!cognitiveFeedback.message}
                             message={cognitiveFeedback.message}
