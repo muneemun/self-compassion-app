@@ -64,9 +64,9 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         swirlSpeed: 2.5,
         transitionDuration: 1200,
-        ambientText: '폭풍우가 치고 있어요. 지금은 마음의 요새를 지킬 때입니다.',
+        ambientText: '궤도에 강한 난기류가 발생했어요. 안전한 운행을 위해 잠시 멈춰도 괜찮아요.',
         flashColor: 'rgba(255, 0, 0, 0.3)',
-        eventText: '강한 정서적 충돌 감지!',
+        eventText: '궤도 난기류 주의',
         description: 'L1: 정서적 위기'
     },
     MIST: {
@@ -81,9 +81,9 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         swirlSpeed: 0.3,
         transitionDuration: 2500,
-        ambientText: '관계의 풍경이 흐릿하네요. 서두르지 않아도 괜찮아요.',
+        ambientText: '궤도에 안개가 끼어 있어요. 시야가 맑아질 때까지 천천히 운행하세요.',
         flashColor: 'rgba(255, 255, 255, 0.1)',
-        eventText: '안개 속의 신호',
+        eventText: '궤도에 안개 발생',
         description: 'L2: 불투명한 관계'
     },
     DRAIN: {
@@ -98,9 +98,9 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         swirlSpeed: 0.1,
         transitionDuration: 3000,
-        ambientText: '깊은 침잠 속에 머물고 있어요. 조용히 숨을 골라보세요.',
+        ambientText: '궤도 에너지가 낮아지고 있어요. 잠시 운행 속도를 늦춰도 괜찮아요.',
         flashColor: 'rgba(0, 43, 92, 0.3)',
-        eventText: '에너지 소진 감지',
+        eventText: '궤도 에너지 낮음',
         description: 'L3: 정서적 소진'
     },
     SURGE: {
@@ -115,9 +115,9 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         swirlSpeed: 2.0,
         transitionDuration: 1000,
-        ambientText: '에너지가 급격히 변화하고 있어요. 강력한 흐름이 감지됩니다.',
+        ambientText: '궤도에 큰 기류 변화가 감지되고 있어요. 운행 상태를 살펴보세요.',
         flashColor: 'rgba(76, 175, 80, 0.4)',
-        eventText: '강력한 녹색 파동(Surge)!',
+        eventText: '궤도 기류 변화 감지',
         description: 'L4: 에너지 급변'
     },
     NORMAL: {
@@ -132,9 +132,9 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         swirlSpeed: 0.5,
         transitionDuration: 1500,
-        ambientText: '대기가 평온합니다. 부드러운 공기의 흐름이 느껴져요.',
+        ambientText: '궤도가 평온하게 운행 중이에요. 오늘도 안정적인 하루입니다.',
         flashColor: 'rgba(74, 93, 78, 0.1)',
-        eventText: '평온한 일상',
+        eventText: '평온한 궤도 운행 중',
         description: 'L5: 평상시(Default)'
     },
     BREEZE: {
@@ -149,9 +149,9 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         swirlSpeed: 0.8,
         transitionDuration: 1800,
-        ambientText: '산들바람이 불어와요. 관계에 새로운 생기가 돕니다.',
+        ambientText: '궤도에 산들바람이 불고 있어요. 안정적으로 운행되고 있습니다.',
         flashColor: 'rgba(165, 214, 167, 0.5)',
-        eventText: '회복의 신호',
+        eventText: '궤도가 안정되고 있어요',
         description: 'L6: 싱그러운 회복'
     },
     SUPERNOVA: {
@@ -166,9 +166,9 @@ export const ATMOSPHERE_THEMES: Record<AtmosphereState, AtmosphereTheme> = {
         waveColor: 'transparent',
         swirlSpeed: 4.0,
         transitionDuration: 1500,
-        ambientText: '축하해요! 최고의 정서적 일체감을 경험하고 계시네요.',
+        ambientText: '궤도 운행이 최고의 컨디션이에요! 모든 관계가 환하게 빛나고 있어요.',
         flashColor: 'rgba(255, 255, 0, 0.6)',
-        eventText: '정서적 초신성!',
+        eventText: '궤도 컨디션 최고!',
         description: 'L7: 정서적 초신성'
     },
 };

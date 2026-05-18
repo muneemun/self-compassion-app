@@ -2111,7 +2111,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                             <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
                             <View style={[styles.feedbackMessageContent, { borderColor: cognitiveFeedback.type === 'INTERACTION' ? '#4FC3F780' : '#FF980080' }]}>
                                 <Text style={[styles.feedbackMessageText, { color: cognitiveFeedback.type === 'INTERACTION' ? '#0288D1' : '#E65100' }]}>
-                                    {cognitiveFeedback.message || (interactionFeedback.isActive ? `관측 데이터 동기화 완료. 에너지 ${interactionFeedback.closenessDelta > 0 ? '+' : ''}${interactionFeedback.closenessDelta || 0}% 변동.` : '')}
+                                    {cognitiveFeedback.message || (interactionFeedback.isActive ? `궤도 에너지 ${interactionFeedback.closenessDelta > 0 ? '+' : ''}${interactionFeedback.closenessDelta || 0}% 변동이 기록되었어요.` : '')}
                                 </Text>
                             </View>
                         </ReAnimated.View>

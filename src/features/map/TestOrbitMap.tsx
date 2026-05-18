@@ -276,6 +276,7 @@ export const TestOrbitMap = () => {
     // 🧪 Lab State (Added Only This)
     const [manualAtmosphereState, setManualAtmosphereState] = useState<AtmosphereState | null>(null);
     const [overlayBgColor, setOverlayBgColor] = useState('#000000');
+    const [localFeedback, setLocalFeedback] = useState<{ message: string | null; type: 'Charge' | 'Healing' | 'Drain' | 'Crisis' | null }>({ message: null, type: null });
 
     // ── 🌌 Atmosphere Engine (100% Clone) ──────────────────────────────────
     const [atmosphereState, setAtmosphereState] = useState<AtmosphereState>('NORMAL');
@@ -329,6 +330,7 @@ export const TestOrbitMap = () => {
 
     // ── Feedback Animations (Mirror)
     const feedbackOpacity = useSharedValue(0);
+    const feedbackTranslateY = useSharedValue(-25);
     const rippleScale1 = useSharedValue(0), rippleScale2 = useSharedValue(0), rippleScale3 = useSharedValue(0);
     const turbulenceValue = useSharedValue(0);
     const rippleOpacity = useSharedValue(0);
@@ -353,41 +355,22 @@ export const TestOrbitMap = () => {
     }, []);
 
     useEffect(() => {
-        const isActive = !!(interactionFeedback.isActive || cognitiveFeedback?.message);
+        if (localFeedback.message) {
+            // Lock overlay color on initiation to prevent dark flashing during subsequent fade-out
+            const isWhiteBg = localFeedback.type === 'Healing' || localFeedback.type === 'Charge';
+            setOverlayBgColor(isWhiteBg ? '#FFFFFF' : '#000000');
 
-        if (isActive) {
-            // Clear any existing active timer to prevent duplicates and ensure duration resets properly
+            feedbackOpacity.value = withTiming(1, { duration: 500 });
+            feedbackTranslateY.value = withSpring(0, { damping: 18, stiffness: 70 });
+
             if (activeTimerRef.current) {
                 clearTimeout(activeTimerRef.current);
             }
 
-            // Lock overlay color on initiation to prevent dark flashing during subsequent fade-out
-            const isWhiteBg = !!(cognitiveFeedback?.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0));
-            setOverlayBgColor(isWhiteBg ? '#FFFFFF' : '#000000');
-
-            feedbackOpacity.value = withTiming(1, { duration: 500 });
-
-            // Determine duration based on persona (v5 Golden Window - Optimized Response Speed)
-            let duration = 3200; // Default snappy duration for Crisis/other
-            if (cognitiveFeedback?.message?.includes('에너지가 충전')) duration = 3000;
-            if (cognitiveFeedback?.message?.includes('정화돼요')) duration = 4200;
-            if (cognitiveFeedback?.message?.includes('무거워요')) duration = 3600;
-            if (cognitiveFeedback?.message?.includes('주의하세요') || cognitiveFeedback?.message?.includes('위험')) duration = 3200;
-
-            if (cognitiveFeedback?.type === 'SELF_CARE' || cognitiveFeedback?.type === 'INTERACTION') {
-                // ... logic handled in buttons or default
-                if (!(cognitiveFeedback?.message?.includes('에너지가 충전') || cognitiveFeedback?.message?.includes('정화돼요') || cognitiveFeedback?.message?.includes('무거워요') || cognitiveFeedback?.message?.includes('주의'))) {
-                    rippleScale1.value = 0; rippleScale2.value = 0; rippleScale3.value = 0; rippleOpacity.value = 0.8;
-                    rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
-                    rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                    rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                    rippleOpacity.value = withTiming(0, { duration: 3000 });
-                }
-            }
-            
             activeTimerRef.current = setTimeout(() => {
                 // Fade out smoothly with snappy 400ms transition
                 feedbackOpacity.value = withTiming(0, { duration: 400 });
+                feedbackTranslateY.value = withTiming(-25, { duration: 400 });
                 
                 // Force reset progress values
                 cancelAnimation(chargeProgress);
@@ -399,15 +382,13 @@ export const TestOrbitMap = () => {
                 drainProgress.value = 0;
                 crisisProgress.value = 0;
                 
-                setIsStatusPillExpanded(false); 
-                
                 activeTimerRef.current = null;
 
-                if (interactionFeedback.isActive) setInteractionFeedback({ ...interactionFeedback, isActive: false });
-                if (cognitiveFeedback?.message) setCognitiveFeedback?.({ message: null, type: null });
-            }, duration);
+                // Reset local state to null
+                setLocalFeedback({ message: null, type: null });
+            }, 3200);
         }
-    }, [interactionFeedback.isActive, cognitiveFeedback?.message]);
+    }, [localFeedback.message]);
 
     const dimmingStyle = useAnimatedStyle(() => {
         const baseOpacity = interpolate(drainProgress.value, [0, 0.5, 1], [0.6, 0.8, 0.6]);
@@ -437,6 +418,15 @@ export const TestOrbitMap = () => {
     const rippleStyle1 = useAnimatedStyle(() => ({ transform: [{ scale: rippleScale1.value }], opacity: rippleOpacity.value, borderWidth: waveWidth.value, borderColor: waveColor.value }));
     const rippleStyle2 = useAnimatedStyle(() => ({ transform: [{ scale: rippleScale2.value }], opacity: rippleOpacity.value * 0.7, borderWidth: waveWidth.value, borderColor: waveColor.value }));
     const rippleStyle3 = useAnimatedStyle(() => ({ transform: [{ scale: rippleScale3.value }], opacity: rippleOpacity.value * 0.4, borderWidth: waveWidth.value, borderColor: waveColor.value }));
+
+    const feedbackOverlayStyle = useAnimatedStyle(() => {
+        return {
+            opacity: feedbackOpacity.value,
+            transform: [
+                { translateY: feedbackTranslateY.value }
+            ]
+        };
+    });
 
     // ── Charge Overlay Style (Galaxy Style with Jitter & Counter-Rotate)
     const lightningJitter = useSharedValue(0);
@@ -694,7 +684,7 @@ export const TestOrbitMap = () => {
                                 </View>
                                 {isStatusPillExpanded && (
                                     <View style={{ marginTop: 10, alignItems: 'center' }}>
-                                        <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 4 }}>💭 {eventText || '맑음'}</Text>
+                                        {eventText ? <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 4 }}>💭 {eventText}</Text> : null}
                                         <Text style={{ color: colors.primary, opacity: 0.8, fontSize: 12, textAlign: 'center' }}>{currentTheme.ambientText}</Text>
                                     </View>
                                 )}
@@ -775,11 +765,11 @@ export const TestOrbitMap = () => {
                                             waveColor.value = persona.waveColor;
                                             
                                             if (pKey === 'Charge') {
-                                                // Galaxy Style Inward Ripple
-                                                rippleScale1.value = 4; rippleScale2.value = 4.5; rippleScale3.value = 5; rippleOpacity.value = 0.8;
-                                                rippleScale1.value = withTiming(0, { duration: 1500, easing: Easing.in(Easing.quad) });
-                                                rippleScale2.value = withDelay(300, withTiming(0, { duration: 1500, easing: Easing.in(Easing.quad) }));
-                                                rippleScale3.value = withDelay(600, withTiming(0, { duration: 1500, easing: Easing.in(Easing.quad) }));
+                                                // Outward yellow waves starting from the center (as requested)
+                                                rippleScale1.value = 0; rippleScale2.value = 0; rippleScale3.value = 0; rippleOpacity.value = 0.8;
+                                                rippleScale1.value = withTiming(4, { duration: 1800, easing: Easing.out(Easing.quad) });
+                                                rippleScale2.value = withDelay(300, withTiming(4, { duration: 1800, easing: Easing.out(Easing.quad) }));
+                                                rippleScale3.value = withDelay(600, withTiming(4, { duration: 1800, easing: Easing.out(Easing.quad) }));
                                                 rippleOpacity.value = withTiming(0, { duration: 2500 });
                                                 
                                                 // Battery Progress
@@ -800,7 +790,7 @@ export const TestOrbitMap = () => {
                                                 rippleScale1.value = 0; rippleOpacity.value = 0.8;
                                                 rippleScale1.value = withTiming(5, { duration: 4500, easing: Easing.out(Easing.exp) });
                                                 rippleOpacity.value = withTiming(0, { duration: 5000 });
-
+ 
                                                 // Drain Meteorite Progress (Heavier)
                                                 drainProgress.value = withTiming(1, { duration: 4500, easing: Easing.out(Easing.quad) });
                                             } else if (pKey === 'Crisis') {
@@ -811,7 +801,7 @@ export const TestOrbitMap = () => {
                                                 // Fast multiple ripples
                                                 rippleScale1.value = withRepeat(withTiming(6, { duration: 1500 }), 3);
                                                 rippleOpacity.value = withTiming(0, { duration: 4000 });
-
+ 
                                                 // Crisis Progress
                                                 crisisProgress.value = withTiming(1, { duration: 3000, easing: Easing.out(Easing.quad) });
                                             } else {
@@ -822,21 +812,32 @@ export const TestOrbitMap = () => {
                                                 rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
                                                 rippleOpacity.value = withTiming(0, { duration: 3000 });
                                             }
-
+ 
                                             if (persona.type === 'Crisis') {
                                                 turbulenceValue.value = withRepeat(withSequence(withTiming(3, { duration: 50 }), withTiming(-3, { duration: 50 })), 15, true);
                                             }
-
+ 
+                                            const isDrainOrCrisis = pKey === 'Drain' || pKey === 'Crisis';
+                                            const delta = isDrainOrCrisis ? -5 : 5;
                                             setInteractionFeedback({
                                                 isActive: true,
                                                 targetId: relationships[0]?.id || 'test',
-                                                closenessDelta: pKey === 'Drain' || pKey === 'Crisis' ? -5 : 5
+                                                closenessDelta: delta
                                             });
-                                            setCognitiveFeedback?.({
-                                                message: persona.desc,
-                                                type: 'INTERACTION'
+                                            let testMessage = '궤도가 안정적으로 유지되고 있어요.';
+                                            if (pKey === 'Charge') {
+                                                testMessage = `궤도 에너지가 +5% 충전되었어요!`;
+                                            } else if (pKey === 'Healing') {
+                                                testMessage = `나를 위한 시간으로 궤도 에너지가 충전되었어요!`;
+                                            } else if (pKey === 'Drain' || pKey === 'Crisis') {
+                                                testMessage = `궤도 에너지가 -5% 소모되었어요.`;
+                                            }
+ 
+                                            // Trigger local React state presentation (100% reliable)
+                                            setLocalFeedback({
+                                                message: testMessage,
+                                                type: pKey as 'Charge' | 'Healing' | 'Drain' | 'Crisis'
                                             });
-                                            setIsStatusPillExpanded(true);
                                         }}
                                     >
                                         <Text style={styles.labButtonText}>{DYNAMIC_CHARACTERS[pKey].label}</Text>
@@ -861,6 +862,55 @@ export const TestOrbitMap = () => {
                     <Rect width="100%" height={MASK_DEPTH} fill="url(#bottomMask)" />
                 </Svg>
             </View>
+
+            {/* System Feedback Message Overlay (Frosted Linen-Sand Pill) */}
+            {(localFeedback.message && localFeedback.type) ? (
+                <ReAnimated.View 
+                    style={[
+                        styles.feedbackMessageOverlay,
+                        feedbackOverlayStyle
+                    ]}
+                    pointerEvents="none"
+                >
+                    <View style={[
+                        styles.feedbackPillFrame,
+                        {
+                            backgroundColor: 
+                                (localFeedback.type === 'Charge' || localFeedback.type === 'Healing') 
+                                ? 'rgba(255, 255, 255, 0.92)' 
+                                : 'rgba(232, 226, 213, 0.90)',
+                            borderColor: 
+                                localFeedback.type === 'Charge' ? 'rgba(255, 143, 0, 0.12)' :
+                                localFeedback.type === 'Healing' ? 'rgba(46, 125, 50, 0.12)' :
+                                localFeedback.type === 'Drain' ? 'rgba(84, 110, 122, 0.12)' :
+                                'rgba(198, 40, 40, 0.12)'
+                        }
+                    ]}>
+                        <BlurView intensity={12} tint="light" style={StyleSheet.absoluteFill} />
+                        
+                        <View style={styles.feedbackPillContent}>
+                            {localFeedback.type === 'Charge' && <Zap size={14} color="#FF8F00" />}
+                            {localFeedback.type === 'Healing' && <Leaf size={14} color="#2E7D32" />}
+                            {localFeedback.type === 'Drain' && <CircleDashed size={14} color="#37474F" />}
+                            {localFeedback.type === 'Crisis' && <Flame size={14} color="#C62828" />}
+                            
+                            <Text style={[
+                                styles.feedbackMessageText, 
+                                { 
+                                    color: 
+                                        localFeedback.type === 'Charge' ? '#FF8F00' :
+                                        localFeedback.type === 'Healing' ? '#2E7D32' :
+                                        localFeedback.type === 'Drain' ? '#37474F' :
+                                        localFeedback.type === 'Crisis' ? '#C62828' :
+                                        '#4A5D4E'
+                                } 
+                            ]}>
+                                {localFeedback.message}
+                            </Text>
+                        </View>
+                    </View>
+                </ReAnimated.View>
+            ) : null}
         </View>
     );
 };
@@ -904,4 +954,38 @@ const styles = StyleSheet.create({
     labButton: { width: 40, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.9)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
     labButtonText: { fontSize: 11, fontWeight: '900', color: '#333' },
     ripple: { position: 'absolute', width: 100, height: 100, borderRadius: 50, borderWidth: 3 },
+    feedbackMessageOverlay: {
+        position: 'absolute',
+        top: 160,
+        left: 20,
+        right: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+    },
+    feedbackPillFrame: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 24,
+        borderWidth: 0.8,
+        overflow: 'hidden',
+        elevation: 4,
+        shadowColor: '#4A5D4E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+    },
+    feedbackPillContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        gap: 8,
+    },
+    feedbackMessageText: {
+        fontSize: 14,
+        fontWeight: '800',
+        letterSpacing: -0.3,
+        textAlign: 'center',
+    },
 });

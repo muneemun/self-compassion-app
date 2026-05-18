@@ -172,10 +172,10 @@ export const RelationshipLogModal = () => {
 
             const absDelta = Math.abs(delta);
             const message = delta > 0 
-                ? `정서적 공명을 통해 긴밀도가 ${absDelta}% 상승했습니다.`
+                ? `궤도 에너지가 +${absDelta}% 충전되었어요!`
                 : delta < 0 
-                    ? `심리적 거리감이 ${absDelta}% 확보되었습니다.`
-                    : '안정적인 관계 밸런스를 유지했습니다.';
+                    ? `궤도 에너지가 -${absDelta}% 소모되었어요.`
+                    : '궤도가 안정적으로 유지되고 있어요.';
             
             setCognitiveFeedback({
                 message,

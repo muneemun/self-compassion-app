@@ -184,7 +184,7 @@ export const SelfTimeCheckInModal = () => {
             // 🚀 메타 인지 피드백 시각화 트리거 (새 기록일 때만)
             const { setCognitiveFeedback } = useAppStore.getState();
             setCognitiveFeedback({
-                message: "외부 중력장의 간섭을 차단했습니다. 시스템이 자아 회복 모드로 전환됩니다.",
+                message: "나를 위한 시간으로 궤도 에너지가 충전되었어요!",
                 type: 'SELF_CARE'
             });
         }
