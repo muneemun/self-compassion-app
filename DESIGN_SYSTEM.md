@@ -47,3 +47,24 @@
 - **Shadow-Free Principle**: 카드 내부나 외부의 그림자(`Shadow`), 블러(`Blur`) 효과를 지양하여 렌더링 부하를 줄이고 시각적 노이즈를 최소화함.
 - **Interactive Feedback**: 선택 시 입체적인 변화(Scale, Shadow) 대신, 색상의 반전이나 명확한 테두리 변화를 통해 피드백을 전달함.
 
+---
+
+## 7. Atmosphere Rendering Rules (정서 기상 배경 렌더링 규칙)
+
+궤도 지도(Orbit Map)의 배경은 사용자의 정서 상태를 직관적으로 전달하는 **7단계 정서 기상 시스템(Emotional Atmosphere System)**에 의해 동적으로 결정됩니다.
+
+> 📋 **상세 스펙**: [`docs/ORBIT_SYSTEM_MASTER_SPEC.md`](docs/ORBIT_SYSTEM_MASTER_SPEC.md) 참조
+
+### 7.1 배경 렌더링 원칙
+- **단색(`backgroundColor`) 배경 사용 금지**: 궤도 지도의 배경은 반드시 `react-native-svg`의 `<LinearGradient>`를 사용한 **3단계 수직 그라데이션**으로 렌더링해야 합니다. 단색은 공간감(Depth)을 훼손합니다.
+- **색상 소스**: 각 기상 레벨의 그라데이션 색상은 `useOrbitAtmosphere.ts`의 `ATMOSPHERE_THEMES` 객체에서 `gradientColors: [top, mid, bottom]` 배열로 관리됩니다.
+
+### 7.2 엣지 마스크 동기화 원칙
+- 지도 상/하단의 블러 마스크(Fade Mask)는 **특정 색상 값을 하드코딩하지 않습니다.**
+- 상단 마스크: `currentTheme.gradientColors[0]` (최상단 색상)과 실시간 연동.
+- 하단 마스크: `currentTheme.gradientColors[2]` (최하단 색상)과 실시간 연동.
+
+### 7.3 기상 전환 애니메이션
+- 기상 전환 시 `interpolateColor`를 사용한 부드러운 색상 보간(Interpolation) 적용.
+- 기본 전환 시간: `1200ms` (NORMAL 기준), 위기 상태: `800ms` (빠른 경고 반응).
+

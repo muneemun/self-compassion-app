@@ -6,6 +6,19 @@
 
 ---
 
+### [2026-05-18] v1.0.7 [개발자] - 정서 기상 시스템 렌더링 엔진 개편 및 마스터 스펙 창설
+
+- **[Feature] SVG 그라데이션 배경 엔진 도입:** `MainOrbitMap`의 단색(`backgroundColor`) 배경 렌더링을 폐기하고, `react-native-svg`의 `<LinearGradient>`를 활용한 3단계 수직 그라데이션 엔진으로 전면 교체. L5(Warm Sand) 기준 화면에 깊이감 있는 공간감(Depth) 복구.
+- **[BugFix] 엣지 마스크 하드코딩 제거:** 지도 상/하단 블러 마스크 색상이 `#FCF9F2`로 고정되어 있던 구조적 결함을 수리. `currentTheme.gradientColors[0]`(상단) 및 `[2]`(하단)를 실시간 참조하도록 변경하여 모든 기상 상태에서 경계선의 완벽한 융화 보장.
+- **[Docs] 🪐 Orbit System Master Specification (v1.1) 신규 창설:** 7단계 정서 기상 시스템의 디자인 철학, 컬러 스펙(Hybrid Pastel Sky), SVG 렌더링 기술 사양, 피드백 애니메이션 정책을 집대성한 마스터 명세서 `docs/ORBIT_SYSTEM_MASTER_SPEC.md` 공식 문서화.
+- **[Docs] 연관 문서 일괄 동기화:**
+    - `CORE_ALGORITHM_GUIDE.md`: 7단계 기상 시스템 섹션 신규 추가 및 컬러 스펙 도표화.
+    - `DESIGN_SYSTEM.md`: Atmosphere Rendering Rules (§7) 신설 — 단색 배경 금지, 마스크 동기화 원칙, 전환 애니메이션 정책 명문화.
+    - `SERVICE_TERMINOLOGY_GUIDE.md`: '정서 기상(Emotional Weather)' 공식 메타포 용어 정의 추가.
+    - `useOrbitAtmosphere.ts` JSDoc: 하이브리드 파스텔 스카이 7단계 컬러 코드 최신화.
+
+---
+
 ### [2026-05-14] v1.0.6 [개발자] - 리포트-튜닝 탭 데이터 동기화 및 정합성 해결
 
 - **[Feature] 리포트 탭 '전체 기간' 분석 도입:** 균형 상세 리포트 상단 드롭다운에 '전체' 옵션을 추가하여 튜닝 탭과 동일한 누적 데이터 기반 분석이 가능하도록 개선.
