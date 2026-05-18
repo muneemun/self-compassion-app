@@ -46,7 +46,8 @@ import ReAnimated, {
     interpolateColor,
     Extrapolate,
     cancelAnimation,
-    SharedValue
+    SharedValue,
+    useAnimatedProps
 } from 'react-native-reanimated';
 
 // 🧩 Modular Optimized Hooks & Constants
@@ -912,6 +913,94 @@ const UserNode = memo(({
     );
 });
 
+const AnimatedCircle = ReAnimated.createAnimatedComponent(Circle);
+
+const FallingLeaf = ({ idx, healingProgress }: { idx: number, healingProgress: SharedValue<number>, key?: any }) => {
+    const animatedStyle = useAnimatedStyle(() => ({
+        position: 'absolute',
+        top: 80 + (idx * 20),
+        left: 80 + (Math.sin(idx) * 40),
+        transform: [
+            { translateY: healingProgress.value * 120 },
+            { translateX: Math.sin(healingProgress.value * 5 + idx) * 30 },
+            { rotate: `${healingProgress.value * 360 + (idx * 45)}deg` }
+        ]
+    }));
+
+    return (
+        <ReAnimated.View style={animatedStyle}>
+            <Leaf size={16} color="#A5D6A7" fill="#A5D6A7" />
+        </ReAnimated.View>
+    );
+};
+
+const RotatingMeteorite = ({ idx, drainProgress }: { idx: number, drainProgress: SharedValue<number>, key?: any }) => {
+    const animatedStyle = useAnimatedStyle(() => ({
+        position: 'absolute',
+        top: 85,
+        left: 85,
+        transform: [
+            { rotate: `${drainProgress.value * 540 * (idx % 2 === 0 ? 1 : -1) + (idx * 90)}deg` },
+            { translateX: interpolate(drainProgress.value, [0, 1], [0, 120 + (idx * 20)]) },
+            { scale: interpolate(drainProgress.value, [0, 0.2, 1], [0, 1.2, 0.5]) }
+        ],
+        opacity: interpolate(drainProgress.value, [0, 0.1, 0.6, 1], [0, 1, 0.8, 0])
+    }));
+
+    return (
+        <ReAnimated.View style={animatedStyle}>
+            <Svg width={18 + idx * 4} height={18 + idx * 4} viewBox="0 0 100 100">
+                <Path 
+                    d="M 50 15 L 85 30 L 75 80 L 40 85 L 15 50 L 30 20 Z" 
+                    fill="#37474F" 
+                    stroke="#263238" 
+                    strokeWidth="3" 
+                />
+            </Svg>
+        </ReAnimated.View>
+    );
+};
+
+const GlassShard = ({ idx, crisisProgress }: { idx: number, crisisProgress: SharedValue<number>, key?: any }) => {
+    const animatedStyle = useAnimatedStyle(() => {
+        const jitterX = (Math.random() * 8 - 4) * crisisProgress.value;
+        const jitterY = (Math.random() * 8 - 4) * crisisProgress.value;
+        
+        return {
+            position: 'absolute',
+            top: 85,
+            left: 85,
+            transform: [
+                { rotate: `${(idx * 72) + (crisisProgress.value * 360)}deg` },
+                { translateX: interpolate(crisisProgress.value, [0, 0.1, 1], [0, 100, 180]) + jitterX },
+                { translateY: jitterY },
+                { scaleX: interpolate(crisisProgress.value, [0, 0.1, 1], [0, 2, 1.5]) },
+                { scaleY: interpolate(crisisProgress.value, [0, 1], [0, 0.8]) }
+            ],
+            opacity: interpolate(crisisProgress.value, [0, 0.05, 0.6, 1], [0, 1, 1, 0])
+        };
+    });
+
+    const shardPaths = [
+        "M 50 5 L 95 95 L 45 80 Z",
+        "M 10 50 L 90 40 L 50 90 Z",
+        "M 50 0 L 70 100 L 30 100 Z",
+    ];
+
+    return (
+        <ReAnimated.View style={animatedStyle}>
+            <Svg width={20 + (idx % 2) * 10} height={30 + (idx % 3) * 5} viewBox="0 0 100 100">
+                <Path 
+                    d={shardPaths[idx % 3]} 
+                    fill={idx % 3 === 0 ? "#D32F2F" : (idx % 3 === 1 ? "#212121" : "#F5F5F5")} 
+                    stroke="#000" 
+                    strokeWidth="3"
+                />
+            </Svg>
+        </ReAnimated.View>
+    );
+};
+
 interface MainOrbitMapProps {
     isFocused?: boolean;
     onSelectNode: (id: string) => void;
@@ -1026,6 +1115,55 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     const turbulenceValue = useSharedValue(0);
     const rippleOpacity = useSharedValue(0);
     
+    const waveWidth = useSharedValue(3);
+    const waveColor = useSharedValue('#FF9800');
+    const chargeProgress = useSharedValue(0);
+    const healingProgress = useSharedValue(0);
+    const drainProgress = useSharedValue(0);
+    const crisisProgress = useSharedValue(0);
+    const universeRotation = useSharedValue(0);
+
+    const bloomStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(healingProgress.value, [0, 0.2, 0.8, 1], [0, 0.4, 0.4, 0]) * feedbackOpacity.value,
+        backgroundColor: 'rgba(165, 214, 167, 0.3)'
+    }));
+
+    const leafOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(healingProgress.value, [0, 0.1, 0.8, 1], [0, 1, 1, 0]) * feedbackOpacity.value,
+    }));
+
+    const drainOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(drainProgress.value, [0, 0.1, 0.8, 1], [0, 1, 1, 0]) * feedbackOpacity.value,
+    }));
+
+    const crisisOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(crisisProgress.value, [0, 0.05, 0.8, 1], [0, 1, 1, 0]) * feedbackOpacity.value,
+    }));
+
+    const lightningJitter = useSharedValue(0);
+    useEffect(() => {
+        if (chargeProgress.value > 0) {
+            lightningJitter.value = withRepeat(withSequence(withTiming(1.5, { duration: 60 }), withTiming(-1.5, { duration: 60 })), -1, true);
+        } else {
+            lightningJitter.value = 0;
+        }
+    }, [chargeProgress.value]);
+
+    const chargeOverlayStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(chargeProgress.value, [0, 0.1, 1], [0, 1, 1]) * feedbackOpacity.value,
+        transform: [
+            { scale: interpolate(chargeProgress.value, [0, 0.2, 1], [0.5, 1.1, 1]) },
+            { rotate: `${-universeRotation.value + lightningJitter.value}deg` }
+        ]
+    }));
+
+    const batteryCircleProps = useAnimatedProps(() => {
+        const strokeDashoffset = 251.2 * (1 - chargeProgress.value);
+        return {
+            strokeDashoffset
+        };
+    });
+
     const activeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Clean up timer on unmount
@@ -1053,17 +1191,62 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
             feedbackOpacity.value = withTiming(1, { duration: 500 });
             feedbackTranslateY.value = withSpring(0, { damping: 18, stiffness: 70 });
             
-            // If it's self-care or interaction
-            if (cognitiveFeedback.type === 'SELF_CARE' || cognitiveFeedback.type === 'INTERACTION') {
-                rippleScale1.value = 0;
-                rippleScale2.value = 0;
-                rippleScale3.value = 0;
-                rippleOpacity.value = 0.8;
-                
-                rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
-                rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
-                rippleOpacity.value = withTiming(0, { duration: 3000 });
+            // Map the display type to trigger corresponding ambient effects
+            let displayType: 'Charge' | 'Healing' | 'Drain' | 'Stable' | 'Crisis' = 'Stable';
+            if (cognitiveFeedback.type === 'SELF_CARE') {
+                displayType = 'Healing';
+            } else if (cognitiveFeedback.type === 'INTERACTION') {
+                const delta = interactionFeedback.closenessDelta || 0;
+                if (delta > 0) {
+                    displayType = 'Charge';
+                } else if (delta < 0) {
+                    displayType = 'Drain';
+                } else {
+                    displayType = 'Stable';
+                }
+            } else if ((cognitiveFeedback.type as string) === 'CRISIS' || cognitiveFeedback.type === 'Crisis') {
+                displayType = 'Crisis';
+            } else if (
+                cognitiveFeedback.type === 'Charge' || 
+                cognitiveFeedback.type === 'Healing' || 
+                cognitiveFeedback.type === 'Drain' || 
+                cognitiveFeedback.type === 'Stable'
+            ) {
+                displayType = cognitiveFeedback.type as any;
+            }
+
+            // Trigger ripple effect
+            rippleScale1.value = 0;
+            rippleScale2.value = 0;
+            rippleScale3.value = 0;
+            rippleOpacity.value = 0.8;
+            
+            rippleScale1.value = withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) });
+            rippleScale2.value = withDelay(400, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+            rippleScale3.value = withDelay(800, withTiming(4, { duration: 2500, easing: Easing.out(Easing.quad) }));
+            rippleOpacity.value = withTiming(0, { duration: 3000 });
+
+            // Trigger specific ambient visual progress values
+            if (displayType === 'Charge') {
+                chargeProgress.value = 0;
+                chargeProgress.value = withTiming(1, { duration: 3200, easing: Easing.out(Easing.quad) });
+                waveColor.value = '#FF9800';
+                waveWidth.value = 3;
+            } else if (displayType === 'Healing') {
+                healingProgress.value = 0;
+                healingProgress.value = withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.sin) });
+                waveColor.value = '#2E7D32';
+                waveWidth.value = 4;
+            } else if (displayType === 'Drain') {
+                drainProgress.value = 0;
+                drainProgress.value = withTiming(1, { duration: 3200, easing: Easing.out(Easing.quad) });
+                waveColor.value = '#37474F';
+                waveWidth.value = 2;
+            } else if (displayType === 'Crisis') {
+                crisisProgress.value = 0;
+                crisisProgress.value = withTiming(1, { duration: 3200, easing: Easing.out(Easing.quad) });
+                waveColor.value = '#C62828';
+                waveWidth.value = 5;
             }
             
             // Auto-hide after some time (Optimized Golden Window for production)
@@ -1071,6 +1254,15 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                 feedbackOpacity.value = withTiming(0, { duration: 400 });
                 feedbackTranslateY.value = withTiming(-25, { duration: 400 });
                 
+                cancelAnimation(chargeProgress);
+                cancelAnimation(healingProgress);
+                cancelAnimation(drainProgress);
+                cancelAnimation(crisisProgress);
+                chargeProgress.value = 0;
+                healingProgress.value = 0;
+                drainProgress.value = 0;
+                crisisProgress.value = 0;
+
                 activeTimerRef.current = null;
  
                 if (interactionFeedback.isActive) {
@@ -1099,26 +1291,35 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
         }
     }, [interactionFeedback.isActive, interactionFeedback.closenessDelta]);
 
-    const dimmingStyle = useAnimatedStyle(() => ({
-        opacity: feedbackOpacity.value * 0.6,
-    }));
+    const dimmingStyle = useAnimatedStyle(() => {
+        const baseOpacity = interpolate(drainProgress.value, [0, 0.5, 1], [0.6, 0.8, 0.6]);
+        return {
+            opacity: baseOpacity * feedbackOpacity.value
+        };
+    });
  
     const feedbackOverlayStyle = useAnimatedStyle(() => ({
         opacity: feedbackOpacity.value,
         transform: [{ translateY: feedbackTranslateY.value }]
     }));
 
-    const rippleStyle1 = useAnimatedStyle(() => ({
-        transform: [{ scale: rippleScale1.value }],
-        opacity: rippleOpacity.value,
+    const rippleStyle1 = useAnimatedStyle(() => ({ 
+        transform: [{ scale: rippleScale1.value }], 
+        opacity: rippleOpacity.value, 
+        borderWidth: waveWidth.value, 
+        borderColor: waveColor.value 
     }));
-    const rippleStyle2 = useAnimatedStyle(() => ({
-        transform: [{ scale: rippleScale2.value }],
-        opacity: rippleOpacity.value * 0.7,
+    const rippleStyle2 = useAnimatedStyle(() => ({ 
+        transform: [{ scale: rippleScale2.value }], 
+        opacity: rippleOpacity.value * 0.7, 
+        borderWidth: waveWidth.value, 
+        borderColor: waveColor.value 
     }));
-    const rippleStyle3 = useAnimatedStyle(() => ({
-        transform: [{ scale: rippleScale3.value }],
-        opacity: rippleOpacity.value * 0.4,
+    const rippleStyle3 = useAnimatedStyle(() => ({ 
+        transform: [{ scale: rippleScale3.value }], 
+        opacity: rippleOpacity.value * 0.4, 
+        borderWidth: waveWidth.value, 
+        borderColor: waveColor.value 
     }));
     // Tracking new nodes for entry animation
     const prevNodeIds = useRef(new Set((relationships || []).map(r => r.id)));
@@ -1173,7 +1374,6 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
 
 
     // 🌀 Universe Spin State
-    const universeRotation = useSharedValue(0);
 
     // 💓 Self Heartbeat Animation (Solar Amber)
     const selfPulse = useSharedValue(1);
@@ -2030,8 +2230,10 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                 ]} 
                             />
 
+                            <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: width * 5, height: height * 5, zIndex: 101 }, bloomStyle]} />
+
                             {/* [Feedback Layer] Ripple Effect (Wave) */}
-                            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
+                            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 1000 }]} pointerEvents="none">
                                 {[rippleStyle1, rippleStyle2, rippleStyle3].map((style, idx) => (
                                     <ReAnimated.View 
                                         key={idx}
@@ -2049,34 +2251,54 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                         ]} 
                                     />
                                 ))}
-                            </View>
 
-                            {/* [Feedback Layer] Gravity Lines for Interaction */}
-                            {interactionFeedback.isActive && interactionFeedback.targetId && (() => {
-                                const targetNode = distributedNodes.find(n => n.node.id === interactionFeedback.targetId);
-                                if (!targetNode) return null;
-                                
-                                const rad = (targetNode.angle * Math.PI) / 180;
-                                const scaleFactor = 0.55 + (zoomSharedValue.value - 1) * 0.3375;
-                                const x2 = Math.cos(rad) * targetNode.radius * scaleFactor;
-                                const y2 = Math.sin(rad) * targetNode.radius * scaleFactor;
-                                
-                                const isNegative = interactionFeedback.closenessDelta < 0;
-                                
-                                return (
-                                    <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 150 }]} pointerEvents="none">
-                                        <Svg width="100%" height="100%" viewBox={`${-width} ${-width} ${width*2} ${width*2}`}>
-                                            <Path
-                                                d={`M 0 0 L ${x2} ${y2}`}
-                                                stroke={isNegative ? '#D98B73' : '#FF9800'}
-                                                strokeWidth={isNegative ? 3 : 2}
-                                                strokeDasharray={isNegative ? "4 6" : undefined}
-                                                opacity={0.9}
+                                {/* Charge Overlay */}
+                                <ReAnimated.View style={[{ position: 'absolute', alignItems: 'center', justifyContent: 'center', zIndex: 900 }, chargeOverlayStyle]}>
+                                    <Svg width="100" height="100" viewBox="0 0 100 100">
+                                        <Circle cx="50" cy="50" r="40" stroke="rgba(255, 215, 0, 0.2)" strokeWidth="6" fill="none" />
+                                        <AnimatedCircle 
+                                            cx="50" cy="50" r="40" 
+                                            stroke="#FFD700" strokeWidth="6" fill="none" 
+                                            strokeDasharray="251.2"
+                                            animatedProps={batteryCircleProps as any}
+                                            strokeLinecap="round"
+                                            transform="rotate(-90 50 50)"
+                                        />
+                                    </Svg>
+                                    <View style={{ position: 'absolute' }}>
+                                        <Svg width="40" height="40" viewBox="0 0 100 100">
+                                            <Path 
+                                                d="M 55 5 L 25 55 L 50 55 L 40 95 L 75 40 L 50 40 L 65 5 Z" 
+                                                fill="#FFD700" 
+                                                stroke="#FFF" 
+                                                strokeWidth="2" 
+                                                strokeLinejoin="round" 
                                             />
                                         </Svg>
                                     </View>
-                                );
-                            })()}
+                                </ReAnimated.View>
+
+                                {/* Healing Leaf Overlay */}
+                                <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: 200, height: 200, zIndex: 910 }, leafOverlayStyle]}>
+                                    {[0, 1, 2, 3, 4].map(idx => (
+                                        <FallingLeaf key={idx} idx={idx} healingProgress={healingProgress} />
+                                    ))}
+                                </ReAnimated.View>
+
+                                {/* Drain Meteorite Overlay */}
+                                <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: 200, height: 200, zIndex: 920 }, drainOverlayStyle]}>
+                                    {[0, 1, 2, 3].map(idx => (
+                                        <RotatingMeteorite key={idx} idx={idx} drainProgress={drainProgress} />
+                                    ))}
+                                </ReAnimated.View>
+
+                                {/* Crisis Shard Overlay */}
+                                <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: 200, height: 200, zIndex: 930 }, crisisOverlayStyle]}>
+                                    {[0, 1, 2, 3, 4, 5].map(idx => (
+                                        <GlassShard key={idx} idx={idx} crisisProgress={crisisProgress} />
+                                    ))}
+                                </ReAnimated.View>
+                            </View>
                         </ReAnimated.View>
                     </View>
 
