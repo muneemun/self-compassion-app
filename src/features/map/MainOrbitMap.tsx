@@ -1851,11 +1851,19 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                         style={[styles.orbitCanvas, viewMode === 'map' ? { display: 'flex' } : { display: 'none' }]}
                         {...panResponder.panHandlers}
                     >
-                        {/* ━━ [Atmosphere Layer 1] 동적 배경색 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-                        <ReAnimated.View
-                            pointerEvents="none"
-                            style={[StyleSheet.absoluteFill, atmosphereBackgroundStyle]}
-                        />
+                        {/* ━━ [Atmosphere Layer 1] 동적 배경색 (그라데이션) ━━━━━━━━━━━━━━━ */}
+                        <ReAnimated.View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                            <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                                <Defs>
+                                    <LinearGradient id="orbitGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <Stop offset="0%" stopColor={currentTheme.gradientColors[0]} />
+                                        <Stop offset="50%" stopColor={currentTheme.gradientColors[1]} />
+                                        <Stop offset="100%" stopColor={currentTheme.gradientColors[2]} />
+                                    </LinearGradient>
+                                </Defs>
+                                <Rect width="100%" height="100%" fill="url(#orbitGradient)" />
+                            </Svg>
+                        </ReAnimated.View>
 
                         {/* ━━ [Atmosphere Layer 2] 연무(Mist) 레이어 — pointerEvents=none 으로 터치 무간섭 ━ */}
                         {currentTheme.mistEnabled && (
@@ -2058,8 +2066,8 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                 <Svg width="100%" height={MASK_DEPTH} preserveAspectRatio="none">
                                     <Defs>
                                         <LinearGradient id="topMask" x1="0" y1="0" x2="0" y2="1">
-                                            <Stop offset="0" stopColor="#FCF9F2" stopOpacity="1" />
-                                            <Stop offset="1" stopColor="#FCF9F2" stopOpacity="0" />
+                                            <Stop offset="0" stopColor={currentTheme.gradientColors[0]} stopOpacity="1" />
+                                            <Stop offset="1" stopColor={currentTheme.gradientColors[0]} stopOpacity="0" />
                                         </LinearGradient>
                                     </Defs>
                                     <Rect width="100%" height={MASK_DEPTH} fill="url(#topMask)" />
@@ -2081,8 +2089,8 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                 <Svg width="100%" height={MASK_DEPTH} preserveAspectRatio="none">
                                     <Defs>
                                         <LinearGradient id="bottomMask" x1="0" y1="0" x2="0" y2="1">
-                                            <Stop offset="0" stopColor="#FCF9F2" stopOpacity="0" />
-                                            <Stop offset="1" stopColor="#FCF9F2" stopOpacity="1" />
+                                            <Stop offset="0" stopColor={currentTheme.gradientColors[2]} stopOpacity="0" />
+                                            <Stop offset="1" stopColor={currentTheme.gradientColors[2]} stopOpacity="1" />
                                         </LinearGradient>
                                     </Defs>
                                     <Rect width="100%" height={MASK_DEPTH} fill="url(#bottomMask)" />

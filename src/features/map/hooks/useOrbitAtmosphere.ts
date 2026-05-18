@@ -11,14 +11,14 @@
  *   - 모든 관계의 최근 10개 인터랙션 평균값 기반
  *   - 지속적인 배경색 + 연무 + 파동 효과
  *
- * 7단계 정서 기상 시스템 (사용자 정의 준수):
- * L7  SUPERNOVA      정서적 초신성 (환희)
- * L6  BREEZE         산들바람 (회복)
- * L5  NORMAL         평상시 (Default) - #FCF9F2
- * L4  SURGE          에너지 급변 (Δ > 30) - #0F1A0F
- * L3  DRAIN          에너지 침잠 (소진) - #000B1A
- * L2  MIST           흐릿한 관계 (흐림) - #1A1A1A
- * L1  STORM          정서적 위기 (폭풍) - #1F0505
+ * 7단계 정서 기상 시스템 (Hybrid Pastel Sky):
+ * L7  SUPERNOVA      정서적 초신성 (환희) - #F0F9FF (Crystal Blue)
+ * L6  BREEZE         산들바람 (회복) - #FEFDFB (Bright Sand)
+ * L5  NORMAL         평상시 (Default) - #FCF9F2 (Warm Sand)
+ * L4  SURGE          에너지 급변 (Δ > 30) - #F0EBE1 (Dark Taupe)
+ * L3  DRAIN          에너지 침잠 (소진) - #F3F4F6 (Cool Gray)
+ * L2  MIST           흐릿한 관계 (흐림) - #E5E7EB (Mist Gray)
+ * L1  STORM          정서적 위기 (폭풍) - #9CA3AF (Storm Gray)
  */
 
 import { useMemo, useRef } from 'react';
