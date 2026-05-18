@@ -385,9 +385,12 @@ export const TestOrbitMap = () => {
         }
     }, [interactionFeedback.isActive, cognitiveFeedback?.message]);
 
-    const dimmingStyle = useAnimatedStyle(() => ({ 
-        opacity: interpolate(drainProgress.value, [0, 0.5, 1], [feedbackOpacity.value * 0.6, 0.8, 0.6]) 
-    }));
+    const dimmingStyle = useAnimatedStyle(() => {
+        const baseOpacity = interpolate(drainProgress.value, [0, 0.5, 1], [0.6, 0.8, 0.6]);
+        return {
+            opacity: baseOpacity * feedbackOpacity.value
+        };
+    });
     
     // Bloom Effect for Healing
     const bloomStyle = useAnimatedStyle(() => ({
@@ -576,7 +579,19 @@ export const TestOrbitMap = () => {
                                 </ReAnimated.View>
                             </TouchableOpacity>
 
-                            <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: width * 5, height: height * 5, backgroundColor: '#000', zIndex: 100 }, dimmingStyle]} />
+                            <ReAnimated.View 
+                                pointerEvents="none" 
+                                style={[
+                                    { 
+                                        position: 'absolute', 
+                                        width: width * 5, 
+                                        height: height * 5, 
+                                        backgroundColor: (cognitiveFeedback?.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0)) ? '#FFFFFF' : '#000', 
+                                        zIndex: 100 
+                                    }, 
+                                    dimmingStyle
+                                ]} 
+                            />
                             
                             {/* v5 Soft Bloom (Layer A) */}
                             <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: width * 5, height: height * 5, zIndex: 101 }, bloomStyle]} />
