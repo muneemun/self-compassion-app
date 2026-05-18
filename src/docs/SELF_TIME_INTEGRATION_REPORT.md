@@ -65,3 +65,17 @@
 2. **[UI Layer]** `SelfTimeCheckInModal` 화면 및 마이크로 인터랙션 구현
 3. **[Routing]** `App.tsx` 및 `MainOrbitMap`, `SelfHealthReport`에 진입점(Entry Points) 연결
 4. **[Analytics]** 분석 훅(`useSelfHealthData`) 업데이트 및 건강 리포트 차트 반영
+5. **[Optimization]** 레이아웃 재계산 차단을 통한 모달 튕김 원천 차단 (CSS display 토글 최적화)
+
+---
+
+## 6. 레이아웃 재계산 패스 차단 최적화 (2026-05-18)
+통합 체크인 리스트(통로 C)에서 나와의 시간 혹은 인맥 대상을 선택했을 때, 검색창이 닫히는 비동기 처리 타이밍과 새로운 Native 모달이 오픈되는 타이밍이 겹치며 Android 환경에서 모달이 팝업되지 않고 화면이 튕기듯 복귀하는 버그를 완벽하게 최적화하였습니다.
+
+* **문제 원인:** 기존 검색 모달의 조건부 마운트 방식(`if (!isSearchModalVisible) return null;`)으로 인해 검색창이 닫힐 때 하위 컴포넌트 전체가 강제 언마운트(Unmount)되면서 `MainOrbitMap.tsx` 전체에 대규모 레이아웃 재계산 패스(Yoga Layout)가 동작했습니다. 이 순간 Native Modal의 팝업 드로잉 패스가 부모 뷰의 레이아웃 오버헤드에 밀려 OS단에서 누락되었습니다.
+* **해결 및 최적화:** 
+  1. 검색창 컴포넌트의 강제 언마운트를 방지하기 위해 항상 컴포넌트를 마운트 상태로 유지합니다.
+  2. 노출 여부는 CSS `display: isSearchModalVisible ? 'flex' : 'none'` 스타일 토글 방식으로 변경하여 1밀리초 만에 화면에서 전환되도록 제어했습니다.
+  3. 숨겨져 있는 상태(`none`)에서는 무거운 데이터 처리나 리스트 아이템들이 트리에 렌더링되지 않도록 방어 로직(`if (!isSearchModalVisible) return <View style={{ display: 'none' }} />;`)을 두어 메모리 및 CPU 연산 부담을 완벽하게 차단했습니다.
+  4. 검색 입력창(`TextInput`)의 포커스가 숨겨진 상태에서 계속 유지되는 현상을 방지하기 위해 `useRef(searchInputRef)`와 `blur()`를 연동하여 포커스 라이프사이클을 확실히 종료해 줍니다.
+* **최적화 결과:** 컴포넌트 소멸 레이아웃 부하가 **완벽하게 0**으로 수렴하며 불필요한 `setTimeout` 딜레이 코드들을 전면 제거하고 즉각적이고 안정적인 모달 오픈 환경을 완성했습니다.

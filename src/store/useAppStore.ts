@@ -122,6 +122,21 @@ export const useAppStore = create<AppState>()(
             storage: createJSONStorage(() => 
                 Platform.OS === 'web' ? (typeof window !== 'undefined' ? window.localStorage : (null as any)) : AsyncStorage
             ),
+            // UI visibility flags and temporary feedback states are excluded from persistence to avoid native modal freezing on boot
+            partialize: (state) => {
+                const {
+                    isInitialized,
+                    isSelfTimeModalOpen,
+                    isRelationshipLogModalOpen,
+                    currentLogTargetId,
+                    editingLogId,
+                    interactionFeedback,
+                    cognitiveFeedback,
+                    recoveryPulseActive,
+                    ...persistedState
+                } = state;
+                return persistedState;
+            }
         }
     )
 );

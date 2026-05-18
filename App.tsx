@@ -93,7 +93,6 @@ function App() {
   const setHasCompletedOnboarding = useAppStore(state => state.setHasCompletedOnboarding);
   const isRelationshipLogModalOpen = useAppStore(state => state.isRelationshipLogModalOpen);
   const setRelationshipLogModalOpen = useAppStore(state => state.setRelationshipLogModalOpen);
-  // ✅ Reactive subscription — NOT getState() snapshot
   const relationships = useRelationshipStore(state => state.relationships);
   const { addRelationship, updateAnalysisResult, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
 
@@ -103,6 +102,12 @@ function App() {
     const safetyTimeout = setTimeout(() => {
       if (!isInitialized) {
         console.warn("Hydration Safety Timeout Triggered!");
+        useAppStore.setState({
+          isSelfTimeModalOpen: false,
+          isRelationshipLogModalOpen: false,
+          currentLogTargetId: null,
+          editingLogId: null
+        });
         setIsInitialized(true);
       }
     }, 3000);
@@ -110,6 +115,12 @@ function App() {
     const interval = setInterval(() => {
       // @ts-ignore - persist is added via middleware
       if (useRelationshipStore.persist?.hasHydrated()) {
+        useAppStore.setState({
+          isSelfTimeModalOpen: false,
+          isRelationshipLogModalOpen: false,
+          currentLogTargetId: null,
+          editingLogId: null
+        });
         setIsInitialized(true);
         clearInterval(interval);
         clearTimeout(safetyTimeout);

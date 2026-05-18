@@ -909,7 +909,13 @@ interface MainOrbitMapProps {
 export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDiagnose, onRecordLog }: MainOrbitMapProps) => {
     const colors = useColors();
     const { relationships, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
-    const { userProfile, interactionFeedback, setInteractionFeedback, cognitiveFeedback, setCognitiveFeedback } = useAppStore();
+    const { 
+        userProfile, 
+        interactionFeedback = { isActive: false, closenessDelta: 0, targetId: null }, 
+        setInteractionFeedback = () => {}, 
+        cognitiveFeedback = { message: null, type: null }, 
+        setCognitiveFeedback = () => {} 
+    } = useAppStore();
     const entranceOpacity = useSharedValue(0);
 
     // ── 🌌 Atmosphere Engine v2 ────────────────────────────────────
@@ -932,6 +938,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
         useOrbitAtmosphere(relationships, setAtmSystemMsg);
 
     const prevAmbientStateRef = useRef(currentTheme?.state || 'NORMAL');
+    const searchInputRef = useRef<TextInput>(null);
 
     // ── Layer B: 누적 상태 변화 → 배경 애니메이션 ────────────────
     useEffect(() => {
@@ -998,6 +1005,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
 
     // Feedback animations
     const feedbackOpacity = useSharedValue(0);
+    const feedbackTranslateY = useSharedValue(-25);
     const rippleScale1 = useSharedValue(0);
     const rippleScale2 = useSharedValue(0);
     const rippleScale3 = useSharedValue(0);
@@ -1017,18 +1025,19 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
 
     useEffect(() => {
         const isActive = !!(interactionFeedback.isActive || cognitiveFeedback.message);
-
+ 
         if (isActive) {
             // Clear any existing active timer to prevent duplicates and ensure duration resets properly
             if (activeTimerRef.current) {
                 clearTimeout(activeTimerRef.current);
             }
-
+ 
             // Lock overlay color on initiation to prevent dark flashing during subsequent fade-out
             const isWhiteBg = !!(cognitiveFeedback.type === 'SELF_CARE' || (interactionFeedback.isActive && interactionFeedback.closenessDelta > 0));
             setOverlayBgColor(isWhiteBg ? '#FFFFFF' : '#000000');
-
+ 
             feedbackOpacity.value = withTiming(1, { duration: 500 });
+            feedbackTranslateY.value = withSpring(0, { damping: 18, stiffness: 70 });
             
             // If it's self-care or interaction
             if (cognitiveFeedback.type === 'SELF_CARE' || cognitiveFeedback.type === 'INTERACTION') {
@@ -1046,16 +1055,17 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
             // Auto-hide after some time (Optimized Golden Window for production)
             activeTimerRef.current = setTimeout(() => {
                 feedbackOpacity.value = withTiming(0, { duration: 400 });
+                feedbackTranslateY.value = withTiming(-25, { duration: 400 });
                 
                 activeTimerRef.current = null;
-
+ 
                 if (interactionFeedback.isActive) {
                     setInteractionFeedback({ ...interactionFeedback, isActive: false });
                 }
                 if (cognitiveFeedback.message) {
                     setCognitiveFeedback({ message: null, type: null });
                 }
-            }, 3500);
+            }, 3200);
         }
     }, [interactionFeedback.isActive, cognitiveFeedback.message]);
 
@@ -1077,6 +1087,11 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
 
     const dimmingStyle = useAnimatedStyle(() => ({
         opacity: feedbackOpacity.value * 0.6,
+    }));
+ 
+    const feedbackOverlayStyle = useAnimatedStyle(() => ({
+        opacity: feedbackOpacity.value,
+        transform: [{ translateY: feedbackTranslateY.value }]
     }));
 
     const rippleStyle1 = useAnimatedStyle(() => ({
@@ -1242,11 +1257,12 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     const filteredRelationships = distributedNodes.map(pn => pn.node);
 
     const handleSelectPerson = useCallback((person: RelationshipNode | 'self') => {
+        searchInputRef.current?.blur();
         Keyboard.dismiss();
         
         if (person === 'self') {
+            setIsSearchModalVisible(false);
             useAppStore.getState().setSelfTimeModalOpen(true);
-            setTimeout(() => setIsSearchModalVisible(false), 500);
             return;
         }
 
@@ -1254,8 +1270,8 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
             setIsSearchModalVisible(false);
             onSelectNode(person.id);
         } else if (searchMode === 'action') {
+            setIsSearchModalVisible(false);
             useAppStore.getState().setRelationshipLogModalOpen(true, person.id);
-            setTimeout(() => setIsSearchModalVisible(false), 500);
         } else {
             setSelectedTarget(person);
             setIsActionVisible(true);
@@ -1521,7 +1537,9 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     );
 
     const renderSearchModal = () => {
-        if (!isSearchModalVisible) return null;
+        if (!isSearchModalVisible) {
+            return <View style={{ display: 'none' }} />;
+        }
 
         const searchTags = dynamicTabs;
 
@@ -1538,7 +1556,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
         // handleSelectPerson and handleAction are now hoisted to main component
 
         return (
-            <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: colors.background }]}>
+            <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: colors.background, display: isSearchModalVisible ? 'flex' : 'none' }]}>
                 <SafeAreaView style={{ flex: 1 }} edges={['top']}>
                     {!isActionVisible ? (
                         <View style={[styles.modalFullContainer, { backgroundColor: colors.background }]}>
@@ -1549,7 +1567,10 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                 </Text>
                                 <TouchableOpacity
                                     style={styles.modalCloseBtn}
-                                    onPress={() => setIsSearchModalVisible(false)}
+                                    onPress={() => {
+                                        searchInputRef.current?.blur();
+                                        setIsSearchModalVisible(false);
+                                    }}
                                 >
                                     <X size={24} color={colors.primary} />
                                 </TouchableOpacity>
@@ -1559,6 +1580,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                 <View style={styles.searchContainer}>
                                     <Search size={18} color={colors.primary} opacity={0.4} />
                                     <TextInput
+                                        ref={searchInputRef}
                                         style={styles.searchInput}
                                         placeholder="이름이나 태그 검색..."
                                         value={searchQuery}
