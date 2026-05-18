@@ -579,7 +579,7 @@ export const TestOrbitMap = () => {
                             <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: width * 5, height: height * 5, backgroundColor: '#000', zIndex: 100 }, dimmingStyle]} />
                             
                             {/* v5 Soft Bloom (Layer A) */}
-                            <ReAnimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 101 }, bloomStyle]} />
+                            <ReAnimated.View pointerEvents="none" style={[{ position: 'absolute', width: width * 5, height: height * 5, zIndex: 101 }, bloomStyle]} />
 
                             {/* v5 Interaction Ripples (Layer A) */}
                             <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 1000 }]}>
