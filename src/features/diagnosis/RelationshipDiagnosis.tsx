@@ -131,7 +131,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
         image: pendingData?.image
     };
 
-    const [step, setStep] = useState<DiagnosisStep>(mode === "RQS" ? "RQS" : "CHECKLIST");
+    const [step, setStep] = useState<AnalysisStep>(mode === "RQS" ? "RQS" : "CHECKLIST");
     const [currentStep, setCurrentStep] = useState(0);
     const [finalZone, setFinalZone] = useState(1);
 
@@ -228,7 +228,7 @@ export const RelationshipDiagnosis = ({ relationshipId, mode = "ZONE", onBack, o
         }
     };
 
-    const startTransition = (nextStep: DiagnosisStep) => {
+    const startTransition = (nextStep: AnalysisStep) => {
         Animated.timing(fadeAnim, {
             toValue: 0,
             duration: 300,

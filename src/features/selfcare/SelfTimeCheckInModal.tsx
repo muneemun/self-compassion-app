@@ -183,7 +183,7 @@ export const SelfTimeCheckInModal = () => {
             
             // 🚀 메타 인지 피드백 시각화 트리거 (새 기록일 때만)
             const { setCognitiveFeedback } = useAppStore.getState();
-            setCognitiveFeedback({
+            setCognitiveFeedback?.({
                 message: "나를 위한 시간으로 궤도 에너지가 충전되었어요!",
                 type: 'SELF_CARE'
             });
@@ -214,7 +214,7 @@ export const SelfTimeCheckInModal = () => {
                                 styles.categoryCardGrid, 
                                 isSelected && { 
                                     borderColor: THEME.primary, 
-                                    backgroundColor: THEME.white,
+                                    backgroundColor: THEME.surface,
                                     borderWidth: 2,
                                 }
                             ]}
@@ -242,7 +242,7 @@ export const SelfTimeCheckInModal = () => {
                                 ]}>{desc}</Text>
                             </View>
                             {isSelected && (
-                                <View style={[styles.checkBadge, { backgroundColor: THEME.primary, borderColor: THEME.white }]}>
+                                <View style={[styles.checkBadge, { backgroundColor: THEME.primary, borderColor: THEME.surface }]}>
                                     <CheckCircle2 size={12} color="white" />
                                 </View>
                             )}

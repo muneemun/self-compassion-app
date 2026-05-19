@@ -9,7 +9,7 @@ try {
             shouldShowAlert: true,
             shouldPlaySound: true,
             shouldSetBadge: true,
-        }),
+        } as any),
     });
 } catch (error) {
     console.warn('Notifications handler could not be set:', error);
@@ -65,7 +65,7 @@ export const NotificationService = {
                     body: "오늘의 정서 에너지를 기록하고 나를 돌보는 시간을 가져보세요.",
                     data: { screen: 'CheckIn' },
                     android: { channelId: 'default' },
-                },
+                } as any,
                 trigger: {
                     type: 'daily',
                     hour,
@@ -91,7 +91,7 @@ export const NotificationService = {
                     body: "관계의 중력이 변하고 있어요. 지도를 재배치할 시간입니다.",
                     data: { screen: 'Tuning' },
                     android: { channelId: 'default' },
-                },
+                } as any,
                 trigger: {
                     type: 'weekly',
                     weekday: dayOfWeek,
@@ -113,7 +113,7 @@ export const NotificationService = {
                     body: "지난주 당신의 마음 날씨 분석이 완료되었습니다.",
                     data: { screen: 'Health' },
                     android: { channelId: 'default' },
-                },
+                } as any,
                 trigger: {
                     type: 'weekly',
                     weekday: 2, // Monday
@@ -135,7 +135,7 @@ export const NotificationService = {
                     body: "한 달간의 정서 흐름을 정리하고 새로운 목표를 세워보세요.",
                     data: { screen: 'Tuning' },
                     android: { channelId: 'default' },
-                },
+                } as any,
                 trigger: {
                     type: 'monthly',
                     day,
@@ -157,7 +157,7 @@ export const NotificationService = {
                     body: "관계 비타민과 새로운 공지사항이 도착했는지 확인해보세요.",
                     data: { screen: 'Settings' },
                     android: { channelId: 'default' },
-                },
+                } as any,
                 trigger: {
                     type: 'weekly',
                     weekday: 5, // Friday

@@ -1,5 +1,5 @@
 import React from 'react';
-import ReAnimated, { useAnimatedStyle } from 'react-native-reanimated';
+import ReAnimated, { useAnimatedStyle, SharedValue } from 'react-native-reanimated';
 import { Circle } from 'react-native-svg';
 import { Dimensions } from 'react-native';
 
@@ -9,7 +9,7 @@ const BASE_ORBIT_SIZE = width * 0.85;
 interface OrbitRingProps {
     level: number;
     colors: any;
-    zoomSharedValue: ReAnimated.SharedValue<number>;
+    zoomSharedValue: SharedValue<number>;
 }
 
 export const OrbitRing: React.FC<OrbitRingProps> = ({ level, colors, zoomSharedValue }) => {

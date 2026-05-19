@@ -187,7 +187,7 @@ export const ZoomableRelationshipMap: React.FC<{ dateRange?: {start: Date, end: 
             });
 
         // Resolve node collisions
-        data = resolveCollisions(data);
+        data = resolveCollisions(data) as any;
 
         return { data, counts };
     }, [relationships, dateRange]);

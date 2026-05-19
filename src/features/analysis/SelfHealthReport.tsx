@@ -537,7 +537,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                                                 {isSelfTime ? '회복' : '교감'}
                                             </Text>
                                             <Text style={[styles.miniMetricValue, { color: isSelfTime ? '#4A8C8C' : colors.accent }]}>
-                                                {Math.round(h.satisfaction || (h as any).closeness || h.temperature || 0)}%
+                                                {Math.round(h.satisfaction || (h as any).closeness || (h as any).temperature || 0)}%
                                             </Text>
                                         </View>
                                     );
@@ -731,9 +731,9 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={styles.popupScrollContainer}>
-                        {content.info && (
+                        {(content as any).info && (
                             <Text style={[styles.guideStatusDesc, { color: colors.primary, opacity: 0.7, marginBottom: 12, fontSize: 14, lineHeight: 22 }]}>
-                                {content.info}
+                                {(content as any).info}
                             </Text>
                         )}
                         {content.items && content.items.map((item: any, idx: number) => (
@@ -890,5 +890,20 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 10,
         fontWeight: '800',
+    },
+    countBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+        backgroundColor: 'rgba(74,93,78,0.08)',
+        marginTop: 4,
+    },
+    countText: {
+        fontSize: 14,
+        fontWeight: '900',
+        color: '#4A5D4E',
+    },
+    infoBtn: {
+        padding: 4,
     },
 });

@@ -67,7 +67,7 @@ export const RelationshipReport = ({ relationshipId, onBack }: RelationshipRepor
         setShowLogModal(false);
         setTimeout(() => {
             const today = new Date().toISOString().split('T')[0];
-            addInteraction(relationshipId, today, newLog.temperature, newLog.event, '');
+            addInteraction(relationshipId, today, newLog.temperature, 50, newLog.event, '');
             setNewLog({ event: '', temperature: 50 });
         }, 100);
     };

@@ -263,9 +263,11 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
         />
     );
 
-    const renderLegend = () => (
+    const renderLegend = () => {
+        const zoneKeysList: Array<keyof typeof ZONE_INFO> = ['zone1', 'zone2', 'zone3', 'zone4', 'zone5'];
+        return (
         <View style={styles.legendContainer}>
-            {(Object.keys(energyData) as Array<keyof typeof energyData>).map((zoneKey) => {
+            {zoneKeysList.map((zoneKey) => {
                 const isSelected = selectedZone === zoneKey;
                 return (
                     <TouchableOpacity
@@ -282,19 +284,20 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                                 Zone {zoneKey.slice(-1)}
                             </Text>
                         </View>
-                        <Text style={[styles.legendCount, { color: isSelected ? ZONE_INFO[zoneKey].color : '#9E9E9E' }]}>{zoneCounts[zoneKey]}명</Text>
+                        <Text style={[styles.legendCount, { color: isSelected ? ZONE_INFO[zoneKey].color : '#9E9E9E' }]}>{(zoneCounts as any)[zoneKey]}명</Text>
                     </TouchableOpacity>
                 );
             })}
         </View>
-    );
+        );
+    };
 
     const renderEnergyChart = () => {
         const radius = 80;
         const innerGuideRadius = 60;
         const circumference = 2 * Math.PI * radius;
         const guideCircumference = 2 * Math.PI * innerGuideRadius;
-        const zoneKeys: Array<keyof typeof energyData> = ['zone1', 'zone2', 'zone3', 'zone4', 'zone5'];
+        const zoneKeys: Array<keyof typeof ZONE_INFO> = ['zone1', 'zone2', 'zone3', 'zone4', 'zone5'];
 
         return (
             <View style={styles.chartSection}>
@@ -323,7 +326,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                                 let cumulativeActual = 0;
                                 let cumulativeTarget = 0;
                                 return zoneKeys.map((key) => {
-                                    const value = energyData[key];
+                                    const value = (energyData as any)[key];
                                     const target = ZONE_INFO[key].targetIdeal;
                                     const dashActual = [(value / 100) * circumference, circumference].join(' ');
                                     const offsetActual = - (cumulativeActual / 100) * circumference;
@@ -332,8 +335,8 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                                     cumulativeActual += value;
                                     cumulativeTarget += target;
                                     return (
-                                        <React.Fragment key={key}>
-                                            <Circle cx={radius * 1.25} cy={radius * 1.25} r={radius} fill="none" stroke={`url(#grad-${key})`} strokeWidth="12" strokeDasharray={dashActual} strokeDashoffset={offsetActual} strokeLinecap="round" transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`} />
+                                        <React.Fragment key={key as string}>
+                                            <Circle cx={radius * 1.25} cy={radius * 1.25} r={radius} fill="none" stroke={`url(#grad-${String(key)})`} strokeWidth="12" strokeDasharray={dashActual} strokeDashoffset={offsetActual} strokeLinecap="round" transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`} />
                                             <Circle cx={radius * 1.25} cy={radius * 1.25} r={innerGuideRadius} fill="none" stroke={ZONE_INFO[key].color} strokeWidth="2" strokeDasharray={dashTarget} strokeDashoffset={offsetTarget} strokeOpacity="0.3" transform={`rotate(-90 ${radius * 1.25} ${radius * 1.25})`} />
                                         </React.Fragment>
                                     );
@@ -343,8 +346,8 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                         <View style={styles.chartCenter}>
                             <Text style={[styles.chartPercentage, { color: colors.primary }]}>{energyData[selectedZone]}%</Text>
                             {(() => {
-                                const count = zoneCounts[selectedZone];
-                                const { capacity, minCapacity } = ZONE_INFO[selectedZone];
+                                const count = (zoneCounts as any)[selectedZone];
+                                const { capacity, minCapacity } = (ZONE_INFO as any)[selectedZone];
                                 let label = '건강'; let statusColor = colors.accent;
                                 if (count < minCapacity) { label = '부족'; statusColor = '#90A4AE'; }
                                 else if (count > capacity) { label = '초과'; statusColor = '#D98B73'; }
@@ -366,7 +369,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
 
         if (!displayPoints || displayPoints.length === 0) return null;
 
-        const pathD = `M 0 ${displayPoints[0]} ${displayPoints.map((p, i) => `L ${(i * CHART_WIDTH) / (MAX_POINTS - 1)} ${p}`).join(' ')}`;
+        const pathD = `M 0 ${displayPoints[0]} ${displayPoints.map((p: number, i: number) => `L ${(i * CHART_WIDTH) / (MAX_POINTS - 1)} ${p}`).join(' ')}`;
 
         return (
             <View style={styles.section}>
@@ -385,7 +388,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                     </View>
                 </View>
 
-                <View style={[styles.trendChartCard, { backgroundColor: colors.white }]}>
+                <View style={[styles.trendChartCard, { backgroundColor: '#FFFFFF' }]}>
                     <Svg width={CHART_WIDTH} height={120}>
                         <Defs>
                             <LinearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
@@ -398,13 +401,13 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                         ))}
                         <Path d={pathD} fill="none" stroke={colors.accent} strokeWidth="3" strokeLinecap="round" />
                         <Path d={`${pathD} L ${((displayPoints.length - 1) * CHART_WIDTH) / (MAX_POINTS - 1)} 120 L 0 120 Z`} fill="url(#trendGrad)" />
-                        {displayPoints.map((p, i) => {
+                        {displayPoints.map((p: number, i: number) => {
                             const cx = (i * CHART_WIDTH) / (MAX_POINTS - 1);
                             const isLast = i === displayPoints.length - 1;
                             const isCollecting = isLatest && isLast;
                             return (
                                 <React.Fragment key={i}>
-                                    <Circle cx={cx} cy={p} r={isCollecting ? 5 : 4} fill={colors.white} stroke={colors.accent} strokeWidth={isCollecting ? 3 : 2} />
+                                    <Circle cx={cx} cy={p} r={isCollecting ? 5 : 4} fill={'#FFFFFF'} stroke={colors.accent} strokeWidth={isCollecting ? 3 : 2} />
                                     <SvgText x={cx} y={p - 12} fill={colors.accent} fontSize="11" fontWeight={isCollecting ? "900" : "700"} textAnchor="middle">{120 - p}</SvgText>
                                     {isCollecting && <SvgText x={cx} y={p + 20} fill={colors.primary} fontSize="10" fontWeight="600" textAnchor="middle" opacity="0.6">Today</SvgText>}
                                 </React.Fragment>
@@ -423,17 +426,17 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
 
     const renderEnergyHealthList = () => (
         <View style={styles.section}>
-            <View style={[styles.zoneDetailCard, { backgroundColor: colors.white }]}>
+            <View style={[styles.zoneDetailCard, { backgroundColor: '#FFFFFF' }]}>
                 <View style={styles.zoneDetailTitleRow}>
-                    {React.createElement(ZONE_INFO[selectedZone].icon, { size: 18, color: ZONE_INFO[selectedZone].color })}
-                    <Text style={[styles.zoneDetailTitle, { color: colors.primary }]}>{ZONE_INFO[selectedZone].name}</Text>
+                    {React.createElement((ZONE_INFO as any)[selectedZone].icon, { size: 18, color: (ZONE_INFO as any)[selectedZone].color })}
+                    <Text style={[styles.zoneDetailTitle, { color: colors.primary }]}>{(ZONE_INFO as any)[selectedZone].name}</Text>
                 </View>
                 <Text style={[styles.zoneDetailBody, { color: colors.primary, opacity: 0.7 }]}>
-                    {ZONE_INFO[selectedZone].desc}
+                    {(ZONE_INFO as any)[selectedZone].desc}
                 </Text>
-                <View style={[styles.networkSizeBox, { backgroundColor: ZONE_INFO[selectedZone].color + '10' }]}>
-                    <Users size={14} color={ZONE_INFO[selectedZone].color} />
-                    <Text style={[styles.networkSizeText, { color: ZONE_INFO[selectedZone].color }]}>권장 관계 밀도: {ZONE_INFO[selectedZone].networkSizeLabel}</Text>
+                <View style={[styles.networkSizeBox, { backgroundColor: (ZONE_INFO as any)[selectedZone].color + '10' }]}>
+                    <Users size={14} color={(ZONE_INFO as any)[selectedZone].color} />
+                    <Text style={[styles.networkSizeText, { color: (ZONE_INFO as any)[selectedZone].color }]}>권장 관계 밀도: {(ZONE_INFO as any)[selectedZone].networkSizeLabel}</Text>
                 </View>
             </View>
         </View>
@@ -475,7 +478,7 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
                 <View style={styles.filterRow}>
                     <TouchableOpacity style={[styles.filterChip, { backgroundColor: colors.primary }]} onPress={() => setIsPeriodDropdownOpen(!isPeriodDropdownOpen)}>
                         <Text style={styles.filterChipText}>{selectedPeriod}{selectedPeriod === availablePeriods[0] && " (수집 중)"}</Text>
-                        <ChevronLeft size={16} color={colors.white} style={{ transform: [{ rotate: isPeriodDropdownOpen ? '90deg' : '-90deg' }] }} />
+                        <ChevronLeft size={16} color={'#FFFFFF'} style={{ transform: [{ rotate: isPeriodDropdownOpen ? '90deg' : '-90deg' }] }} />
                     </TouchableOpacity>
                     {isPeriodDropdownOpen && (
                         <View style={styles.dropdown}>
@@ -498,12 +501,12 @@ export const EgoReflectionDashboard = ({ onBack }: EgoReflectionDashboardProps) 
             {activePopup && (
                 <View style={styles.popupBackdrop}>
                     <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setActivePopup(null)} />
-                    <View style={[styles.floatingPopupCard, { backgroundColor: colors.white }]}>
+                    <View style={[styles.floatingPopupCard, { backgroundColor: '#FFFFFF' }]}>
                         <View style={styles.guideHeader}>
                             <Text style={[styles.guideTitle, { color: colors.primary }]}>{METRIC_GUIDE[activePopup].title}</Text>
                             <TouchableOpacity onPress={() => setActivePopup(null)}><X size={20} color={colors.primary} /></TouchableOpacity>
                         </View>
-                        <Text style={styles.guideInfoText}>{METRIC_GUIDE[activePopup].info}</Text>
+                        <Text style={styles.guideInfoText}>{(METRIC_GUIDE[activePopup] as any).info}</Text>
                         <TouchableOpacity style={[styles.closeBtn, { backgroundColor: colors.primary }]} onPress={() => setActivePopup(null)}>
                             <Text style={{ color: 'white', fontWeight: '700' }}>확인</Text>
                         </TouchableOpacity>

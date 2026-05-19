@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { RelationshipNode, HealthMetrics, OrbitMapViewState } from '../types/relationship';
+import { RelationshipNode, HealthMetrics, OrbitMapViewState, Interaction } from '../types/relationship';
 
 interface RelationshipState {
     relationships: RelationshipNode[];
@@ -44,8 +44,8 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
     const nodes: RelationshipNode[] = [];
 
     // Utility to generate random history
-    const generateHistory = (count: number, baseCloseness: number) => {
-        const history = [];
+    const generateHistory = (count: number, baseCloseness: number): Interaction[] => {
+        const history: Interaction[] = [];
         for (let i = 0; i < count; i++) {
             const date = new Date();
             date.setDate(date.getDate() - (count - i) * 3);
@@ -54,13 +54,12 @@ const generateMockRelationships = (count: number): RelationshipNode[] => {
             history.push({
                 id: Math.random().toString(36).substr(2, 9),
                 date: date.toISOString().split('T')[0],
+                createdAt: date.toISOString(),
                 closeness: Math.max(10, Math.min(100, baseCloseness - (count - i) * 2 + Math.random() * 10)),
                 satisfaction: Math.round(sat),
                 energyDrain: Math.round(drain),
                 title: '정기적 교류',
                 description: '일상적인 대화와 안부 확인',
-                oxytocin: sat > 70 ? 80 : 40,
-                cortisol: drain > 60 ? 70 : 20
             });
         }
         return history;

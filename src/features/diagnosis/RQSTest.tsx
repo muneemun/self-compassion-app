@@ -251,7 +251,7 @@ export const RQSTest = ({ relationshipId, onBack, onComplete, pendingData, onVie
     );
 
     const renderResult = () => {
-        const res = localResult?.rqsResult || node.rqsResult;
+        const res = localResult?.rqsResult || (node as any).rqsResult;
         if (!res) return null;
         const guide = GRADES[res.grade as 'S' | 'A' | 'B' | 'C'];
 

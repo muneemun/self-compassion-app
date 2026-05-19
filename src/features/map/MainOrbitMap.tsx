@@ -1462,7 +1462,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
     // ⚡ Optimized Core Engine Integration
     const [systemMessage, setSystemMessage] = useState<string | null>(null);
     const atmosphere = useOrbitAtmosphere(relationships, setSystemMessage);
-    const { distributedNodes, filteredCount } = useOrbitEngine({
+    const { distributedNodes } = useOrbitEngine({
         relationships,
         viewState: orbitMapViewState,
         currentOrbitSize: BASE_ORBIT_SIZE

@@ -91,7 +91,7 @@ const ZONE_CONFIG = [
 
 export const RelationshipEntry = ({ onBack, onComplete }: {
     onBack: () => void,
-    onComplete: (data: { name: string; type: string; role: string; phoneNumber?: string; image?: string }) => void
+    onComplete: (data: { name: string; type: string; role: string; phoneNumber?: string; image?: string; zone?: number }) => void
 }) => {
     const colors = useColors();
     const relationships = useRelationshipStore(state => state.relationships);
@@ -256,9 +256,9 @@ export const RelationshipEntry = ({ onBack, onComplete }: {
             if (status === 'granted') {
                 if (contactGroups.length === 1) {
                     try {
-                        const { data: groups } = await Contacts.getGroupsAsync({});
+                        const groups = await Contacts.getGroupsAsync({});
                         if (groups && groups.length > 0) {
-                            setContactGroups([{ id: 'ALL', name: '전체' }, ...groups.map(g => ({ id: g.id!, name: g.name || '그룹없음' }))]);
+                            setContactGroups([{ id: 'ALL', name: '전체' }, ...groups.map((g: any) => ({ id: g.id!, name: g.name || '그룹없음' }))]);
                         } else {
                             setContactGroups([
                                 { id: 'ALL', name: '전체' },

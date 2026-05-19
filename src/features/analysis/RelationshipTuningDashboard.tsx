@@ -147,13 +147,13 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
 
     // 🎯 Dynamic Tuning Logic (Context-Aware)
     const handleStartContextualTuning = () => {
-        if (selectedLens === 'None') {
+        if ((selectedLens as any) === 'None') {
             setIsSelectionMode(true);
             return;
         }
 
         let sortedData = getFilteredRelationships(selectedLens);
-        if (selectedLens !== 'None') {
+        if ((selectedLens as any) !== 'None') {
             sortedData = sortedData.sort((a, b) => getLensValue(b, selectedLens) - getLensValue(a, selectedLens));
         }
 
@@ -1239,14 +1239,14 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                                     if (weight !== 0 || satDelta !== 0) {
                                         const currentTemp = node.temperature || 0;
                                         const currentSat = node.metrics?.satisfaction || 50;
-                                        const currentDrain = node.metrics?.energyDrain || 50;
+                                        const currentDrain = (node.metrics as any)?.energyDrain || 50;
 
                                         updateAnalysisResult(id, {
                                             temperature: Math.max(0, Math.min(100, currentTemp + weight)),
                                             satisfaction: Math.max(0, Math.min(100, currentSat + satDelta)),
                                             energyDrain: Math.max(0, Math.min(100, currentDrain + drainDelta)),
                                             event: eventName
-                                        });
+                                        } as any);
                                     }
                                 }
                             });

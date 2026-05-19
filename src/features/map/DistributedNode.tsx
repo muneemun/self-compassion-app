@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import ReAnimated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import ReAnimated, { useAnimatedStyle, withSpring, SharedValue } from 'react-native-reanimated';
 import { RelationshipNode, getDynamicCharacter, RQS_GRADE_BADGES } from '../../types/relationship';
 import { Zap, Flame, CircleDashed, Leaf } from 'lucide-react-native';
 
@@ -8,7 +8,7 @@ interface DistributedNodeProps {
     node: RelationshipNode;
     radius: number;
     angle: number;
-    zoomSharedValue: ReAnimated.SharedValue<number>;
+    zoomSharedValue: SharedValue<number>;
     onSelectNode: (id: string) => void;
 }
 

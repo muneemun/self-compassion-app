@@ -177,7 +177,7 @@ export const RelationshipLogModal = () => {
                     ? `궤도 에너지가 -${absDelta}% 소모되었어요.`
                     : '궤도가 안정적으로 유지되고 있어요.';
             
-            setCognitiveFeedback({
+            setCognitiveFeedback?.({
                 message,
                 type: 'INTERACTION'
             });

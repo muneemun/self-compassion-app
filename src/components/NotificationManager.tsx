@@ -24,11 +24,11 @@ export const NotificationManager = () => {
         const subscription = Notifications.addNotificationResponseReceivedListener(response => {
             const data = response.notification.request.content.data;
             
-            if (data.screen === 'Health') {
+            if (data?.screen === 'Health') {
                 setActiveTab('health');
-            } else if (data.screen === 'Tuning') {
+            } else if (data?.screen === 'Tuning') {
                 setActiveTab('tuning');
-            } else if (data.screen === 'CheckIn') {
+            } else if (data?.screen === 'CheckIn') {
                 setActiveTab('map');
                 setSelfTimeModalOpen(true);
             }
