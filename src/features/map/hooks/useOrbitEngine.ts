@@ -95,7 +95,17 @@ export const useOrbitEngine = ({ relationships, viewState, currentOrbitSize }: O
                 maxTemp = Math.max(...temps);
             }
 
-            const angleStep = 360 / zoneNodes.length;
+            const angleStep = sortMode === 'default' 
+                ? 360 / zoneNodes.length 
+                : Math.min(30, 360 / zoneNodes.length);
+
+            if (sortMode === 'hot') {
+                zoneNodes.sort((a, b) => (b.temperature ?? 50) - (a.temperature ?? 50));
+            } else if (sortMode === 'cold') {
+                zoneNodes.sort((a, b) => (a.temperature ?? 50) - (b.temperature ?? 50));
+            } else {
+                zoneNodes.sort((a, b) => a.id.localeCompare(b.id));
+            }
 
             zoneNodes.forEach((node, idx) => {
                 let energyOffset = 0;
@@ -117,8 +127,8 @@ export const useOrbitEngine = ({ relationships, viewState, currentOrbitSize }: O
                 
                 // 3. 고유 ID 기반 지터(Jitter) 생성 - 겹침 완벽 방지
                 const jitterSeed = parseInt(node.id.slice(-4), 16) || (idx * 997);
-                const jitterRadius = (jitterSeed % 31) - 15; // 반경 흔들림: -15px ~ +15px
-                const jitterAngle = (jitterSeed % 21) - 10;  // 각도 흔들림: -10도 ~ +10도
+                const jitterRadius = sortMode === 'default' ? (jitterSeed % 31) - 15 : 0; // 반경 흔들림: -15px ~ +15px
+                const jitterAngle = sortMode === 'default' ? (jitterSeed % 21) - 10 : 0;  // 각도 흔들림: -10도 ~ +10도
 
                 nodes.push({
                     node,
@@ -129,7 +139,7 @@ export const useOrbitEngine = ({ relationships, viewState, currentOrbitSize }: O
         });
 
         return nodes;
-    }, [filteredRelationships, currentOrbitSize]);
+    }, [filteredRelationships, currentOrbitSize, sortMode]);
 
     // ─── ✨ Animated Styles ───────────────────────────────────────────
     const canvasAnimatedStyle = useAnimatedStyle(() => ({
