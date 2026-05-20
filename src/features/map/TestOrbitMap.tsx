@@ -684,7 +684,7 @@ export const TestOrbitMap = () => {
                                 </View>
                                 {isStatusPillExpanded && (
                                     <View style={{ marginTop: 10, alignItems: 'center' }}>
-                                        {eventText ? <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 4 }}>💭 {eventText}</Text> : null}
+                                        {eventText ? <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 4 }}>{eventText}</Text> : null}
                                         <Text style={{ color: colors.primary, opacity: 0.8, fontSize: 12, textAlign: 'center' }}>{currentTheme.ambientText}</Text>
                                     </View>
                                 )}

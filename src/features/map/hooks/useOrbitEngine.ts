@@ -80,13 +80,50 @@ export const useOrbitEngine = ({ relationships, viewState, currentOrbitSize }: O
             if (zoneNodes.length === 0) return;
 
             const baseRadius = (currentOrbitSize * (zone + 0.5)) / 7;
+            const zoneWidth = currentOrbitSize / 8;
+            const zoneRange = zoneWidth * 0.8;
+
+            // 1. 체크인 데이터가 있는 노드 분류 및 온도 범위 추출
+            const nodesWithData = zoneNodes.filter(n => n.interactions && n.interactions.length > 0);
+            
+            let minTemp = 50;
+            let maxTemp = 50;
+            
+            if (nodesWithData.length > 0) {
+                const temps = nodesWithData.map(n => n.temperature ?? 50);
+                minTemp = Math.min(...temps);
+                maxTemp = Math.max(...temps);
+            }
+
             const angleStep = 360 / zoneNodes.length;
 
             zoneNodes.forEach((node, idx) => {
+                let energyOffset = 0;
+                
+                // 2. 동적 반경 오프셋(Dynamic Energy Offset) 계산
+                if (node.interactions && node.interactions.length > 0) {
+                    const temp = node.temperature ?? 50;
+                    if (maxTemp > minTemp) {
+                        const t_norm = (temp - minTemp) / (maxTemp - minTemp);
+                        // 에너지가 높으면(-), 낮으면(+) 오프셋 이동
+                        energyOffset = (0.5 - t_norm) * zoneRange; 
+                    } else {
+                        energyOffset = 0; // 모두 동일한 온도일 경우 중앙
+                    }
+                } else {
+                    // 체크인 데이터 없음: 최외곽 배치 (t_norm = 0 과 동일한 양수 오프셋 최대치)
+                    energyOffset = 0.5 * zoneRange;
+                }
+                
+                // 3. 고유 ID 기반 지터(Jitter) 생성 - 겹침 완벽 방지
+                const jitterSeed = parseInt(node.id.slice(-4), 16) || (idx * 997);
+                const jitterRadius = (jitterSeed % 31) - 15; // 반경 흔들림: -15px ~ +15px
+                const jitterAngle = (jitterSeed % 21) - 10;  // 각도 흔들림: -10도 ~ +10도
+
                 nodes.push({
                     node,
-                    radius: baseRadius,
-                    angle: idx * angleStep
+                    radius: baseRadius + energyOffset + jitterRadius,
+                    angle: (idx * angleStep + jitterAngle) % 360
                 });
             });
         });

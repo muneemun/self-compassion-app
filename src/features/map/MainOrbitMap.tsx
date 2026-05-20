@@ -2494,7 +2494,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                 
                                 {isStatusPillExpanded && (
                                     <View style={{ marginTop: 10, alignItems: 'center' }}>
-                                        {eventText ? <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>💭 {eventText}</Text> : null}
+                                        {eventText ? <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>{eventText}</Text> : null}
                                         <Text style={{ color: colors.primary, opacity: 0.8, fontSize: 12, fontWeight: '500', textAlign: 'center', lineHeight: 18 }}>
                                             {currentTheme.ambientText}
                                         </Text>
@@ -2513,7 +2513,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                 <View style={{ backgroundColor: colors.white, padding: 24, borderRadius: 16, maxWidth: '80%', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15, elevation: 5 }}>
                                     <Text style={{ fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 12 }}>현재 관계 대기 상태</Text>
                                     {eventText ? (
-                                        <Text style={{ fontSize: 14, color: '#FF9800', marginBottom: 8, textAlign: 'center', fontWeight: '600' }}>💭 {eventText}</Text>
+                                        <Text style={{ fontSize: 14, color: '#FF9800', marginBottom: 8, textAlign: 'center', fontWeight: '600' }}>{eventText}</Text>
                                     ) : null}
                                     <Text style={{ fontSize: 14, color: colors.gray[500], textAlign: 'center', lineHeight: 20 }}>🌌 {currentTheme.ambientText}</Text>
                                     <Text style={{ fontSize: 11, color: colors.gray[300], marginTop: 16 }}>화면을 터치하여 닫기</Text>
