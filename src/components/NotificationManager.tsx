@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useAppStore } from '../store/useAppStore';
 import { NotificationService } from '../utils/notificationService';
 
 export const NotificationManager = () => {
     const { reminderSettings, notificationSettings, setActiveTab, setSelfTimeModalOpen } = useAppStore();
+    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     useEffect(() => {
         const initNotifications = async () => {
@@ -46,66 +47,72 @@ export const NotificationManager = () => {
     }, [reminderSettings, notificationSettings]);
 
     const syncNotifications = async () => {
-        try {
-            // 1. 기존 알림 모두 삭제
-            await NotificationService.cancelAllNotifications();
+        if (syncTimeoutRef.current) {
+            clearTimeout(syncTimeoutRef.current);
+        }
 
-            // 2. 오늘 기록 리마인더 (Daily)
-            if (reminderSettings.isDailyEnabled) {
-                const dailyTime = new Date(reminderSettings.dailyTime);
-                if (!isNaN(dailyTime.getTime())) {
-                    await NotificationService.scheduleDailyReminder(
-                        dailyTime.getHours(),
-                        dailyTime.getMinutes()
-                    );
-                } else {
-                    console.warn('Invalid daily reminder time:', reminderSettings.dailyTime);
-                }
-            }
+        syncTimeoutRef.current = setTimeout(async () => {
+            try {
+                // 1. 기존 알림 모두 삭제
+                await NotificationService.cancelAllNotifications();
 
-            // 3. 정기 궤도 점검 (Periodic)
-            if (reminderSettings.isTuningEnabled) {
-                const tuningTime = new Date(reminderSettings.tuningTime);
-                const isMonthly = reminderSettings.tuningPeriod === 'monthly';
-                
-                if (!isNaN(tuningTime.getTime())) {
-                    if (isMonthly) {
-                        let day = 1;
-                        if (reminderSettings.tuningAnchor === '매월 말일') day = 31; // 라이브러리에서 보통 큰 수는 말일로 처리되거나 보정됨
-                        else if (reminderSettings.tuningAnchor === '매월 1일') day = 1;
-                        
-                        await NotificationService.scheduleMonthlyReminder(
-                            day,
-                            tuningTime.getHours(),
-                            tuningTime.getMinutes()
+                // 2. 오늘 기록 리마인더 (Daily)
+                if (reminderSettings.isDailyEnabled) {
+                    const dailyTime = new Date(reminderSettings.dailyTime);
+                    if (!isNaN(dailyTime.getTime())) {
+                        await NotificationService.scheduleDailyReminder(
+                            dailyTime.getHours(),
+                            dailyTime.getMinutes()
                         );
                     } else {
-                        const dayOfWeek = mapAnchorToDayOfWeek(reminderSettings.tuningAnchor);
-                        if (dayOfWeek !== -1) {
-                            await NotificationService.scheduleTuningReminder(
-                                dayOfWeek,
+                        console.warn('Invalid daily reminder time:', reminderSettings.dailyTime);
+                    }
+                }
+
+                // 3. 정기 궤도 점검 (Periodic)
+                if (reminderSettings.isTuningEnabled) {
+                    const tuningTime = new Date(reminderSettings.tuningTime);
+                    const isMonthly = reminderSettings.tuningPeriod === 'monthly';
+                    
+                    if (!isNaN(tuningTime.getTime())) {
+                        if (isMonthly) {
+                            let day = 1;
+                            if (reminderSettings.tuningAnchor === '매월 말일') day = 31;
+                            else if (reminderSettings.tuningAnchor === '매월 1일') day = 1;
+                            
+                            await NotificationService.scheduleMonthlyReminder(
+                                day,
                                 tuningTime.getHours(),
                                 tuningTime.getMinutes()
                             );
+                        } else {
+                            const dayOfWeek = mapAnchorToDayOfWeek(reminderSettings.tuningAnchor);
+                            if (dayOfWeek !== -1) {
+                                await NotificationService.scheduleTuningReminder(
+                                    dayOfWeek,
+                                    tuningTime.getHours(),
+                                    tuningTime.getMinutes()
+                                );
+                            }
                         }
+                    } else {
+                        console.warn('Invalid tuning reminder settings:', { tuningTime });
                     }
-                } else {
-                    console.warn('Invalid tuning reminder settings:', { tuningTime });
                 }
-            }
 
-            // 4. 분석 리포트 알림 (설정 활성화 시)
-            if (notificationSettings.isSelfReportEnabled || notificationSettings.isOrbitReportEnabled) {
-                await NotificationService.scheduleReportReminder();
-            }
+                // 4. 분석 리포트 알림 (설정 활성화 시)
+                if (notificationSettings.isSelfReportEnabled || notificationSettings.isOrbitReportEnabled) {
+                    await NotificationService.scheduleReportReminder();
+                }
 
-            // 5. 공지사항 및 업데이트 알림 (설정 활성화 시)
-            if (notificationSettings.isNoticeEnabled) {
-                await NotificationService.scheduleNoticeReminder();
+                // 5. 공지사항 및 업데이트 알림 (설정 활성화 시)
+                if (notificationSettings.isNoticeEnabled) {
+                    await NotificationService.scheduleNoticeReminder();
+                }
+            } catch (error) {
+                console.error('Failed to sync notifications:', error);
             }
-        } catch (error) {
-            console.error('Failed to sync notifications:', error);
-        }
+        }, 500);
     };
 
     const mapAnchorToDayOfWeek = (anchor: string): number => {
