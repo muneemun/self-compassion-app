@@ -167,6 +167,7 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
                             </View>
                         </TouchableOpacity>
 
+                        {/* [TODO] 리포트 PDF 파일로 저장 기능 개발 완료 시 주석 해제
                         <TouchableOpacity style={[styles.pdfButton, { borderColor: colors.accent + '30', backgroundColor: colors.white }]}>
                             <View style={[styles.pdfIconCircle, { backgroundColor: colors.accent + '15' }]}>
                                 <FileText size={18} color={colors.accent} />
@@ -176,6 +177,7 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
                                 <Text style={styles.premiumText}>프리미엄 전용</Text>
                             </View>
                         </TouchableOpacity>
+                        */}
                     </View>
 
                     {/* Settings Menu */}
