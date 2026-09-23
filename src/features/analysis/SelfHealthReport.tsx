@@ -801,7 +801,9 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     {renderEnergyChart()}
                     {renderGlobalSocialTopography()}
                     {renderCheckInHistory()}
+                    {/* [MVP 제외] 기능 과부하 방지 및 데이터 부족 이슈로 정서 에너지 흐름 차트 임시 숨김 처리 
                     {renderCheckInPulse()}
+                    */}
                     {renderAdCard()}
                     <View style={{ height: 100 }} />
                 </View>
