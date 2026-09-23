@@ -1527,6 +1527,8 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
             <UnlockModal
                 visible={unlockTarget !== null}
                 onClose={() => setUnlockTarget(null)}
+                title={unlockTarget === 'balance' ? '관계 밸런스 상세 분석' : '관계 지형도 상세 보기'}
+                description={unlockTarget === 'balance' ? '누가 내게 가장 긍정적이고 소모적인지, 숨겨진 밸런스를 확인해 보세요.' : '나의 심리적 에너지가 어디에 어떻게 분포되어 있는지 세밀하게 확인해 보세요.'}
                 onUnlock={() => {
                     if (unlockTarget === 'balance') onGoToReport();
                     else if (unlockTarget === 'map' && onViewDetailedMap) onViewDetailedMap();

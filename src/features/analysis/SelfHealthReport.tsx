@@ -780,6 +780,8 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             <UnlockModal
                 visible={unlockModalVisible}
                 onClose={() => setUnlockModalVisible(false)}
+                title="관계 지형도 상세 보기"
+                description="나의 심리적 에너지가 어디에 어떻게 분포되어 있는지 세밀하게 확인해 보세요."
                 onUnlock={() => {
                     if (onViewDetailedMap) onViewDetailedMap(dateRange);
                     setUnlockModalVisible(false);
