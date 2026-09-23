@@ -45,8 +45,11 @@ export const useSelfHealthData = (period: PeriodType) => {
             numSlots = 7;
             startDate.setDate(todayLocal.getDate() - 6);
         } else if (period === '월간') {
-            numSlots = 30;
-            startDate.setDate(todayLocal.getDate() - 29);
+            // 이번 달 1일로 설정
+            startDate = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), 1);
+            // 다음 달 1일을 구해 이번 달의 총 일수를 계산
+            const nextMonth = new Date(todayLocal.getFullYear(), todayLocal.getMonth() + 1, 1);
+            numSlots = Math.round((nextMonth.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         } else {
             numSlots = 12;
             mode = 'monthly';
@@ -72,7 +75,7 @@ export const useSelfHealthData = (period: PeriodType) => {
             const d = new Date(startDate);
             if (mode === 'daily') {
                 d.setDate(startDate.getDate() + i);
-                slots[i].label = period === '주간' ? dayNames[d.getDay()] : `${d.getDate()}`;
+                slots[i].label = period === '주간' ? dayNames[d.getDay()] : `${d.getDate()}일`;
             } else {
                 d.setMonth(startDate.getMonth() + i);
                 slots[i].label = `${d.getMonth() + 1}월`;
