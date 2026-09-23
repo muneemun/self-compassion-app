@@ -433,7 +433,19 @@ function App() {
                         />
                       </View>
                       <View style={activeTab === 'test' ? styles.tabActive : styles.tabHidden}>
-                        <TestOrbitMap />
+                        <TestOrbitMap 
+                          onSelectNode={(id: string) => {
+                            const node = relationships.find(r => r.id === id);
+                            if (node && node.zone === 0) {
+                              // 미분류 인물 터치 시 진단 팝업 띄우기
+                              setSelectedNodeId(id);
+                              setDiagnosisMode('ZONE');
+                              setIsDiagnosing(true);
+                            } else {
+                              setSelectedNodeId(id);
+                            }
+                          }}
+                        />
                       </View>
 
                     </View>

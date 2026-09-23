@@ -25,6 +25,7 @@ interface RelationshipState {
     addInteraction: (id: string, date: string, satisfaction: number, energyDrain: number, title: string, description: string) => void;
     updateInteraction: (personId: string, logId: string, updates: Partial<RelationshipNode['history'][0]>) => void;
     deleteInteraction: (personId: string, logId: string) => void;
+    addUnclassifiedContacts: (contacts: { name: string; phoneNumber?: string }[]) => void;
 
     // View State Persistence
     orbitMapViewState: OrbitMapViewState;
@@ -212,6 +213,34 @@ export const useRelationshipStore = create<RelationshipState>()(
                 }));
                 get().calculateHealth(newNode.id);
                 return newNode.id;
+            },
+
+            addUnclassifiedContacts: (contacts) => {
+                const now = new Date().toISOString();
+                const newNodes: RelationshipNode[] = contacts.map(c => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    name: c.name,
+                    phoneNumber: c.phoneNumber,
+                    type: 'other',
+                    role: '대기 중',
+                    zone: 0, // 0 for unclassified
+                    temperature: 0,
+                    lastInteraction: '가져옴',
+                    metrics: { trust: 0, communication: 0, frequency: 0, satisfaction: 0 },
+                    interactions: [],
+                    systemLogs: [{
+                        id: Math.random().toString(36).substr(2, 9),
+                        date: now.split('T')[0],
+                        createdAt: now,
+                        event: '주소록 연동',
+                        details: '주소록에서 인물을 가져왔습니다.'
+                    }],
+                    history: []
+                }));
+
+                set((state) => ({ 
+                    relationships: [...state.relationships, ...newNodes],
+                }));
             },
 
             updateMetrics: (id, newMetrics) => {

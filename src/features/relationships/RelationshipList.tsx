@@ -178,6 +178,7 @@ export const RelationshipList = ({
 
     const renderInnerContent = () => {
         const zoneFilters = [
+            { id: 'z0', label: '미분류', zone: 0 },
             { id: 'z1', label: '핵심 그룹', zone: 1 },
             { id: 'z2', label: '정서적 공유 그룹', zone: 2 },
             { id: 'z3', label: '기능적 협력 관계', zone: 3 },

@@ -27,6 +27,7 @@ import {
 import { RelationshipList } from '../relationships/RelationshipList';
 import { RELATIONSHIP_TYPE_LABELS, RelationshipNode, getDynamicCharacter, RQS_GRADE_BADGES, DYNAMIC_CHARACTERS } from '../../types/relationship';
 import { BlurView } from 'expo-blur';
+import * as Contacts from 'expo-contacts';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { useAppStore } from '../../store/useAppStore';
 import { RelationshipLogModal } from '../relationships/RelationshipLogModal';
@@ -268,7 +269,7 @@ const GlassShard = ({ idx, crisisProgress }: { idx: number, crisisProgress: Shar
 
 // ─── 🪐 Main Test Component (ENVIRONMENT MIRROR) ───────────────────────
 
-export const TestOrbitMap = () => {
+export const TestOrbitMap = ({ onSelectNode }: { onSelectNode?: (id: string) => void }) => {
     const colors = useColors();
     const { relationships, orbitMapViewState, setOrbitMapViewState } = useRelationshipStore();
     const { userProfile, interactionFeedback, setInteractionFeedback, cognitiveFeedback, setCognitiveFeedback } = useAppStore();
@@ -519,10 +520,42 @@ export const TestOrbitMap = () => {
     const onPressAdd = () => console.log('Add');
     const handleRecenter = useCallback(() => { panX.value = withSpring(0); panY.value = withSpring(-120); universeRotation.value = withSpring(0); setIsMoved(false); }, []);
 
+    const { addUnclassifiedContacts } = useRelationshipStore();
+
+    const handleImportContacts = async () => {
+        const { status } = await Contacts.requestPermissionsAsync();
+        if (status === 'granted') {
+            const { data } = await Contacts.getContactsAsync({
+                fields: [Contacts.Fields.PhoneNumbers],
+            });
+
+            if (data.length > 0) {
+                // 임의로 상위 10명을 가져오거나, 실제로는 멀티 셀렉트 UI가 필요
+                // 프로토타입이므로 권한 획득 및 5명 테스트용 데이터 인서트
+                const testContacts = data.slice(0, 5).map(c => ({
+                    name: c.name || '알 수 없음',
+                    phoneNumber: c.phoneNumbers?.[0]?.number
+                }));
+                addUnclassifiedContacts(testContacts);
+                alert(`${testContacts.length}명의 인물을 미분류로 불러왔습니다.`);
+            }
+        } else {
+            alert('주소록 권한이 필요합니다.');
+        }
+    };
+
     const renderHeader = () => (
         <AppHeader 
-            title="관계 궤도" 
-            leftAction={<TouchableOpacity style={{ backgroundColor: colors.primary, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' }}><Plus size={18} color={colors.white} /></TouchableOpacity>}
+            title="관계 궤도 (Lab)" 
+            leftAction={
+                <TouchableOpacity 
+                    onPress={handleImportContacts}
+                    style={{ backgroundColor: colors.primary, paddingHorizontal: 12, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 }}
+                >
+                    <Plus size={16} color={colors.white} />
+                    <Text style={{color: 'white', fontSize: 12, fontWeight: 'bold'}}>주소록 불러오기</Text>
+                </TouchableOpacity>
+            }
             rightAction={<View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}><TouchableOpacity><List size={22} color={colors.primary} /></TouchableOpacity><TouchableOpacity><Search size={22} color={colors.primary} /></TouchableOpacity></View>}
         />
     );

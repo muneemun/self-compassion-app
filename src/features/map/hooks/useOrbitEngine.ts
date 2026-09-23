@@ -66,10 +66,10 @@ export const useOrbitEngine = ({ relationships, viewState, currentOrbitSize }: O
 
     const distributedNodes = useMemo(() => {
         const nodes: Array<{ node: RelationshipNode; radius: number; angle: number }> = [];
-        const zoneGroups: { [key: number]: RelationshipNode[] } = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+        const zoneGroups: { [key: number]: RelationshipNode[] } = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [] };
 
         filteredRelationships.forEach(node => {
-            if (node && node.zone && zoneGroups[node.zone]) {
+            if (node && node.zone !== undefined && zoneGroups[node.zone] !== undefined) {
                 zoneGroups[node.zone].push(node);
             }
         });
@@ -79,7 +79,9 @@ export const useOrbitEngine = ({ relationships, viewState, currentOrbitSize }: O
             const zoneNodes = zoneGroups[zone];
             if (zoneNodes.length === 0) return;
 
-            const baseRadius = (currentOrbitSize * (zone + 0.5)) / 7;
+            const baseRadius = zone === 0 
+                ? (currentOrbitSize * 6.5) / 7  // Outside zone 5
+                : (currentOrbitSize * (zone + 0.5)) / 7;
             const zoneWidth = currentOrbitSize / 8;
             const zoneRange = zoneWidth * 0.8;
 
