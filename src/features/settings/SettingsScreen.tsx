@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
 import {
     User, Lock, Link, Bell, Moon, Globe, ShieldCheck, Database, FileText,
-    Clock, Sparkles, PenTool, HelpCircle, Headphones, Info, ChevronRight, ChevronLeft
+    Clock, Sparkles, PenTool, HelpCircle, Headphones, Info, ChevronRight, ChevronLeft, Unlock
 } from 'lucide-react-native';
 import { useColors } from '../../theme/ColorLockContext';
+import { useAppStore } from '../../store/useAppStore';
 import { HubLayout } from '../../layouts/BaseLayout';
 
 /**
@@ -117,6 +118,17 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
                     <SettingItem icon={FileText} title="개인정보 처리방침" />
                     <SettingItem icon={Info} title="앱 정보" isLast />
                 </SettingSection>
+
+                {__DEV__ && (
+                    <SettingSection title="테스트 도구 (개발자 전용)">
+                        <SettingItem 
+                            icon={Unlock} 
+                            title="프리미엄 결제 상태 초기화" 
+                            onPress={() => useAppStore.getState().setPremiumUnlocked(false)} 
+                            isLast 
+                        />
+                    </SettingSection>
+                )}
 
                 <View style={{ height: 180 }} />
             </View>
