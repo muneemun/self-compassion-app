@@ -23,6 +23,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { RelationshipNode } from '../../types/relationship';
 import { FocusTournament } from './FocusTournament';
 import { RelationshipDetail } from '../relationships/RelationshipDetail';
+import { UnlockModal } from '../../components/UnlockModal';
 
 const { width } = Dimensions.get('window');
 
@@ -48,6 +49,16 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
     const colors = useColors();
     const { relationships, updateAnalysisResult } = useRelationshipStore();
     const setSelfTimeModalOpen = useAppStore(state => state.setSelfTimeModalOpen);
+    const isPremiumUnlocked = useAppStore(state => state.isPremiumUnlocked);
+    const [unlockTarget, setUnlockTarget] = useState<'balance' | 'map' | null>(null);
+
+    const handleActionWithUnlock = (target: 'balance' | 'map', action: () => void) => {
+        if (isPremiumUnlocked) {
+            action();
+        } else {
+            setUnlockTarget(target);
+        }
+    };
 
     // 🕹️ Selection State for Manual Tuning
     const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -632,7 +643,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     <View style={styles.titleWithIcon}>
                         <Text style={[styles.sectionTitle, { color: colors.primary }]}>나의 관계 밸런스</Text>
                     </View>
-                    <TouchableOpacity onPress={onGoToReport} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(74, 93, 78, 0.05)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }}>
+                    <TouchableOpacity onPress={() => handleActionWithUnlock('balance', onGoToReport)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(74, 93, 78, 0.05)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }}>
                         <BarChart2 size={14} color={colors.primary} />
                         <Text style={[styles.miniSelectText, { color: colors.primary, top: 0 }]}>상세 보기</Text>
                     </TouchableOpacity>
@@ -826,7 +837,7 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                         <Text style={{ fontSize: 13, color: '#888', fontWeight: '500', flex: 1 }}>만족도와 에너지 소모에 따른 우리 관계의 위치</Text>
                         <TouchableOpacity 
-                            onPress={onViewDetailedMap}
+                            onPress={() => onViewDetailedMap && handleActionWithUnlock('map', onViewDetailedMap)}
                             style={{ backgroundColor: colors.primary + '10', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}
                         >
                             <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary }}>상세 지도</Text>
@@ -1512,6 +1523,16 @@ export const RelationshipTuningDashboard: React.FC<RelationshipTuningDashboardPr
                     </View>
                 </View>
             </Modal>
+            
+            <UnlockModal
+                visible={unlockTarget !== null}
+                onClose={() => setUnlockTarget(null)}
+                onUnlock={() => {
+                    if (unlockTarget === 'balance') onGoToReport();
+                    else if (unlockTarget === 'map' && onViewDetailedMap) onViewDetailedMap();
+                    setUnlockTarget(null);
+                }}
+            />
         </HubLayout>
     );
 };

@@ -10,8 +10,8 @@ import { AppHeader } from '../../components/AppHeader';
 import { useRelationshipStore } from '../../store/useRelationshipStore';
 import { useSelfTimeStore } from '../../store/useSelfTimeStore';
 import { useAppStore } from '../../store/useAppStore';
-
 const { width } = Dimensions.get('window');
+import { UnlockModal } from '../../components/UnlockModal';
 
 // 🎨 Design System
 const THEME = {
@@ -40,6 +40,9 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
     const textMuted = colors.gray[500];
     const [period, setPeriod] = useState<'주간' | '월간' | '연간'>('주간');
     const [infoModal, setInfoModal] = useState<{ visible: boolean; type: 'energy' | 'pulse' | 'oxytocin' | 'cortisol' | null }>({ visible: false, type: null });
+    const { isPremiumUnlocked } = useAppStore();
+    const [unlockModalVisible, setUnlockModalVisible] = useState(false);
+    
     const { pulseStats, pulsePoints, energyTotal, stats, dateRange, selfTimeStats } = useSelfHealthData(period);
     const relationships = useRelationshipStore(state => state.relationships);
     const selfTimeEntries = useSelfTimeStore(state => state.entries);
@@ -272,7 +275,13 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         <Text style={{ fontSize: 13, color: '#888', fontWeight: '500', flex: 1 }}>만족도와 에너지 소모에 따른 우리 관계의 위치</Text>
                         {onViewDetailedMap && (
                             <TouchableOpacity 
-                                onPress={() => onViewDetailedMap(dateRange)}
+                                onPress={() => {
+                                    if (isPremiumUnlocked) {
+                                        onViewDetailedMap(dateRange);
+                                    } else {
+                                        setUnlockModalVisible(true);
+                                    }
+                                }}
                                 style={{ backgroundColor: THEME.primary + '10', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}
                             >
                                 <Text style={{ fontSize: 11, fontWeight: '800', color: THEME.primary }}>상세 지도</Text>
@@ -767,6 +776,15 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             </HubLayout>
 
             {infoModal.visible && <View style={StyleSheet.absoluteFill} pointerEvents="box-none">{renderInfoModal()}</View>}
+            
+            <UnlockModal
+                visible={unlockModalVisible}
+                onClose={() => setUnlockModalVisible(false)}
+                onUnlock={() => {
+                    if (onViewDetailedMap) onViewDetailedMap(dateRange);
+                    setUnlockModalVisible(false);
+                }}
+            />
         </View>
     );
 };
