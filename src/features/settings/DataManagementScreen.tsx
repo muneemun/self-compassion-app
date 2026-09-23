@@ -188,12 +188,14 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
                             subtitle="캐시 및 오래된 로그 정리"
                         />
                         <View style={styles.divider} />
+                        {/* [MVP 제외] 보안 기능 고도화 시 주석 해제
                         <MenuButton
                             icon={LockIcon}
                             title="보안 및 암호화 설정"
                             subtitle="생체 인증 및 보안키 관리"
                         />
                         <View style={styles.divider} />
+                        */}
                         <MenuButton
                             icon={History}
                             title="기기에서 데이터 복원"
