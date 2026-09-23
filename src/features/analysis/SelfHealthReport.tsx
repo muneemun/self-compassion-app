@@ -163,15 +163,6 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     </TouchableOpacity>
                 </View>
 
-                {isDataEmpty ? (
-                    <View style={{ height: CHART_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
-                        <Zap size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
-                        <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>기록된 에너지 사용 내역이 없습니다</Text>
-                        <Text style={{ color: colors.gray[400], fontSize: 12 }}>상호작용이나 휴식 활동을 기록하면 분석이 시작됩니다</Text>
-                    </View>
-                ) : (
-                    <>
-
                 <View style={styles.chartLegendRow}>
                     <View style={styles.legendGroup}>
                         <View style={[styles.legendBarIndicator, { backgroundColor: THEME.secondary + '40' }]} />
@@ -188,6 +179,13 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                 </View>
 
                 <View style={[styles.hybridChartContainer, { height: CHART_HEIGHT }]}>
+                    {isDataEmpty && (
+                        <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', zIndex: 10, backgroundColor: 'rgba(252, 249, 242, 0.7)' }]}>
+                            <Zap size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
+                            <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>기록된 에너지 사용 내역이 없습니다</Text>
+                            <Text style={{ color: colors.gray[400], fontSize: 12 }}>상호작용이나 휴식 활동을 기록하면 분석이 시작됩니다</Text>
+                        </View>
+                    )}
                     <View style={styles.chartGrid}>
                         {[0, 25, 50, 75, 100].map(v => (
                             <View key={v} style={[styles.gridLine, { bottom: `${v}%` }]} />
@@ -235,8 +233,6 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         return <Text key={i} style={styles.xAxisText}>{d}</Text>;
                     })}
                 </View>
-                </>
-                )}
             </View>
         );
     };
@@ -300,19 +296,17 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                             >
                                 <Text style={{ fontSize: 11, fontWeight: '800', color: THEME.primary }}>상세 지도</Text>
                             </TouchableOpacity>
-                                </Text>
-                            </TouchableOpacity>
                         )}
                     </View>
 
-                    {!hasData ? (
-                        <View style={{ height: 180, justifyContent: 'center', alignItems: 'center' }}>
-                            <Leaf size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
-                            <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>분석할 관계 데이터가 없습니다</Text>
-                            <Text style={{ color: colors.gray[400], fontSize: 12 }}>인맥을 추가하고 관계를 진단하면 지형도가 표시됩니다</Text>
-                        </View>
-                    ) : (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+                        {!hasData && (
+                            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', zIndex: 10, backgroundColor: 'rgba(252, 249, 242, 0.7)' }]}>
+                                <Leaf size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
+                                <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>분석할 관계 데이터가 없습니다</Text>
+                                <Text style={{ color: colors.gray[400], fontSize: 12 }}>인맥을 추가하고 관계를 진단하면 지형도가 표시됩니다</Text>
+                            </View>
+                        )}
                         {/* Vertical Label (Left) */}
                         <View style={{ width: 24, height: 160, justifyContent: 'center', alignItems: 'center' }}>
                             <Text style={{ 
@@ -419,7 +413,6 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                             <Text style={styles.legendLabel}>Z5</Text>
                         </View>
                     </View>
-                    )}
                 </View>
             </>
         );
@@ -645,15 +638,14 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     </TouchableOpacity>
                 </View>
 
-                {pulsePoints.length < 2 ? (
-                    <View style={{ height: 120, justifyContent: 'center', alignItems: 'center' }}>
-                        <Activity size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
-                        <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>최근 감정 흐름 데이터가 부족합니다</Text>
-                        <Text style={{ color: colors.gray[400], fontSize: 12 }}>흐름을 분석하기 위해 최소 2개 이상의 기록이 필요합니다</Text>
-                    </View>
-                ) : (
-                    <>
                 <View style={styles.pulseContainer}>
+                    {pulsePoints.length < 2 && (
+                        <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', zIndex: 10, backgroundColor: 'rgba(252, 249, 242, 0.7)' }]}>
+                            <Activity size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
+                            <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>최근 감정 흐름 데이터가 부족합니다</Text>
+                            <Text style={{ color: colors.gray[400], fontSize: 12 }}>흐름을 분석하기 위해 최소 2개 이상의 기록이 필요합니다</Text>
+                        </View>
+                    )}
                     <Svg height="120" width="100%" viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} preserveAspectRatio="none">
                         <Defs>
                             <SvgLinearGradient id="gradPulse" x1="0" y1="0" x2="0" y2="1">
@@ -693,9 +685,6 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         <Text style={styles.pulseMetaValue}>{pulseStats.total}회 기록됨</Text>
                     </View>
                 </View>
-
-                </>
-                )}
             </View>
         );
     };
