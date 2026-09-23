@@ -48,7 +48,8 @@ import ReAnimated, {
     Extrapolate,
     cancelAnimation,
     SharedValue,
-    createAnimatedComponent
+    createAnimatedComponent,
+    useAnimatedReaction
 } from 'react-native-reanimated';
 
 const AnimatedCircle = createAnimatedComponent(Circle);
@@ -430,13 +431,17 @@ export const TestOrbitMap = () => {
 
     // ── Charge Overlay Style (Galaxy Style with Jitter & Counter-Rotate)
     const lightningJitter = useSharedValue(0);
-    useEffect(() => {
-        if (chargeProgress.value > 0) {
-            lightningJitter.value = withRepeat(withSequence(withTiming(1.5, { duration: 60 }), withTiming(-1.5, { duration: 60 })), -1, true);
-        } else {
-            lightningJitter.value = 0;
-        }
-    }, [chargeProgress.value]);
+    useAnimatedReaction(
+        () => chargeProgress.value,
+        (progress) => {
+            if (progress > 0) {
+                lightningJitter.value = withRepeat(withSequence(withTiming(1.5, { duration: 60 }), withTiming(-1.5, { duration: 60 })), -1, true);
+            } else {
+                lightningJitter.value = 0;
+            }
+        },
+        []
+    );
 
     const chargeOverlayStyle = useAnimatedStyle(() => ({
         opacity: interpolate(chargeProgress.value, [0, 0.1, 1], [0, 1, 1]) * feedbackOpacity.value,
