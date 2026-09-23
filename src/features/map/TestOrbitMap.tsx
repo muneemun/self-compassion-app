@@ -685,7 +685,7 @@ export const TestOrbitMap = () => {
                             >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                     <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>{relationships.length}명의 관계가 함께하고 있어요</Text>
-                                    {isStatusPillExpanded ? <ChevronDown size={16} color="#999" /> : <ChevronUp size={16} color="#999" />}
+                                    {isStatusPillExpanded ? <ChevronUp size={16} color="#999" /> : <ChevronDown size={16} color="#999" />}
                                 </View>
                                 {isStatusPillExpanded && (
                                     <View style={{ marginTop: 10, alignItems: 'center' }}>

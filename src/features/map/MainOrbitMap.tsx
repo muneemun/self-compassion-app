@@ -2494,7 +2494,7 @@ export const MainOrbitMap = ({ isFocused = true, onSelectNode, onPressAdd, onDia
                                             ? `${relationships.length}명의 관계가 함께하고 있어요`
                                             : `${selectedFilters.join(', ')} 그룹 ${filteredRelationships.length}명과 연결 중`}
                                     </Text>
-                                    <ChevronUp size={16} color={colors.gray[400]} style={{ transform: [{ rotate: isStatusPillExpanded ? '180deg' : '0deg' }] }} />
+                                    <ChevronDown size={16} color={colors.gray[400]} style={{ transform: [{ rotate: isStatusPillExpanded ? '180deg' : '0deg' }] }} />
                                 </View>
                                 
                                 {isStatusPillExpanded && (
