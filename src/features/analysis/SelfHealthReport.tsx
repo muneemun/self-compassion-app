@@ -58,11 +58,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
         <AppHeader
             title="건강 리포트"
             leftAction={null}
-            rightAction={
-                <TouchableOpacity style={styles.iconBtn}>
-                    <MoreHorizontal size={24} color={colors.primary} />
-                </TouchableOpacity>
-            }
+            rightAction={null}
         />
     );
 
