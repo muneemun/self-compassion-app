@@ -59,6 +59,10 @@ interface AppState {
         tuningTime: string;
     };
     setReminderSettings: (settings: Partial<AppState['reminderSettings']>) => void;
+    
+    // 프리미엄 열람권 해제 여부 ($1 결제)
+    isPremiumUnlocked: boolean;
+    setPremiumUnlocked: (unlocked: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -116,6 +120,9 @@ export const useAppStore = create<AppState>()(
             setReminderSettings: (newSettings) => set((state) => ({
                 reminderSettings: { ...state.reminderSettings, ...newSettings }
             })),
+
+            isPremiumUnlocked: false,
+            setPremiumUnlocked: (unlocked) => set({ isPremiumUnlocked: unlocked }),
         }),
         {
             name: 'social-orbit-app-storage',
