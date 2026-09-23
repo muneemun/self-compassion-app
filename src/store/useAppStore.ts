@@ -63,6 +63,10 @@ interface AppState {
     // 프리미엄 열람권 해제 여부 ($1 결제)
     isPremiumUnlocked: boolean;
     setPremiumUnlocked: (unlocked: boolean) => void;
+    
+    // 개발자/연구 랩 탭 표시 여부
+    isLabTabVisible: boolean;
+    setLabTabVisible: (visible: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -123,6 +127,9 @@ export const useAppStore = create<AppState>()(
 
             isPremiumUnlocked: false,
             setPremiumUnlocked: (unlocked) => set({ isPremiumUnlocked: unlocked }),
+
+            isLabTabVisible: true, // 기본적으로 켜둠 (또는 원하는 대로)
+            setLabTabVisible: (visible) => set({ isLabTabVisible: visible }),
         }),
         {
             name: 'social-orbit-app-storage',

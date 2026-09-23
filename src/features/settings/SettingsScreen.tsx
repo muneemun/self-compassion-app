@@ -20,6 +20,9 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
 }) => {
     const colors = useColors();
 
+    const isLabTabVisible = useAppStore(state => state.isLabTabVisible);
+    const setLabTabVisible = useAppStore(state => state.setLabTabVisible);
+
     // Toggle State for Mindfulness Mode
     const [isMindfulnessEnabled, setIsMindfulnessEnabled] = useState(true);
 
@@ -32,7 +35,7 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
         </View>
     );
 
-    const SettingItem = ({ icon: Icon, title, showToggle = false, isLast = false, onToggle, onPress }: any) => (
+    const SettingItem = ({ icon: Icon, title, showToggle = false, value = false, isLast = false, onToggle, onPress }: any) => (
         <>
             <TouchableOpacity
                 style={styles.itemContainer}
@@ -52,7 +55,7 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
                             thumbColor={"#FFFFFF"}
                             ios_backgroundColor="#E0E0E0"
                             onValueChange={onToggle}
-                            value={isMindfulnessEnabled}
+                            value={value}
                         />
                     ) : (
                         <ChevronRight size={20} color={colors.gray[500] + '80'} />
@@ -121,6 +124,13 @@ export const SettingsScreen = ({ onBack, onNavigateToDataManagement, onNavigateT
 
                 {__DEV__ && (
                     <SettingSection title="테스트 도구 (개발자 전용)">
+                        <SettingItem 
+                            icon={Sparkles}
+                            title="Lab (실험실) 탭 표시"
+                            showToggle
+                            value={isLabTabVisible}
+                            onToggle={(val: boolean) => setLabTabVisible(val)}
+                        />
                         <SettingItem 
                             icon={Unlock} 
                             title="프리미엄 결제 상태 초기화" 

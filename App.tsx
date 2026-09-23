@@ -63,6 +63,7 @@ function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const activeTab = useAppStore(state => state.activeTab);
   const setActiveTab = useAppStore(state => state.setActiveTab);
+  const isLabTabVisible = useAppStore(state => state.isLabTabVisible);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnosisMode, setDiagnosisMode] = useState<"ZONE" | "RQS">("ZONE");
@@ -480,16 +481,18 @@ function App() {
                           <Text style={[styles.navText, activeTab === 'health' && styles.activeNavText]}>Health</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={styles.navItem}
-                          onPress={() => setActiveTab('test')}
-                        >
-                          <View style={styles.iconWrapper}>
-                            {activeTab === 'test' && <View style={styles.activeIconBg} />}
-                            <FlaskConical size={22} color={activeTab === 'test' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'test' ? 2.5 : 2} />
-                          </View>
-                          <Text style={[styles.navText, activeTab === 'test' && styles.activeNavText]}>Lab</Text>
-                        </TouchableOpacity>
+                        {isLabTabVisible && (
+                          <TouchableOpacity
+                            style={styles.navItem}
+                            onPress={() => setActiveTab('test')}
+                          >
+                            <View style={styles.iconWrapper}>
+                              {activeTab === 'test' && <View style={styles.activeIconBg} />}
+                              <FlaskConical size={22} color={activeTab === 'test' ? '#4A5D4E' : '#9E9E9E'} strokeWidth={activeTab === 'test' ? 2.5 : 2} />
+                            </View>
+                            <Text style={[styles.navText, activeTab === 'test' && styles.activeNavText]}>Lab</Text>
+                          </TouchableOpacity>
+                        )}
 
                         <TouchableOpacity
                           style={styles.navItem}
