@@ -118,7 +118,7 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
                                 ) : (
                                     <>
                                         <Play size={20} color="#5D4037" />
-                                        <Text style={styles.adButtonText}>후원하고 무료로 보기</Text>
+                                        <Text style={styles.adButtonText}>짧은 영상 광고 보고 무료로 열람하기</Text>
                                     </>
                                 )}
                             </TouchableOpacity>
@@ -131,10 +131,15 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
                                 {isPurchasing ? (
                                     <ActivityIndicator color="#fff" />
                                 ) : (
-                                    <>
-                                        <Diamond size={20} color="#fff" />
-                                        <Text style={styles.purchaseButtonText}>프리미엄 열람권 ($1.00)</Text>
-                                    </>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                            <Diamond size={20} color="#fff" style={{ marginRight: 8 }} />
+                                            <Text style={styles.purchaseButtonText}>프리미엄 열람권 ($1.00)</Text>
+                                        </View>
+                                        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, textAlign: 'center', marginTop: 4 }}>
+                                            ✨ 구매 시 '나의 관계 밸런스' 상세 보기와{'\n'}'정서적 관계 지형도' 상세 지도가 모두 영구 해제됩니다!
+                                        </Text>
+                                    </View>
                                 )}
                             </TouchableOpacity>
                         </View>
