@@ -116,10 +116,12 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
                                 {isLoadingAd ? (
                                     <ActivityIndicator color="#5D4037" />
                                 ) : (
-                                    <>
-                                        <Play size={20} color="#5D4037" />
-                                        <Text style={styles.adButtonText}>짧은 영상 광고 보고 무료로 열람하기</Text>
-                                    </>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Play size={18} color="#5D4037" style={{ marginRight: 6 }} />
+                                        <Text style={[styles.adButtonText, { flexShrink: 1 }]} adjustsFontSizeToFit numberOfLines={1}>
+                                            짧은 광고 보고 무료로 열람하기
+                                        </Text>
+                                    </View>
                                 )}
                             </TouchableOpacity>
 
@@ -131,13 +133,13 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
                                 {isPurchasing ? (
                                     <ActivityIndicator color="#fff" />
                                 ) : (
-                                    <View style={{ alignItems: 'center' }}>
+                                    <View style={{ alignItems: 'center', width: '100%' }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                                            <Diamond size={20} color="#fff" style={{ marginRight: 8 }} />
+                                            <Diamond size={18} color="#fff" style={{ marginRight: 6 }} />
                                             <Text style={styles.purchaseButtonText}>프리미엄 열람권 ($1.00)</Text>
                                         </View>
-                                        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, textAlign: 'center', marginTop: 4 }}>
-                                            ✨ 구매 시 '나의 관계 밸런스' 상세 보기와{'\n'}'정서적 관계 지형도' 상세 지도가 모두 영구 해제됩니다!
+                                        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, textAlign: 'center', marginTop: 2, paddingHorizontal: 4 }}>
+                                            ✨ 구매 시 '관계 밸런스'와 '정서 지도'{'\n'}상세보기가 영구 해제됩니다!
                                         </Text>
                                     </View>
                                 )}
