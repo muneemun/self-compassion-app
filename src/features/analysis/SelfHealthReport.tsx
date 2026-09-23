@@ -149,6 +149,8 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             ? `M ${linePoints.map((p: any) => `${p.x},${p.y}`).join(' L ')}`
             : '';
 
+        const isDataEmpty = interactionCounts.every((v: number) => v === 0) && (!selfTimeCounts || selfTimeCounts.every((v: number) => v === 0));
+
         return (
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -160,6 +162,15 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         <Info size={16} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
+
+                {isDataEmpty ? (
+                    <View style={{ height: CHART_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
+                        <Zap size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
+                        <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>기록된 에너지 사용 내역이 없습니다</Text>
+                        <Text style={{ color: colors.gray[400], fontSize: 12 }}>상호작용이나 휴식 활동을 기록하면 분석이 시작됩니다</Text>
+                    </View>
+                ) : (
+                    <>
 
                 <View style={styles.chartLegendRow}>
                     <View style={styles.legendGroup}>
@@ -224,6 +235,8 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         return <Text key={i} style={styles.xAxisText}>{d}</Text>;
                     })}
                 </View>
+                </>
+                )}
             </View>
         );
     };
@@ -262,6 +275,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             pointMap.get(key)!.push({ ...node, sat, drain });
         });
 
+        const hasData = Object.values(counts).reduce((a, b) => a + b, 0) > 0;
 
         return (
             <>
@@ -286,10 +300,19 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                             >
                                 <Text style={{ fontSize: 11, fontWeight: '800', color: THEME.primary }}>상세 지도</Text>
                             </TouchableOpacity>
+                                </Text>
+                            </TouchableOpacity>
                         )}
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+                    {!hasData ? (
+                        <View style={{ height: 180, justifyContent: 'center', alignItems: 'center' }}>
+                            <Leaf size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
+                            <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>분석할 관계 데이터가 없습니다</Text>
+                            <Text style={{ color: colors.gray[400], fontSize: 12 }}>인맥을 추가하고 관계를 진단하면 지형도가 표시됩니다</Text>
+                        </View>
+                    ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
                         {/* Vertical Label (Left) */}
                         <View style={{ width: 24, height: 160, justifyContent: 'center', alignItems: 'center' }}>
                             <Text style={{ 
@@ -396,6 +419,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                             <Text style={styles.legendLabel}>Z5</Text>
                         </View>
                     </View>
+                    )}
                 </View>
             </>
         );
@@ -460,8 +484,7 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
             })
             .slice(0, 10);
 
-        if (allHistory.length === 0) return null;
-
+        const hasData = allHistory.length > 0;
         return (
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -472,6 +495,13 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         <Text style={styles.cardSubtitle}>인맥 교류 + 나와의 시간 통합 기록</Text>
                     </View>
                 </View>
+                {!hasData ? (
+                    <View style={{ height: 120, justifyContent: 'center', alignItems: 'center' }}>
+                        <History size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
+                        <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>해당 기간의 활동 기록이 없습니다</Text>
+                    </View>
+                ) : (
+                    <>
                 {allHistory.map((h, i) => {
                     const dateStr = new Date(h.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
                     const timeStr = new Date(h.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -569,6 +599,8 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         </TouchableOpacity>
                     );
                 })}
+                </>
+                )}
                 <TouchableOpacity
                     style={{ marginTop: 8, alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.03)' }}
                     onPress={() => onViewAllHistory?.(dateRange)}
@@ -613,6 +645,14 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                     </TouchableOpacity>
                 </View>
 
+                {pulsePoints.length < 2 ? (
+                    <View style={{ height: 120, justifyContent: 'center', alignItems: 'center' }}>
+                        <Activity size={32} color={colors.gray[300]} style={{ marginBottom: 12 }} />
+                        <Text style={{ color: colors.gray[500], fontSize: 14, fontWeight: '600', marginBottom: 4 }}>최근 감정 흐름 데이터가 부족합니다</Text>
+                        <Text style={{ color: colors.gray[400], fontSize: 12 }}>흐름을 분석하기 위해 최소 2개 이상의 기록이 필요합니다</Text>
+                    </View>
+                ) : (
+                    <>
                 <View style={styles.pulseContainer}>
                     <Svg height="120" width="100%" viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} preserveAspectRatio="none">
                         <Defs>
@@ -653,6 +693,9 @@ export const SelfHealthReport = ({ onBack, onViewAllHistory, onSelectRelationshi
                         <Text style={styles.pulseMetaValue}>{pulseStats.total}회 기록됨</Text>
                     </View>
                 </View>
+
+                </>
+                )}
             </View>
         );
     };
