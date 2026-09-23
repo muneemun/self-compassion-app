@@ -236,4 +236,47 @@ export const BackupService = {
       Alert.alert('복원 실패', '유효하지 않은 백업 파일이거나 처리 중 오류가 발생했습니다.');
     }
   },
+
+  /**
+   * 앱의 모든 데이터를 초기화합니다.
+   */
+  async resetData() {
+    return new Promise<void>((resolve) => {
+      const confirmReset = () => {
+        try {
+          useRelationshipStore.setState({ relationships: [], lastAddedId: null });
+          useSelfTimeStore.setState({ entries: [] });
+          useAppStore.setState({ 
+            userProfile: null,
+            hasCompletedOnboarding: false,
+            activeTab: 'map',
+            isPremiumUnlocked: false
+          });
+          Alert.alert('초기화 완료', '모든 앱 데이터가 성공적으로 초기화되었습니다.');
+          resolve();
+        } catch (error) {
+          console.error('Reset failed:', error);
+          Alert.alert('초기화 실패', '데이터 초기화 중 문제가 발생했습니다.');
+          resolve();
+        }
+      };
+
+      if (Platform.OS === 'web') {
+        if (confirm('어플 데이터 초기화: 모든 기록과 설정이 영구적으로 삭제됩니다. 정말로 초기화하시겠습니까?')) {
+          confirmReset();
+        } else {
+          resolve();
+        }
+      } else {
+        Alert.alert(
+          '어플 데이터 초기화',
+          '모든 기록과 설정이 영구적으로 삭제됩니다.\n\n정말로 모든 데이터를 지우시겠습니까?',
+          [
+            { text: '취소', style: 'cancel', onPress: () => resolve() },
+            { text: '초기화하기', style: 'destructive', onPress: confirmReset },
+          ]
+        );
+      }
+    });
+  }
 };

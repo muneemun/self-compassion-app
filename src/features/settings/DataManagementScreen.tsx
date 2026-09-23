@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
     ChevronLeft, ShieldCheck, Database, Heart, RefreshCw,
     FileText, HardDrive, Lock as LockIcon, History,
-    ChevronRight, Download, Info
+    ChevronRight, Download, Info, Trash2
 } from 'lucide-react-native';
 import { HubLayout } from '../../layouts/BaseLayout';
 import { useColors } from '../../theme/ColorLockContext';
@@ -86,18 +86,18 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
         </View>
     );
 
-    const MenuButton = ({ icon: Icon, title, subtitle, onPress }: any) => (
+    const MenuButton = ({ icon: Icon, title, subtitle, onPress, danger }: any) => (
         <TouchableOpacity 
             style={[styles.menuButton, { backgroundColor: colors.white }]} 
             onPress={onPress}
             activeOpacity={0.7}
         >
             <View style={styles.menuLeft}>
-                <View style={[styles.menuIconBox, { backgroundColor: colors.primary + '08' }]}>
-                    <Icon size={20} color={colors.primary} />
+                <View style={[styles.menuIconBox, { backgroundColor: danger ? '#FFEbee' : colors.primary + '08' }]}>
+                    <Icon size={20} color={danger ? '#D32F2F' : colors.primary} />
                 </View>
                 <View>
-                    <Text style={[styles.menuTitle, { color: colors.primary }]}>{title}</Text>
+                    <Text style={[styles.menuTitle, { color: danger ? '#D32F2F' : colors.primary }]}>{title}</Text>
                     <Text style={[styles.menuSubtitle, { color: colors.gray[500] }]}>{subtitle}</Text>
                 </View>
             </View>
@@ -197,6 +197,14 @@ export const DataManagementScreen = ({ onBack }: DataManagementScreenProps) => {
                             title="기기에서 데이터 복원"
                             subtitle="저장된 JSON 파일을 불러와 기록 복구"
                             onPress={() => BackupService.importData()}
+                        />
+                        <View style={styles.divider} />
+                        <MenuButton
+                            icon={Trash2}
+                            title="어플 데이터 모두 지우기"
+                            subtitle="모든 인맥 및 기록을 초기화합니다"
+                            onPress={() => BackupService.resetData()}
+                            danger
                         />
                     </View>
 
